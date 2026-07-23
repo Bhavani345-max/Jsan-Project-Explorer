@@ -57,6 +57,8 @@ interface BackendProject {
   title: string;
   description: string | null;
   aiSummary: string | null;
+  aiFitScore: number | null;
+  aiServiceLine: string | null;
   organization: { name: string; industry: string | null } | null;
   category: { name: string } | null;
   source: { name: string; sourceType: string } | null;
@@ -111,7 +113,8 @@ function toFrontend(p: BackendProject): Project {
   const country = p.country ?? "Unknown";
   const presence = presenceFor(country);
   const text = `${p.title} ${p.description ?? ""} ${p.category?.name ?? ""}`;
-  const serviceLine = serviceLineFor(text);
+  // Prefer real AI enrichment (OpenRouter) over the keyword heuristic
+  const serviceLine = (p.aiServiceLine as Project["serviceLine"]) ?? serviceLineFor(text);
   const daysLeft = p.deadline
     ? Math.ceil((new Date(p.deadline).getTime() - Date.now()) / 86_400_000)
     : null;
@@ -138,7 +141,7 @@ function toFrontend(p: BackendProject): Project {
     sourceType: (p.source?.sourceType ?? "Public Tender API") as Project["sourceType"],
     category: (p.category?.name ?? "Enterprise Software") as Project["category"],
     serviceLine,
-    fitScore: fitScoreFor(p, serviceLine),
+    fitScore: p.aiFitScore ?? fitScoreFor(p, serviceLine),
     presenceTier: presence.tier,
     presenceLabel: presence.label,
     presenceRank: presence.rank,

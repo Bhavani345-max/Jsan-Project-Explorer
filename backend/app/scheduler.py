@@ -79,10 +79,22 @@ def _merge(existing: Project, incoming: Project) -> None:
         existing.ai_summary = incoming.ai_summary
 
 
+def enrich_job() -> None:
+    """AI enrichment pass over newly ingested tenders (no-op without API key)."""
+    from app.ai import enricher
+
+    result = enricher.enrich_pending()
+    if result.get("enabled"):
+        log.info("AI enrichment: %s", result)
+
+
 def start() -> None:
     # every 15 minutes — high-frequency feeds
     scheduler.add_job(run, CronTrigger(minute="*/15"), args=["RSS Feed"],
                       id="rss-15m", replace_existing=True)
+    # every 10 minutes — AI enrichment of un-summarized tenders
+    scheduler.add_job(enrich_job, CronTrigger(minute="*/10"),
+                      id="ai-enrich", replace_existing=True)
     # hourly — procurement & tender APIs
     scheduler.add_job(run, CronTrigger(minute=0), args=["Government Procurement API"],
                       id="gov-hourly", replace_existing=True)

@@ -85,11 +85,13 @@ def main() -> None:
                    if r.category_name else "NULL")
             lines.append(
                 "INSERT INTO projects (id, reference_number, title, description, ai_summary, "
+                "ai_fit_score, ai_service_line, "
                 "organization_id, category_id, source_id, country, state, budget_usd, currency, "
                 "project_type, status, eligibility, official_link, contact_name, contact_email, "
                 "contact_phone, tags, deadline, publication_date, source_hash) VALUES ("
                 f"{q(str(r.id))}, {q(r.reference_number)}, {q(r.title)}, {q(r.description)}, "
-                f"{q(r.ai_summary)}, {q(str(r.organization_id)) if r.organization_id else 'NULL'}, "
+                f"{q(r.ai_summary)}, {q(r.ai_fit_score)}, {q(r.ai_service_line)}, "
+                f"{q(str(r.organization_id)) if r.organization_id else 'NULL'}, "
                 f"{cat}, {q(str(r.source_id)) if r.source_id else 'NULL'}, {q(r.country)}, "
                 f"{q(r.state)}, {q(r.budget_usd)}, {q(r.currency)}, {q(r.project_type)}, "
                 f"{q(r.status)}, {q(r.eligibility)}, {q(r.official_link)}, {q(r.contact_name)}, "

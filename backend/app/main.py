@@ -19,7 +19,7 @@ from fastapi.responses import RedirectResponse
 from app import scheduler
 from app.config import get_settings
 from app.errors import register_exception_handlers
-from app.routers import auth, projects
+from app.routers import ai, auth, projects
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,6 +54,7 @@ register_exception_handlers(app)
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(ai.router)
 
 
 @app.get("/swagger-ui.html", include_in_schema=False)

@@ -16,6 +16,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     Date,
+    SmallInteger,
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
@@ -143,6 +144,8 @@ class Project(AuditMixin, Base):
     title: Mapped[str] = mapped_column(String(400))
     description: Mapped[str | None] = mapped_column(Text)
     ai_summary: Mapped[str | None] = mapped_column(Text)
+    ai_fit_score: Mapped[int | None] = mapped_column(SmallInteger)
+    ai_service_line: Mapped[str | None] = mapped_column(String(60))
 
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id")

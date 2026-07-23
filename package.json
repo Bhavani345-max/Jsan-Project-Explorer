@@ -1,0 +1,29 @@
+{
+  "name": "project-discovery-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise portal to discover software development opportunities from public sources",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "node --loader ts-node/esm scripts/noop.mjs"
+  },
+  "dependencies": {
+    "clsx": "2.1.1",
+    "lucide-react": "0.544.0",
+    "next": "^15.5.21",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "recharts": "2.15.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.13",
+    "@types/node": "24.5.2",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "tailwindcss": "4.1.13",
+    "typescript": "5.9.2"
+  }
+}

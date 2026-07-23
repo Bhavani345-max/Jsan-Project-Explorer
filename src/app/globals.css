@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------ */
+/*  Design tokens — Project Discovery Portal enterprise theme          */
+/* ------------------------------------------------------------------ */
+:root {
+  --bg: #f6f7f9;
+  --bg-elev: #ffffff;
+  --bg-subtle: #eef1f5;
+  --border: #e2e6ec;
+  --border-strong: #cfd5df;
+  --text: #0f172a;
+  --text-muted: #5b6472;
+  --text-faint: #8b94a3;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef0fe;
+  --accent: #0ea5e9;
+  --success: #16a34a;
+  --success-soft: #e7f6ec;
+  --warning: #d97706;
+  --warning-soft: #fdf1e0;
+  --danger: #dc2626;
+  --danger-soft: #fdeaea;
+  --ring: rgba(79, 70, 229, 0.35);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+}
+
+.dark {
+  --bg: #0b0f17;
+  --bg-elev: #121826;
+  --bg-subtle: #1a2233;
+  --border: #232c3d;
+  --border-strong: #303b50;
+  --text: #e8ecf3;
+  --text-muted: #9aa4b5;
+  --text-faint: #6b7688;
+  --primary: #6366f1;
+  --primary-hover: #7c7ff5;
+  --primary-soft: #1c2036;
+  --accent: #38bdf8;
+  --success: #34d399;
+  --success-soft: #10251d;
+  --warning: #fbbf24;
+  --warning-soft: #2a2011;
+  --danger: #f87171;
+  --danger-soft: #2a1517;
+  --ring: rgba(99, 102, 241, 0.45);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reusable component utilities                                        */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: var(--primary-hover);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-subtle);
+    color: var(--text);
+  }
+
+  .input {
+    width: 100%;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.875rem;
+    color: var(--text);
+    outline: none;
+    transition: border 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+  .input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-subtle);
+    color: var(--text-muted);
+  }
+
+  /* JSAN brand header band — consistent blue in both themes */
+  .brand-band {
+    background: linear-gradient(100deg, #0d3a5c 0%, #1a5f8f 55%, #217bb0 100%);
+    color: #ffffff;
+  }
+
+  /* Search field sitting on the brand band */
+  .search-brand {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: transparent !important;
+    color: #0f1b28 !important;
+  }
+  .search-brand::placeholder {
+    color: #7a8898;
+  }
+  .search-brand:focus {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35) !important;
+  }
+
+  /* Icon buttons on the brand band */
+  .btn-on-brand {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  .btn-on-brand:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-in {
+  animation: fadeInUp 0.35s ease both;
+}

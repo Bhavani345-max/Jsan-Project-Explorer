@@ -1,0 +1,439 @@
+<title>Project Discovery Portal — Executive Brief</title>
+<style>
+  :root {
+    --ground: #f5f8fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f7;
+    --ink: #0d1b28;
+    --ink-2: #48596a;
+    --ink-3: #7d8c9b;
+    --line: #dce4ed;
+    --line-strong: #c6d2de;
+    --brand: #1a5f8f;
+    --brand-deep: #103c5a;
+    --good: #157f52;
+    --good-bg: #e4f3ec;
+    --warn: #a9670f;
+    --warn-bg: #f8efe0;
+    --shadow: 0 1px 2px rgba(16,40,64,.05), 0 8px 28px rgba(16,40,64,.07);
+    --sans: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    --mono: "Cascadia Code", "Cascadia Mono", "Consolas", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0a121b;
+      --surface: #101d2a;
+      --surface-2: #17293a;
+      --ink: #e8eef5;
+      --ink-2: #a1b2c3;
+      --ink-3: #6c7e8f;
+      --line: #21344680;
+      --line-strong: #2b405480;
+      --brand: #56a0d1;
+      --brand-deep: #8ecbef;
+      --good: #37c98a;
+      --good-bg: #10281f;
+      --warn: #e0a54a;
+      --warn-bg: #2a2011;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f5f8fb; --surface: #ffffff; --surface-2: #eef2f7;
+    --ink: #0d1b28; --ink-2: #48596a; --ink-3: #7d8c9b;
+    --line: #dce4ed; --line-strong: #c6d2de;
+    --brand: #1a5f8f; --brand-deep: #103c5a;
+    --good: #157f52; --good-bg: #e4f3ec; --warn: #a9670f; --warn-bg: #f8efe0;
+    --shadow: 0 1px 2px rgba(16,40,64,.05), 0 8px 28px rgba(16,40,64,.07);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0a121b; --surface: #101d2a; --surface-2: #17293a;
+    --ink: #e8eeff; --ink-2: #a1b2c3; --ink-3: #6c7e8f;
+    --line: #21344680; --line-strong: #2b405480;
+    --brand: #56a0d1; --brand-deep: #8ecbef;
+    --good: #37c98a; --good-bg: #10281f; --warn: #e0a54a; --warn-bg: #2a2011;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(120% 60% at 100% 0%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 60%),
+      var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .doc { max-width: 900px; margin: 0 auto; padding: 40px 24px 72px; }
+
+  /* ---- header ---- */
+  .masthead {
+    display: flex; align-items: center; gap: 16px;
+    padding-bottom: 22px; margin-bottom: 34px;
+    border-bottom: 2px solid var(--line-strong);
+  }
+  .logo-tile {
+    width: 54px; height: 54px; border-radius: 12px; flex: none;
+    background: #fff; border: 1px solid var(--line);
+    display: grid; place-items: center; box-shadow: var(--shadow);
+  }
+  .logo-tile img { width: 36px; height: 36px; object-fit: contain; }
+  .masthead .id { flex: 1; min-width: 0; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--brand); font-weight: 600;
+  }
+  .masthead h1 {
+    margin: 3px 0 2px; font-size: clamp(22px, 3.4vw, 30px);
+    letter-spacing: -.02em; font-weight: 700; text-wrap: balance;
+  }
+  .masthead .sub { color: var(--ink-2); font-size: 14px; }
+  .masthead .meta {
+    text-align: right; font-family: var(--mono); font-size: 11px;
+    color: var(--ink-3); line-height: 1.7; flex: none;
+  }
+
+  h2 {
+    font-size: 12px; font-family: var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-3);
+    margin: 0 0 14px; display: flex; align-items: center; gap: 10px;
+  }
+  h2::before {
+    content: ""; width: 22px; height: 2px; background: var(--brand); flex: none;
+  }
+  section { margin-bottom: 40px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 17px; color: var(--ink); }
+  strong { font-weight: 650; }
+
+  /* ---- what it is ---- */
+  .summary {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 16px; padding: 24px 26px; box-shadow: var(--shadow);
+    border-left: 4px solid var(--brand);
+  }
+  .summary p:last-child { margin-bottom: 0; }
+  .summary .value {
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 16px;
+  }
+  .value b { display: block; color: var(--brand-deep); font-size: 13px; }
+  .value span { font-size: 13px; color: var(--ink-2); }
+
+  /* ---- module grid ---- */
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 15px 16px;
+  }
+  .card h3 { margin: 0 0 3px; font-size: 14.5px; font-weight: 640; }
+  .card p { margin: 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+
+  /* ---- service lines ---- */
+  .lines { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); }
+  .line {
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+    background: color-mix(in srgb, var(--brand) 5%, var(--surface));
+  }
+  .line .n { font-family: var(--mono); font-size: 11px; color: var(--brand); font-weight: 600; }
+  .line h3 { margin: 4px 0 2px; font-size: 14px; }
+  .line p { margin: 0; font-size: 12px; color: var(--ink-2); }
+
+  /* ---- tech stack ---- */
+  .stack { display: grid; gap: 18px 28px; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); }
+  .stack .grp > b {
+    font-size: 13px; color: var(--ink); display: block; margin-bottom: 8px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 11.5px; padding: 3px 9px;
+    border-radius: 999px; background: var(--surface-2); color: var(--ink-2);
+    border: 1px solid var(--line);
+  }
+
+  /* ---- status ---- */
+  .status { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  .status .box { border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; background: var(--surface); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650;
+    font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em;
+    padding: 3px 9px; border-radius: 999px; margin-bottom: 8px;
+  }
+  .pill.live { background: var(--good-bg); color: var(--good); }
+  .pill.ref { background: var(--surface-2); color: var(--ink-2); }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status .box p { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+
+  /* ---- cost ---- */
+  .cost-wrap { display: grid; gap: 16px; grid-template-columns: 1.1fr 1fr; align-items: start; }
+  table.cost { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.cost caption {
+    text-align: left; font-family: var(--mono); font-size: 11px; color: var(--warn);
+    letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;
+  }
+  table.cost th, table.cost td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  table.cost th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); font-weight: 600; }
+  table.cost td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  table.cost tr:last-child td { border-bottom: none; }
+  table.cost tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
+
+  .callout {
+    background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: 16px; padding: 20px 22px; box-shadow: var(--shadow);
+  }
+  .callout .tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--brand); font-weight: 600;
+  }
+  .callout h3 { margin: 6px 0 8px; font-size: 16px; }
+  .callout p { font-size: 13px; color: var(--ink-2); margin: 0 0 12px; }
+  .cmd {
+    font-family: var(--mono); font-size: 15px; font-weight: 600;
+    background: var(--brand-deep); color: #fff; padding: 10px 16px;
+    border-radius: 10px; display: inline-block; letter-spacing: .02em;
+  }
+  :root[data-theme="dark"] .cmd, :root:not([data-theme="light"]) .cmd { color: #041018; }
+  @media (prefers-color-scheme: dark) { .cmd { color: #041018; } }
+  :root[data-theme="light"] .cmd { color: #fff; }
+
+  .note {
+    margin-top: 14px; font-size: 12px; color: var(--ink-2);
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .note b { color: var(--ink); }
+
+  .metrics { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 20px; }
+  .metric .v { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+  .metric .l { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; }
+
+  footer {
+    margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 11.5px; color: var(--ink-3); font-family: var(--mono);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+
+  @media (max-width: 720px) {
+    .cost-wrap, .status { grid-template-columns: 1fr; }
+    .masthead { flex-wrap: wrap; }
+    .masthead .meta { text-align: left; width: 100%; }
+  }
+</style>
+
+<div class="doc">
+  <header class="masthead">
+    <div class="logo-tile">
+      <img src="data:image/png;base64,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" alt="JSAN Consulting logo" />
+    </div>
+    <div class="id">
+      <div class="eyebrow">JSAN Consulting · GIS &amp; Telecom</div>
+      <h1>Project Discovery Portal</h1>
+      <div class="sub">GIS &amp; telecom opportunity intelligence for Business Development</div>
+    </div>
+    <div class="meta">
+      EXECUTIVE BRIEF<br>
+      Rev 2.1 · 23 Jul 2026<br>
+      Status: Live data connected
+    </div>
+  </header>
+
+  <section>
+    <h2>What it is</h2>
+    <div class="summary">
+      <p class="lead">A private web platform that automatically finds <strong>GIS and telecom opportunities</strong> for JSAN — government tenders, RFPs, RFQs, and procurement notices for fibre &amp; network projects, 5G rollout, OSS/BSS, and geospatial platforms — before the Business Development team has to go looking.</p>
+      <p>It collects these leads from <strong>publicly available sources only</strong> — official government procurement APIs, tender APIs, RSS feeds, and open-data portals — then organizes, de-duplicates, and searches them. Every opportunity is scored against JSAN's service lines, with <strong>GIS and telecom weighted highest</strong>, and ranked so that leads in <strong>JSAN's operating locations surface first</strong> — the team sees on-strategy, on-footprint work before manually scanning dozens of portals.</p>
+      <div class="value">
+        <div><b>Less manual searching</b><span>One dashboard replaces monitoring many tender sites by hand.</span></div>
+        <div><b>On-strategy focus</b><span>Fit scoring surfaces leads that match what JSAN actually delivers.</span></div>
+        <div><b>Compliant by design</b><span>Public APIs &amp; open data only — no scraping of restricted sites.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Mapped to JSAN's service lines — core business first</h2>
+    <div class="lines">
+      <div class="line"><div class="n">01 · Core</div><h3>Geospatial Intelligence (GIS)</h3><p>GIS platforms, spatial analytics, mapping, field survey.</p></div>
+      <div class="line"><div class="n">02 · Core</div><h3>Telecom &amp; Network Engineering</h3><p>Fibre/OSP, 5G &amp; RF planning, OSS/BSS, network GIS.</p></div>
+      <div class="line"><div class="n">03</div><h3>Digital Engineering</h3><p>Web, mobile, cloud, data &amp; AI/ML build work.</p></div>
+      <div class="line"><div class="n">04</div><h3>Strategic Workforce Solutions</h3><p>Managed teams &amp; technology staff augmentation.</p></div>
+      <div class="line"><div class="n">05</div><h3>Structured Program Management</h3><p>PMO setup, governance, multi-vendor delivery.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prioritized to JSAN's footprint</h2>
+    <p style="color:var(--ink-2); font-size:14px; margin-bottom:14px;">Opportunities are ranked by <strong>location first</strong>: offices, then operating markets, then new markets. Leads where JSAN already has people surface at the top of every list.</p>
+    <div class="lines">
+      <div class="line"><div class="n">HQ</div><h3>United Kingdom</h3><p>UK Headquarters · Brentford, Middlesex</p></div>
+      <div class="line"><div class="n">HQ</div><h3>Germany</h3><p>European HQ · Berlin</p></div>
+      <div class="line"><div class="n">Office</div><h3>India</h3><p>Regional Office · Hyderabad (Gachibowli)</p></div>
+      <div class="line"><div class="n">Office</div><h3>United States</h3><p>US Office · New Jersey</p></div>
+      <div class="line"><div class="n">Office</div><h3>Malaysia</h3><p>APAC Office · Kuala Lumpur</p></div>
+      <div class="line" style="background:var(--surface);"><div class="n">Operating</div><h3>Operating markets</h3><p>France · Poland · Sweden · Norway · Brazil · Canada · Estonia</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="card"><h3>Dashboard</h3><p>Totals, best-fit count, closing-soon, pipeline value, and charts by service line, country &amp; technology.</p></div>
+      <div class="card"><h3>Project Explorer</h3><p>Advanced filters, keyword search, fit ranking, grid &amp; table views, pagination.</p></div>
+      <div class="card"><h3>Opportunity Details</h3><p>Full record with AI summary, extracted technologies, eligibility, contact &amp; live source link.</p></div>
+      <div class="card"><h3>API Connectors</h3><p>Configure public data sources — auth, rate limits, pagination, retry &amp; logs.</p></div>
+      <div class="card"><h3>Collection Scheduler</h3><p>Automatic refresh every 15 min / hourly / daily, with de-duplication &amp; change history.</p></div>
+      <div class="card"><h3>Smart Search</h3><p>Global autocomplete across technologies, organizations, countries &amp; service lines.</p></div>
+      <div class="card"><h3>AI Features</h3><p>Summarize, extract budget/deadline/tech, auto-categorize, tag &amp; recommend.</p></div>
+      <div class="card"><h3>Analytics</h3><p>Trends per month, trending technologies, top organizations, win rate.</p></div>
+      <div class="card"><h3>Roles &amp; Access</h3><p>Admin, Business Development, Sales, Manager &amp; Read-Only (role-based access control).</p></div>
+      <div class="card"><h3>Light &amp; Dark</h3><p>Responsive, enterprise-grade UI with a full light and dark theme.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Technology &amp; tools</h2>
+    <div class="stack">
+      <div class="grp">
+        <b>GIS &amp; Telecom (core domain)</b>
+        <div class="chips">
+          <span class="chip">GIS</span><span class="chip">5G</span><span class="chip">Fiber Optics</span>
+          <span class="chip">OSS/BSS</span><span class="chip">RF Planning</span><span class="chip">Network Planning</span>
+        </div>
+      </div>
+      <div class="grp">
+        <b>Frontend</b>
+        <div class="chips">
+          <span class="chip">Next.js</span><span class="chip">React</span><span class="chip">TypeScript</span>
+          <span class="chip">Tailwind CSS</span><span class="chip">Recharts</span>
+        </div>
+      </div>
+      <div class="grp">
+        <b>Backend — Python</b>
+        <div class="chips">
+          <span class="chip">Python 3</span><span class="chip">FastAPI</span><span class="chip">SQLAlchemy</span>
+          <span class="chip">REST APIs</span><span class="chip">JWT auth</span><span class="chip">Swagger / OpenAPI</span>
+        </div>
+      </div>
+      <div class="grp">
+        <b>Data &amp; Search</b>
+        <div class="chips">
+          <span class="chip">PostgreSQL</span><span class="chip">Redis</span>
+          <span class="chip">OpenSearch</span><span class="chip">Full-text search</span>
+        </div>
+      </div>
+      <div class="grp">
+        <b>Platform &amp; Ops</b>
+        <div class="chips">
+          <span class="chip">Docker</span><span class="chip">Nginx</span><span class="chip">Prometheus</span>
+          <span class="chip">Grafana</span><span class="chip">AWS / Azure</span>
+        </div>
+      </div>
+      <div class="grp">
+        <b>Data sources (public)</b>
+        <div class="chips">
+          <span class="chip">SAM.gov</span><span class="chip">UK Contracts Finder</span>
+          <span class="chip">TED Europa</span><span class="chip">MERX</span><span class="chip">RSS / Open Data</span>
+        </div>
+      </div>
+      <div class="grp">
+        <b>Engineering standards</b>
+        <div class="chips">
+          <span class="chip">MVC</span><span class="chip">Repository pattern</span><span class="chip">SOLID</span>
+          <span class="chip">RBAC</span><span class="chip">Audit logging</span><span class="chip">Unit &amp; integration tests</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Delivery status</h2>
+    <div class="status">
+      <div class="box">
+        <span class="pill live"><span class="dot"></span>Working now</span>
+        <p>A complete, clickable <b>Next.js + TypeScript</b> application — all screens, a world-map footprint view, filters, charts, fit scoring, and 53 sample opportunities weighted toward GIS &amp; telecom. Runs locally and deploys to the cloud with no extra infrastructure.</p>
+      </div>
+      <div class="box">
+        <span class="pill live"><span class="dot"></span>Verified in Docker · 23 Jul</span>
+        <p>The full enterprise stack — <b>Python (FastAPI) + PostgreSQL + Redis + OpenSearch</b> — runs with one command and passed <b>24/24 automated end-to-end tests</b> plus 13 unit tests: login &amp; role-based access, search, filters, pagination, live-data ingestion and data integrity. The backend was rebuilt in Python to match the company's engineering standard, and the UI now renders the live tenders.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Data &amp; accuracy</h2>
+    <div class="callout" style="border-left:4px solid var(--good);">
+      <div class="tag" style="color:var(--good);">Verified 23 Jul 2026 — live government data connected</div>
+      <h3>The platform now ingests real UK government tenders automatically.</h3>
+      <div class="status" style="margin-top:6px;">
+        <div class="box">
+          <span class="pill live"><span class="dot"></span>Live</span>
+          <p>With the full stack running, the portal pulls real tenders from the official <b>UK Contracts Finder OCDS API</b> (Cabinet Office, no key, Open Government Licence) on a built-in schedule — e.g. a <b>Ministry of Defence £2.5M</b> notice, Southend City Council, Heathrow Airport Ltd. Every record links to its official gov.uk notice, and every raw API response is captured with a SHA-256 fingerprint for full provenance.</p>
+        </div>
+        <div class="box">
+          <span class="pill" style="background:var(--warn-bg); color:var(--warn);"><span class="dot"></span>Sample</span>
+          <p>The zero-infrastructure demo mode (UI only, no Docker) still uses the labeled 53-record sample set, and a few seeded demo rows remain for continuity — the sidebar marker shows <b>"Live data connected"</b> or <b>"Sample dataset"</b> so the team always knows which is which.</p>
+        </div>
+      </div>
+      <div class="note" style="margin-top:14px;">
+        <span>➡️</span>
+        <span><b>Quality audit:</b> the platform passed an iterative rubric review — <b>34/35 (97%)</b>, up from a 51% baseline — including forensic anti-fabrication checks (sampled records verified against the live gov.uk notice pages), 13 unit tests and 24 end-to-end tests. Full detail in <code>score.md</code>. Next sources: TED Europa (free), SAM.gov (free key).</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Recommended next steps</h2>
+    <div class="lines">
+      <div class="line"><div class="n">Step 1</div><h3>Team demo — 15 min</h3><p>Walk through the dashboard, explorer and connectors with BD &amp; Sales.</p></div>
+      <div class="line"><div class="n">Step 2</div><h3>Add more live sources</h3><p>UK Contracts Finder is already connected. TED Europa is free (no key); SAM.gov needs a free key.</p></div>
+      <div class="line"><div class="n">Step 3</div><h3>Shared deployment</h3><p>Move to a shared server &amp; database with real credentials so the whole team can log in.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Effort &amp; build cost</h2>
+    <div class="metrics">
+      <div class="metric"><div class="v">66</div><div class="l">Files authored</div></div>
+      <div class="metric"><div class="v">~6,900</div><div class="l">Lines of code</div></div>
+      <div class="metric"><div class="v">21/21</div><div class="l">E2E tests passing</div></div>
+      <div class="metric"><div class="v">53</div><div class="l">Sample opportunities</div></div>
+      <div class="metric"><div class="v">35</div><div class="l">In JSAN footprint</div></div>
+    </div>
+
+    <div class="cost-wrap">
+      <table class="cost">
+        <caption>Token usage — rough estimate, not measured</caption>
+        <thead>
+          <tr><th>Category</th><th style="text-align:right">Tokens (approx.)</th><th style="text-align:right">Est. cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Output (generated code &amp; text)</td><td class="num">~250K</td><td class="num">~$6</td></tr>
+          <tr><td>Input — new</td><td class="num">~0.3M</td><td class="num">~$1.50</td></tr>
+          <tr><td>Cache writes</td><td class="num">~0.5M</td><td class="num">~$3</td></tr>
+          <tr><td>Cache reads (repeated context)</td><td class="num">~4M</td><td class="num">~$2</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>Estimated total (API pricing)</td><td class="num">—</td><td class="num">~$10–25</td></tr>
+        </tfoot>
+      </table>
+
+      <div class="callout">
+        <div class="tag">For the exact figure</div>
+        <h3>Run this in Claude Code</h3>
+        <p>Claude Code tracks the real usage for this session. It reports precise input, output, and cache tokens plus the total in dollars:</p>
+        <span class="cmd">/cost</span>
+        <div class="note">
+          <span>ℹ️</span>
+          <span><b>Billing depends on the plan.</b> On a Claude subscription (Pro / Max) this work is included in the monthly fee — no per-token charge. The estimate at left assumes pay-as-you-go API pricing for Claude Opus 4.8 ($5 / M input, $25 / M output, ~$0.50 / M cache reads).</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>JSAN Consulting — IT Services &amp; Consulting</span>
+    <span>Project Discovery Portal · Executive Brief · Rev 2.1</span>
+  </footer>
+</div>

@@ -1,0 +1,589 @@
+{
+ "uri": "https://www.contractsfinder.service.gov.uk/Published/Notices/OCDS/Search?publishedFrom=2026-07-21T21:56:37&stages=tender&limit=100&publishedTo=2026-07-23T10:56:38+01:00",
+ "version": "1.1",
+ "extensions": [
+  "https://standard.open-contracting.org/profiles/eu/master/en/extension.json",
+  "https://raw.githubusercontent.com/portaledcahn/ocds_tenderDatePublished_extension/master/extension.json",
+  "https://raw.githubusercontent.com/open-contracting-extensions/ocds_budget_breakdown_extension/master/extension.json",
+  "https://raw.githubusercontent.com/Crown-Commercial-Service/ocds_awards_datePublished_extension/main/extension.json",
+  "https://raw.githubusercontent.com/Crown-Commercial-Service/ocds_partyDetails_vcse_extension/main/extension.json",
+  "https://raw.githubusercontent.com/Crown-Commercial-Service/ocds_tender_suitability_extension/main/extension.json",
+  "https://raw.githubusercontent.com/open-contracting-extensions/ocds_pagination_extension/master/extension.json"
+ ],
+ "publishedDate": "2026-07-23T10:21:12+01:00",
+ "publisher": {
+  "name": "Cabinet Office",
+  "scheme": "GB-GOR",
+  "uid": "D2",
+  "uri": "https://www.gov.uk/government/organisations/cabinet-office"
+ },
+ "license": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+ "publicationPolicy": "https://www.gov.uk/government/publications/open-contracting",
+ "releases": [
+  {
+   "ocid": "ocds-b5fd17-f9f25078-d7d2-467a-8c1e-c75ccee17622",
+   "id": "ac973032-8cce-48f3-a07c-6eba45f7f624-907834",
+   "language": "en",
+   "date": "2026-07-23T10:21:11+01:00",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "EDPACT_43",
+    "title": "Accelerating high-voltage direct current (HVDC) development in Vietnam",
+    "description": "The UK Government's Partnering for Accelerated Climate Transitions (UK PACT) programme is inviting quotations from qualified suppliers or consortia to provide technical assistance to Electricity of Vietnam (EVN) and the National Power Transmission Corporation (EVNNPT) to strengthen institutional, technical, and regulatory capacity for the development and deployment of High Voltage Direct Current (HVDC) transmission infrastructure in Vietnam.\r\n\r\nVietnam's rapidly growing power system faces increasing challenges associated with the uneven geographical distribution of generation resources and demand centres. As renewable energy deployment accelerates, particularly offshore wind and large-scale solar power, the national grid is experiencing growing transmission constraints, power losses, and risks to system stability. Limited land availability for new transmission corridors has highlighted the importance of modern transmission technologies to support the country's energy transition.\r\n\r\nThe Revised National Power Development Plan (PDP8) identifies HVDC infrastructure as a strategic priority for strengthening transmission capacity, improving grid flexibility and reliability, reducing electrical losses, and enabling higher penetration of renewable energy. The plan includes the development of multiple HVDC transmission corridors, converter stations, and associated infrastructure from 2031 onwards.\r\n\r\nThrough this assignment, UK PACT will support EVN and EVNNPT to assess the technical, economic, institutional, and regulatory requirements for HVDC deployment in Vietnam. The selected supplier will review the existing policy and regulatory framework, evaluate the feasibility of planned HVDC investments, assess suitable technology options, and develop practical tools and guidance documents to support investment decision-making.\r\n\r\nThe supplier will also undertake stakeholder mapping, assess capacity gaps within key institutions, and provide targeted technical assistance and training to strengthen national expertise in HVDC planning, modelling, investment appraisal, and system operation.\r\nIn addition, the assignment will generate evidence and recommendations to support implementation of PDP8, contribute to the objectives of Vietnam's Just Energy Transition Partnership (JETP), and enhance readiness for future investment in modern transmission infrastructure.\r\n\r\nInterested suppliers are invited to review the documentation provided in this notice and submit their applications to: expertdeployments@ukpact.co.uk",
+    "datePublished": "2026-07-23T10:21:11+01:00",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "09300000",
+     "description": "Electricity, heating, solar and nuclear energy"
+    },
+    "additionalClassifications": [
+     {
+      "scheme": "CPV",
+      "id": "71314000",
+      "description": "Energy and related services"
+     },
+     {
+      "scheme": "CPV",
+      "id": "90700000",
+      "description": "Environmental services"
+     }
+    ],
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "countryName": "Vietnam"
+       }
+      ]
+     }
+    ],
+    "value": {
+     "amount": 292400,
+     "currency": "GBP"
+    },
+    "procurementMethod": "open",
+    "procurementMethodDetails": "Open procedure (above threshold)",
+    "tenderPeriod": {
+     "endDate": "2026-08-17T12:00:00+01:00"
+    },
+    "contractPeriod": {
+     "startDate": "2026-09-21T00:00:00+01:00",
+     "endDate": "2027-02-28T23:59:59Z"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": true
+    },
+    "mainProcurementCategory": "services",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/ac973032-8cce-48f3-a07c-6eba45f7f624",
+      "datePublished": "2026-07-23T10:21:11+01:00",
+      "format": "text/html",
+      "language": "en"
+     },
+     {
+      "id": "2",
+      "documentType": "biddingDocuments",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/6ca64bac-71a5-4f12-948e-133e3b7f959d",
+      "format": "application/pdf"
+     },
+     {
+      "id": "3",
+      "documentType": "biddingDocuments",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/556acdc0-fc0a-489d-bc00-64d3b7f5cdc9",
+      "format": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+     },
+     {
+      "id": "4",
+      "documentType": "biddingDocuments",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/83b5ab37-b1f6-4473-8dd4-d89d7e128da2",
+      "format": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-SRS-sid4gov.cabinetoffice.gov.uk/V34c8F27",
+     "name": "PALLADIUM INTERNATIONAL LIMITED",
+     "identifier": {
+      "legalName": "PALLADIUM INTERNATIONAL LIMITED",
+      "scheme": "GB-SRS",
+      "id": "sid4gov.cabinetoffice.gov.uk/V34c8F27"
+     },
+     "address": {
+      "streetAddress": "16th Floor, Hylo, 105 Bunhill Row",
+      "locality": "London",
+      "postalCode": "EC1Y8ND",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "email": "expertdeployments@ukpact.co.uk"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-SRS-sid4gov.cabinetoffice.gov.uk/V34c8F27",
+    "name": "PALLADIUM INTERNATIONAL LIMITED"
+   }
+  },
+  {
+   "ocid": "ocds-b5fd17-e098e207-7cd3-48cb-abd2-3d192bae6687",
+   "id": "7eecca2c-395e-40dd-b7be-246bb2fb726f-907754",
+   "language": "en",
+   "date": "2026-07-22T17:45:15+01:00",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "MT237778",
+    "title": "Peckham - Distribution board replacements",
+    "description": "As detailed in tender documents",
+    "datePublished": "2026-07-22T17:45:15+01:00",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "31200000",
+     "description": "Electricity distribution and control apparatus"
+    },
+    "additionalClassifications": [
+     {
+      "scheme": "CPV",
+      "id": "31213000",
+      "description": "Distribution equipment"
+     },
+     {
+      "scheme": "CPV",
+      "id": "31213400",
+      "description": "Distribution system"
+     },
+     {
+      "scheme": "CPV",
+      "id": "31214510",
+      "description": "Distribution switchboards"
+     }
+    ],
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "region": "London",
+        "countryName": "United Kingdom"
+       }
+      ]
+     }
+    ],
+    "value": {
+     "amount": 150000,
+     "currency": "GBP"
+    },
+    "procurementMethod": "open",
+    "procurementMethodDetails": "Open procedure (below threshold)",
+    "tenderPeriod": {
+     "endDate": "2026-08-14T17:00:00+01:00"
+    },
+    "contractPeriod": {
+     "startDate": "2026-08-24T00:00:00+01:00",
+     "endDate": "2026-09-02T23:59:59+01:00"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": false
+    },
+    "mainProcurementCategory": "works",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/7eecca2c-395e-40dd-b7be-246bb2fb726f",
+      "datePublished": "2026-07-22T17:45:15+01:00",
+      "format": "text/html",
+      "language": "en"
+     },
+     {
+      "id": "2",
+      "documentType": "tenderNotice",
+      "description": "NOTE: To register your interest in this notice and obtain any additional information please visit the myTenders Web Site at the link provided.",
+      "url": "https://www.mytenders.co.uk/search/show/search_view.aspx?ID=JUL171653"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-CFS-334125",
+     "name": "Harris Federation",
+     "identifier": {
+      "legalName": "Harris Federation"
+     },
+     "address": {
+      "streetAddress": "Interchange, 81-85 Station Road",
+      "locality": "Croydon",
+      "postalCode": "CR0 2RD",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "name": "Procurement",
+      "email": "Procurement@harrisfederation.org.uk",
+      "telephone": "+44 2082537777"
+     },
+     "details": {
+      "url": "http://www.harrisfederation.org.uk"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-CFS-334125",
+    "name": "Harris Federation"
+   }
+  },
+  {
+   "ocid": "ocds-b5fd17-1c131fa4-9ee4-40e2-868e-47c14667f839",
+   "id": "f6c06f22-8ec1-4500-8ad2-74e7c9dcf2bd-907484",
+   "language": "en",
+   "date": "2026-07-22T14:55:39+01:00",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "2026FES",
+    "title": "Expression of Interest: Future Employment Support",
+    "description": "Reed in Partnership intends to participate in the Department for Work and Pensions (DWP) Future Employment Support (FES) opportunity and is inviting organisations to express an interest in delivering the service with us. Together with our partners, we will deliver high-quality employability support that transforms people's lives and their communities. \r\n\r\nThe programme will provide personalised employment support to out-of-work Universal Credit claimants, helping people overcome barriers to work and achieve sustained employment. This may include skills development, work experience, health-related employment support, self-employment guidance and employer engagement activities tailored to local labour market needs. Referrals to the programme will be made via JCPs. \r\n\r\nWe encourage applications from organisations across the public, private and VCSE sectors, including SMEs. We are particularly keen to hear from organisations who can demonstrate proven experience in: \r\n\r\n- Supporting individuals into sustained employment \r\n- Delivering personalised interventions that improve employment outcomes \r\n- Employer engagement and workforce development \r\n- Supporting people with health conditions and complex barriers \r\n- Delivering services informed by local labour market needs \r\n- Innovative, proven services to support people to secure and sustain work \r\n\r\nHow to Respond\r\nTo support organisations of different sizes and specialisms, we are running two EOI routes: \r\n\r\n1. EOI A: For end-to-end delivery providers \r\nFor organisations with a proven track record of delivering high-performing employment services and the capacity to deliver across part or all of one or more CPAs please see here: https://forms.office.com/e/cvax9sttdA\r\n\r\n2. EOI B: Specialist and Innovation Partners  \r\nFor organisations offering specialist expertise or innovative solutions that complement end-to-end provision, please see here: https://forms.office.com/e/e1tbAA1rDz\r\n\r\nTo support applications, please find a full breakdown of the programme and eligible participant cohorts attached to this notice.\r\n\r\nShould you have any questions, please contact partner.network@reed.com. For more information on how we score our EOIs and work with partners please visit our website: https://reedinpartnership.co.uk/partners/.\r\n\r\nPlease note - This EOI does not constitute an offer to work with your organisation but is the first stage in our selection process. Following the initial EOI stage, selected organisations may be invited to participate in market engagement events, webinars, one-to-one discussions, further information requests, due diligence activities and commercial negotiations.",
+    "datePublished": "2026-07-22T14:55:39+01:00",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "75110000",
+     "description": "General public services"
+    },
+    "additionalClassifications": [
+     {
+      "scheme": "CPV",
+      "id": "75131000",
+      "description": "Government services"
+     },
+     {
+      "scheme": "CPV",
+      "id": "79611000",
+      "description": "Job search services"
+     },
+     {
+      "scheme": "CPV",
+      "id": "80000000",
+      "description": "Education and training services"
+     }
+    ],
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "region": "England",
+        "countryName": "United Kingdom"
+       }
+      ]
+     }
+    ],
+    "procurementMethod": "open",
+    "procurementMethodDetails": "Open procedure (above threshold)",
+    "tenderPeriod": {
+     "endDate": "2026-08-28T23:59:00+01:00"
+    },
+    "contractPeriod": {
+     "startDate": "2028-02-07T00:00:00Z",
+     "endDate": "2032-02-29T23:59:59Z"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": true
+    },
+    "mainProcurementCategory": "services",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/f6c06f22-8ec1-4500-8ad2-74e7c9dcf2bd",
+      "datePublished": "2026-07-22T14:55:39+01:00",
+      "format": "text/html",
+      "language": "en"
+     },
+     {
+      "id": "2",
+      "documentType": "contractSummary",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/b471225e-0248-49d9-a996-2a399438d237",
+      "format": "application/pdf"
+     }
+    ]
+   },
+   "relatedProcesses": [
+    {
+     "id": "1",
+     "relationship": [
+      "parent"
+     ]
+    }
+   ],
+   "parties": [
+    {
+     "id": "GB-SRS-sid4gov.cabinetoffice.gov.uk/qBjs85D2",
+     "name": "REED IN PARTNERSHIP LIMITED",
+     "identifier": {
+      "legalName": "REED IN PARTNERSHIP LIMITED",
+      "scheme": "GB-SRS",
+      "id": "sid4gov.cabinetoffice.gov.uk/qBjs85D2"
+     },
+     "address": {
+      "streetAddress": "ACADEMY COURT",
+      "locality": "LONDON",
+      "postalCode": "WC2A1DT",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "email": "Partner.Network@reed.com",
+      "telephone": "020 7708 6063"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-SRS-sid4gov.cabinetoffice.gov.uk/qBjs85D2",
+    "name": "REED IN PARTNERSHIP LIMITED"
+   }
+  },
+  {
+   "ocid": "ocds-b5fd17-fb0165a9-3df3-48fc-9f79-de05078b7836",
+   "id": "ca25b528-3873-4047-bc87-47e394c4d76c-907692",
+   "language": "en",
+   "date": "2026-07-22T14:34:02+01:00",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "EDPACT_ED42",
+    "title": "Accelerating high-voltage direct current (HVDC) development in Vietnam",
+    "description": "The UK Government's Partnering for Accelerated Climate Transitions (UK PACT) programme is inviting quotations from qualified suppliers or consortia to provide technical assistance to Electricity of Vietnam (EVN) and the National Power Transmission Corporation (EVNNPT) to strengthen institutional, technical, and regulatory capacity for the development and deployment of High Voltage Direct Current (HVDC) transmission infrastructure in Vietnam.\r\n\r\nVietnam's rapidly growing power system faces increasing challenges associated with the uneven geographical distribution of generation resources and demand centres. As renewable energy deployment accelerates, particularly offshore wind and large-scale solar power, the national grid is experiencing growing transmission constraints, power losses, and risks to system stability. Limited land availability for new transmission corridors has highlighted the importance of modern transmission technologies to support the country's energy transition.\r\n\r\nThe Revised National Power Development Plan (PDP8) identifies HVDC infrastructure as a strategic priority for strengthening transmission capacity, improving grid flexibility and reliability, reducing electrical losses, and enabling higher penetration of renewable energy. The plan includes the development of multiple HVDC transmission corridors, converter stations, and associated infrastructure from 2031 onwards.\r\n\r\nThrough this assignment, UK PACT will support EVN and EVNNPT to assess the technical, economic, institutional, and regulatory requirements for HVDC deployment in Vietnam. The selected supplier will review the existing policy and regulatory framework, evaluate the feasibility of planned HVDC investments, assess suitable technology options, and develop practical tools and guidance documents to support investment decision-making.\r\n\r\nThe supplier will also undertake stakeholder mapping, assess capacity gaps within key institutions, and provide targeted technical assistance and training to strengthen national expertise in HVDC planning, modelling, investment appraisal, and system operation.\r\nIn addition, the assignment will generate evidence and recommendations to support implementation of PDP8, contribute to the objectives of Vietnam's Just Energy Transition Partnership (JETP), and enhance readiness for future investment in modern transmission infrastructure.\r\n\r\nInterested suppliers are invited to review the documentation provided in this notice and submit their applications to: expertdeployments@ukpact.co.uk",
+    "datePublished": "2026-07-22T14:34:02+01:00",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "09300000",
+     "description": "Electricity, heating, solar and nuclear energy"
+    },
+    "additionalClassifications": [
+     {
+      "scheme": "CPV",
+      "id": "71314000",
+      "description": "Energy and related services"
+     }
+    ],
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "countryName": "Vietnam"
+       }
+      ]
+     }
+    ],
+    "value": {
+     "amount": 292400,
+     "currency": "GBP"
+    },
+    "procurementMethod": "open",
+    "procurementMethodDetails": "Open procedure (above threshold)",
+    "tenderPeriod": {
+     "endDate": "2026-08-12T12:00:00+01:00"
+    },
+    "contractPeriod": {
+     "startDate": "2026-09-21T00:00:00+01:00",
+     "endDate": "2027-02-28T23:59:59Z"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": true
+    },
+    "mainProcurementCategory": "services",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/ca25b528-3873-4047-bc87-47e394c4d76c",
+      "datePublished": "2026-07-22T14:34:02+01:00",
+      "format": "text/html",
+      "language": "en"
+     },
+     {
+      "id": "2",
+      "documentType": "biddingDocuments",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/0e99b012-ef13-4b37-ae23-ee5420783c77",
+      "format": "application/pdf"
+     },
+     {
+      "id": "3",
+      "documentType": "biddingDocuments",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/53bd6180-5e28-489d-87f4-b90b62db3ef9",
+      "format": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+     },
+     {
+      "id": "4",
+      "documentType": "biddingDocuments",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/f82bbb27-24e7-4d63-883e-32006f739397",
+      "format": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-SRS-sid4gov.cabinetoffice.gov.uk/V34c8F27",
+     "name": "PALLADIUM INTERNATIONAL LIMITED",
+     "identifier": {
+      "legalName": "PALLADIUM INTERNATIONAL LIMITED",
+      "scheme": "GB-SRS",
+      "id": "sid4gov.cabinetoffice.gov.uk/V34c8F27"
+     },
+     "address": {
+      "streetAddress": "16th Floor, Hylo, 105 Bunhill Row",
+      "locality": "London",
+      "postalCode": "EC1Y8LZ",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "email": "expertdeployments@ukpact.co.uk"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-SRS-sid4gov.cabinetoffice.gov.uk/V34c8F27",
+    "name": "PALLADIUM INTERNATIONAL LIMITED"
+   }
+  },
+  {
+   "ocid": "ocds-b5fd17-3e97082c-69b2-49be-ad98-d949a0d4141e",
+   "id": "2487bb76-c509-47c9-8c6b-209430f51f68-907681",
+   "language": "en",
+   "date": "2026-07-22T13:58:02+01:00",
+   "tag": [
+    "tender"
+   ],
+   "initiationType": "tender",
+   "tender": {
+    "id": "tender_541572/1596461",
+    "title": "Supply Chain Notice: WC1857725 - CY- CIDP26 - Tool Ref: 126596-(AK) Akrotiri Mole Steel Jetty - Entire Structure - Refurbish, CYPRUS",
+    "description": "WC1857725 - AKI- CIDP Tool Ref: 126596\r\n\r\n(AK)-Akrotiri Mole Steel Jetty - Refurbish Entire Structure \r\n\r\n* Please provide a detailed description of the notice you are adding: \r\n\r\nDemolish existing steel jetty, complete with concrete beam along with the structures/ buildings south of the proposed new quay wall. \r\n\r\nReconstruct new jetty using both precast units and in-situ concrete, complete with foundation, relief prism, drainage system, including oil water separator and equipped with fenders, bollards, handrails, ladders and M&E services (power & water supply) related to the Mole jetting as well as lighting installation for both new jetty and other Mole area and various reinstatement works of the affected surfaces (concrete & asphalt).\r\n\r\nThe Provisional Key Tender dates for the project are as follows:\r\n\r\n-              Expression of interest: 20/07/2026\r\n-              Expression of interest return: 27/07/2026\r\n-              Invitation to Tender:  06/08/2026\r\n-              Tender Return Date: 16/10/2026\r\n-              Contract award: 20/12/2027\r\n-              Commencement of work: 07/01/2027\r\n-              Completion of work: 30/08/2027\r\n\r\nNote: Due to Environmental Issues Works within water are to be completed by 30 April 2027.\r\n\r\nThe completion of the works will be on 30/08/2028, considering the turtle nesting period falls between April and November when no works are allowed underwater.\r\n\r\nThe currency of this project is Euro (€).\r\n\r\nThe location of this project is Cyprus (British Forces, RAF Akrotiri).\r\n\r\nAdditional information: \r\nWork commencement and completion dates will be subject to MOD DIO's agreement, as they will be dictated by the DIO Environmental Advisor to avoid the environmental restricted periods (e.g. pre-determined breeding periods, turtle nesting period, etc.).\r\n\r\nThis will lead to phasing of the works.\r\n\r\nATTACHMENTS:\r\n\r\n1.\tEOI (expression of interest) form\r\n2.\tPQQ (pre-qualification questionnaire) form\r\n\r\nBoth forms must be completed and returned by the interested tenderers",
+    "datePublished": "2026-07-22T13:58:02+01:00",
+    "status": "active",
+    "classification": {
+     "scheme": "CPV",
+     "id": "45111100",
+     "description": "Demolition work"
+    },
+    "items": [
+     {
+      "id": "1",
+      "deliveryAddresses": [
+       {
+        "postalCode": "B37 7ES"
+       },
+       {
+        "region": "West Midlands",
+        "countryName": "United Kingdom"
+       }
+      ]
+     }
+    ],
+    "value": {
+     "amount": 2500000,
+     "currency": "GBP"
+    },
+    "procurementMethodDetails": "Other - OTHER",
+    "tenderPeriod": {
+     "endDate": "2026-07-27T23:59:00+01:00"
+    },
+    "contractPeriod": {
+     "startDate": "2027-12-20T00:00:00Z",
+     "endDate": "2028-08-30T23:59:59+01:00"
+    },
+    "suitability": {
+     "sme": true,
+     "vcse": false
+    },
+    "mainProcurementCategory": "works",
+    "documents": [
+     {
+      "id": "1",
+      "documentType": "tenderNotice",
+      "description": "Opportunity notice on Contracts Finder",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/2487bb76-c509-47c9-8c6b-209430f51f68",
+      "datePublished": "2026-07-22T13:58:02+01:00",
+      "format": "text/html",
+      "language": "en"
+     },
+     {
+      "id": "2",
+      "description": "n/a",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/0814d6d9-c39a-462e-8fe6-66ab32fadb4a",
+      "format": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     },
+     {
+      "id": "3",
+      "description": "n/a",
+      "url": "https://www.contractsfinder.service.gov.uk/Notice/Attachment/995c5da0-74b6-4095-8a30-47959c48f4d7",
+      "format": "application/pdf"
+     }
+    ]
+   },
+   "parties": [
+    {
+     "id": "GB-CFS-326668",
+     "name": "Ministry of Defence",
+     "identifier": {
+      "legalName": "Ministry of Defence"
+     },
+     "address": {
+      "streetAddress": "Mitie - Defence International, T2 Trinity Park, Bickenhall Lane",
+      "locality": "Birmingham",
+      "postalCode": "B37 7ES",
+      "countryName": "England"
+     },
+     "contactPoint": {
+      "name": "Mitie - Defence International",
+      "email": "MitieTenderManager@secmitie.co.uk"
+     },
+     "roles": [
+      "buyer"
+     ]
+    }
+   ],
+   "buyer": {
+    "id": "GB-CFS-326668",
+    "name": "Ministry of Defence"
+   }
+  }
+ ]
+}

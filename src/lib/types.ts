@@ -149,6 +149,9 @@ export interface ProjectQuery {
   source?: string;
   minBudget?: number;
   maxBudget?: number;
+  minFit?: number;
+  // When true, hide opportunities that are no longer pursuable (Awarded/Closed).
+  availableOnly?: boolean;
   page?: number;
   pageSize?: number;
   sort?: "priority" | "deadline" | "budget" | "publicationDate" | "fitScore";

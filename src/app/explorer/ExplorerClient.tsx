@@ -93,6 +93,8 @@ export function ExplorerClient() {
     source: "",
     minBudget: "",
     maxBudget: "",
+    minFit: searchParams.get("minFit") ?? "",
+    availableOnly: searchParams.get("availableOnly") !== "false", // hide occupied by default
     sort: searchParams.get("sort") ?? "priority",
     page: 1,
   });
@@ -128,7 +130,10 @@ export function ExplorerClient() {
   const activeFilters = useMemo(
     () =>
       Object.entries(f).filter(
-        ([k, v]) => v !== "" && !["q", "sort", "page"].includes(k),
+        ([k, v]) =>
+          v !== "" &&
+          typeof v === "string" &&
+          !["q", "sort", "page", "minFit"].includes(k),
       ) as [string, string][],
     [f],
   );
@@ -148,6 +153,8 @@ export function ExplorerClient() {
       source: "",
       minBudget: "",
       maxBudget: "",
+      minFit: "",
+      availableOnly: true,
       sort: "priority",
       page: 1,
     });
@@ -281,20 +288,43 @@ export function ExplorerClient() {
                 </span>
               ))}
             </div>
-            <label className="flex items-center gap-2 text-[13px] shrink-0">
-              <span className="text-text-faint">Sort</span>
-              <select
-                value={f.sort}
-                onChange={(e) => set({ sort: e.target.value })}
-                className="input !w-auto !py-1.5 cursor-pointer"
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={f.availableOnly}
+                onClick={() => set({ availableOnly: !f.availableOnly })}
+                className="flex items-center gap-2 text-[13px]"
+                title="Hide opportunities that are already awarded or closed"
               >
-                {SORTS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <span
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    f.availableOnly ? "bg-primary" : "bg-border-strong"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                      f.availableOnly ? "translate-x-4" : ""
+                    }`}
+                  />
+                </span>
+                <span className="text-text-muted whitespace-nowrap">Hide occupied</span>
+              </button>
+              <label className="flex items-center gap-2 text-[13px]">
+                <span className="text-text-faint">Sort</span>
+                <select
+                  value={f.sort}
+                  onChange={(e) => set({ sort: e.target.value })}
+                  className="input !w-auto !py-1.5 cursor-pointer"
+                >
+                  {SORTS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
 
           {loading && !data ? (
@@ -312,7 +342,11 @@ export function ExplorerClient() {
               {view === "grid" ? (
                 <div className={`grid sm:grid-cols-2 xl:grid-cols-3 gap-4 ${loading ? "opacity-60" : ""}`}>
                   {data?.items.map((p) => (
-                    <ProjectCard key={p.id} p={p} />
+                    <ProjectCard
+                      key={p.id}
+                      p={p}
+                      highlight={{ technology: f.technology, category: f.category, q: f.q }}
+                    />
                   ))}
                 </div>
               ) : (

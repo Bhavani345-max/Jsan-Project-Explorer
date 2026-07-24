@@ -1225,9 +1225,16 @@ function tagsFor(s: Spec): string[] {
   return [...tags];
 }
 
+// A discovery feed always surfaces tenders that have since been awarded to a
+// competitor — these are "occupied" and no longer pursuable. Marking a
+// deterministic spread of records as Awarded keeps the sample honest and gives
+// the Explorer's "Hide occupied" filter something real to act on.
+const AWARDED_INDICES = new Set([3, 9, 16, 22, 29, 35, 41, 48]);
+
 export const PROJECTS: Project[] = SPECS.map((s, i) => {
   const budgetUsd = usd(s.budget, s.currency);
   const presence = presenceFor(s.country);
+  const status: Project["status"] = AWARDED_INDICES.has(i) ? "Awarded" : statusOf(s.deadlineIn);
   return {
     id: `PRJ-${String(1001 + i)}`,
     referenceNumber: `${s.source.replace(/[^A-Z]/gi, "").slice(0, 4).toUpperCase()}-2026-${String(4820 + i * 7)}`,
@@ -1254,7 +1261,7 @@ export const PROJECTS: Project[] = SPECS.map((s, i) => {
     presenceLabel: presence.label,
     presenceRank: presence.rank,
     projectType: s.projectType,
-    status: statusOf(s.deadlineIn),
+    status,
     technologies: s.technologies,
     tags: tagsFor(s),
     eligibility: s.eligibility,

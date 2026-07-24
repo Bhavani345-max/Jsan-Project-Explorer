@@ -25,15 +25,22 @@ export async function GET(request: Request) {
     source: str("source"),
     minBudget: num("minBudget"),
     maxBudget: num("maxBudget"),
+    minFit: num("minFit"),
+    availableOnly: p.get("availableOnly") === "true",
     page: num("page"),
     pageSize: num("pageSize"),
     sort: (str("sort") as ProjectQuery["sort"]) ?? undefined,
   };
 
-  // serviceLine/presenceTier/source are computed client-side concepts the
-  // backend doesn't filter on — when they're set, use the sample repository
-  // which supports them natively.
-  const backendCompatible = !query.serviceLine && !query.presenceTier && !query.source;
+  // serviceLine/presenceTier/source/availableOnly/minFit are computed
+  // client-side concepts the backend doesn't filter on — when they're set, use
+  // the sample repository which supports them natively (keeps pagination exact).
+  const backendCompatible =
+    !query.serviceLine &&
+    !query.presenceTier &&
+    !query.source &&
+    !query.availableOnly &&
+    query.minFit == null;
   if (backendCompatible) {
     const live = await backendQueryProjects(query);
     if (live) return NextResponse.json({ ...live, live: true });

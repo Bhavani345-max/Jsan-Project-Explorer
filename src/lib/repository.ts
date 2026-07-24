@@ -43,6 +43,10 @@ function matches(p: Project, q: ProjectQuery): boolean {
   if (q.technology && !p.technologies.includes(q.technology)) return false;
   if (q.minBudget != null && (p.budget == null || p.budget < q.minBudget)) return false;
   if (q.maxBudget != null && (p.budget == null || p.budget > q.maxBudget)) return false;
+  if (q.minFit != null && p.fitScore < q.minFit) return false;
+  // "Occupied" = the opportunity is already taken (Awarded) or the window has
+  // closed — filter these out when the caller only wants pursuable work.
+  if (q.availableOnly && (p.status === "Closed" || p.status === "Awarded")) return false;
   return true;
 }
 

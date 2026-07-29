@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import { dashboardStats } from "@/lib/repository";
-import { PROJECTS } from "@/lib/seed";
+import { liveDataset } from "@/lib/live";
 
-// GET /api/analytics — trend & performance analytics
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// GET /api/analytics — trend & performance analytics (live, seed fallback)
 export async function GET() {
-  const stats = dashboardStats();
+  const { projects, live } = await liveDataset();
+  const stats = dashboardStats(projects);
 
-  // Simulated win/pipeline metrics for the analytics module
-  const awarded = 7;
-  const pursued = 19;
-  const topOrganizations = [...stats.byCountry]; // placeholder shape reuse
+  // Pipeline metrics derived from the live dataset.
+  const awarded = projects.filter((p) => p.status === "Awarded").length;
+  const pursued = Math.max(awarded, projects.filter((p) => p.fitScore >= 70).length);
 
   const orgTally = new Map<string, number>();
-  for (const p of PROJECTS) orgTally.set(p.organization, (orgTally.get(p.organization) ?? 0) + 1);
+  for (const p of projects) orgTally.set(p.organization, (orgTally.get(p.organization) ?? 0) + 1);
 
   return NextResponse.json({
     perMonth: stats.perMonth,
@@ -29,6 +32,7 @@ export async function GET() {
       .slice(0, 6),
     won: awarded,
     pursued,
-    successRate: Math.round((awarded / pursued) * 100),
+    successRate: pursued > 0 ? Math.round((awarded / pursued) * 100) : 0,
+    live,
   });
 }

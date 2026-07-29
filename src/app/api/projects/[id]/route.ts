@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
 import { getProject, relatedProjects } from "@/lib/repository";
-import { backendGetProject } from "@/lib/backend";
+import { liveDataset } from "@/lib/live";
 
-// GET /api/projects/:id — single project + AI-recommended related projects.
-// Live tenders come from the FastAPI backend; sample ids fall back to the
-// in-memory repository (which also supplies related-project recommendations).
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// GET /api/projects/:id — single opportunity + recommended related ones,
+// resolved from the live dataset (with seed fallback).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { projects, live } = await liveDataset();
 
-  const sample = getProject(id);
-  if (sample) {
-    return NextResponse.json({ project: sample, related: relatedProjects(sample), live: false });
-  }
+  const project = getProject(id, projects);
+  if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
-  const live = await backendGetProject(id);
-  if (live) {
-    return NextResponse.json({ project: live, related: [], live: true });
-  }
-
-  return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  return NextResponse.json({ project, related: relatedProjects(project, 4, projects), live });
 }

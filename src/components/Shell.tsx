@@ -132,12 +132,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2"
               style={{ background: "var(--success-soft, rgba(34,197,94,.12))" }}
-              title="Connected to the live backend — real tenders ingested from UK Contracts Finder (plus labeled samples)."
+              title="Live data connected — real opportunities ingested daily from public government & multilateral APIs (UK Contracts Finder, EU TED, World Bank)."
             >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--success)" }} />
               <div className="text-[11px] leading-tight">
                 <div className="font-semibold" style={{ color: "var(--success)" }}>Live data connected</div>
-                <div className="text-text-faint">UK Contracts Finder · OCDS API</div>
+                <div className="text-text-faint">UK · EU TED · World Bank · refreshed daily</div>
               </div>
             </div>
           ) : (

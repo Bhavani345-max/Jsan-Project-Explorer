@@ -1,18 +1,16 @@
 import { PROJECTS, CONNECTORS, CONNECTOR_LOGS } from "./seed";
 import { JSAN_OFFICES, JSAN_OPERATING } from "./presence";
+import { daysLeft } from "./format";
 import type { Project, ProjectQuery, DashboardStats, APIConnector, ConnectorLog } from "./types";
 
 // ------------------------------------------------------------------
 // Repository pattern: the single seam between the domain and storage.
-// Today it queries the in-memory seed; swapping to PostgreSQL +
-// OpenSearch means reimplementing only these functions.
+//
+// Every query function takes the dataset to operate on, defaulting to the
+// in-memory seed. Server routes pass the live database-backed dataset
+// (see lib/live.ts) so the same pure logic serves real, day-by-day data —
+// while the app still runs with zero infrastructure on the seed.
 // ------------------------------------------------------------------
-
-const REF_NOW = new Date("2026-07-22T00:00:00Z");
-
-function daysUntil(iso: string): number {
-  return Math.round((new Date(iso).getTime() - REF_NOW.getTime()) / 86_400_000);
-}
 
 function matches(p: Project, q: ProjectQuery): boolean {
   if (q.q) {
@@ -58,8 +56,8 @@ export interface PagedProjects {
   totalPages: number;
 }
 
-export function queryProjects(q: ProjectQuery): PagedProjects {
-  let items = PROJECTS.filter((p) => matches(p, q));
+export function queryProjects(q: ProjectQuery, projects: Project[] = PROJECTS): PagedProjects {
+  let items = projects.filter((p) => matches(p, q));
 
   const sort = q.sort ?? "priority";
   items = [...items].sort((a, b) => {
@@ -90,12 +88,13 @@ export function queryProjects(q: ProjectQuery): PagedProjects {
   };
 }
 
-export function getProject(id: string): Project | undefined {
-  return PROJECTS.find((p) => p.id === id);
+export function getProject(id: string, projects: Project[] = PROJECTS): Project | undefined {
+  return projects.find((p) => p.id === id);
 }
 
-export function relatedProjects(p: Project, limit = 4): Project[] {
-  return PROJECTS.filter((x) => x.id !== p.id)
+export function relatedProjects(p: Project, limit = 4, projects: Project[] = PROJECTS): Project[] {
+  return projects
+    .filter((x) => x.id !== p.id)
     .map((x) => {
       const shared = x.technologies.filter((t) => p.technologies.includes(t)).length;
       const sameCat = x.category === p.category ? 2 : 0;
@@ -119,9 +118,9 @@ function tally(items: Project[], key: (p: Project) => string): { label: string; 
     .sort((a, b) => b.value - a.value);
 }
 
-export function dashboardStats(): DashboardStats {
+export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
   const byTech = new Map<string, number>();
-  for (const p of PROJECTS) for (const t of p.technologies) byTech.set(t, (byTech.get(t) ?? 0) + 1);
+  for (const p of projects) for (const t of p.technologies) byTech.set(t, (byTech.get(t) ?? 0) + 1);
 
   const budgetBands = [
     { label: "< $1M", test: (b: number) => b < 1_000_000 },
@@ -137,34 +136,43 @@ export function dashboardStats(): DashboardStats {
     value: 6 + Math.round(Math.sin(i * 1.1) * 3 + i * 1.4),
   }));
 
+  // JSAN's target band: opportunities whose value falls in $1–10M.
+  const TARGET_MIN = 1_000_000;
+  const TARGET_MAX = 10_000_000;
+  const inTarget = projects.filter(
+    (p) => p.budget != null && p.budget >= TARGET_MIN && p.budget <= TARGET_MAX,
+  );
+
   return {
-    totalProjects: PROJECTS.length,
-    newToday: PROJECTS.filter((p) => daysUntil(p.publicationDate) === 0 || p.publicationDate === "2026-07-21").length,
-    closingSoon: PROJECTS.filter((p) => p.status === "Closing Soon").length,
-    totalBudget: PROJECTS.reduce((s, p) => s + (p.budget ?? 0), 0),
-    byCountry: tally(PROJECTS, (p) => p.country).slice(0, 8),
+    totalProjects: projects.length,
+    newToday: projects.filter((p) => daysLeft(p.publicationDate) === 0).length,
+    closingSoon: projects.filter((p) => p.status === "Closing Soon").length,
+    totalBudget: projects.reduce((s, p) => s + (p.budget ?? 0), 0),
+    targetPipeline: inTarget.reduce((s, p) => s + (p.budget ?? 0), 0),
+    targetCount: inTarget.length,
+    byCountry: tally(projects, (p) => p.country).slice(0, 8),
     byTechnology: [...byTech.entries()]
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 10),
     byBudget: budgetBands.map((band) => ({
       label: band.label,
-      value: PROJECTS.filter((p) => p.budget != null && band.test(p.budget)).length,
+      value: projects.filter((p) => p.budget != null && band.test(p.budget)).length,
     })),
-    bySource: tally(PROJECTS, (p) => p.source).slice(0, 8),
-    byCategory: tally(PROJECTS, (p) => p.category),
-    byServiceLine: tally(PROJECTS, (p) => p.serviceLine),
-    byPresence: tally(PROJECTS, (p) => p.presenceTier),
-    highFitCount: PROJECTS.filter((p) => p.fitScore >= 85).length,
-    inFootprintCount: PROJECTS.filter((p) => p.presenceRank >= 2).length,
+    bySource: tally(projects, (p) => p.source).slice(0, 8),
+    byCategory: tally(projects, (p) => p.category),
+    byServiceLine: tally(projects, (p) => p.serviceLine),
+    byPresence: tally(projects, (p) => p.presenceTier),
+    highFitCount: projects.filter((p) => p.fitScore >= 85).length,
+    inFootprintCount: projects.filter((p) => p.presenceRank >= 2).length,
     perMonth,
   };
 }
 
 // -------- JSAN location footprint breakdown (dashboard panel) --------
-export function jsanPresence() {
+export function jsanPresence(projects: Project[] = PROJECTS) {
   const byCountry = new Map<string, number>();
-  for (const p of PROJECTS) byCountry.set(p.country, (byCountry.get(p.country) ?? 0) + 1);
+  for (const p of projects) byCountry.set(p.country, (byCountry.get(p.country) ?? 0) + 1);
 
   const offices = JSAN_OFFICES.map((o) => ({
     country: o.country,
@@ -175,9 +183,9 @@ export function jsanPresence() {
   }));
 
   const operatingCountries = Object.keys(JSAN_OPERATING);
-  const operatingCount = PROJECTS.filter((p) => operatingCountries.includes(p.country)).length;
+  const operatingCount = projects.filter((p) => operatingCountries.includes(p.country)).length;
   const officeSet = new Set(JSAN_OFFICES.map((o) => o.country));
-  const newMarketCount = PROJECTS.filter(
+  const newMarketCount = projects.filter(
     (p) => !officeSet.has(p.country) && !operatingCountries.includes(p.country),
   ).length;
 
@@ -195,9 +203,9 @@ export interface FootprintPoint {
 }
 
 // Geo points for the dashboard world map — offices + operating markets.
-export function footprintPoints(): FootprintPoint[] {
+export function footprintPoints(projects: Project[] = PROJECTS): FootprintPoint[] {
   const byCountry = new Map<string, number>();
-  for (const p of PROJECTS) byCountry.set(p.country, (byCountry.get(p.country) ?? 0) + 1);
+  for (const p of projects) byCountry.set(p.country, (byCountry.get(p.country) ?? 0) + 1);
 
   const offices: FootprintPoint[] = JSAN_OFFICES.map((o) => ({
     country: o.country,
@@ -221,27 +229,31 @@ export function footprintPoints(): FootprintPoint[] {
 }
 
 // -------- facet helpers for filter dropdowns --------
-export function facets() {
+export function facets(projects: Project[] = PROJECTS) {
   const uniq = (arr: string[]) => [...new Set(arr)].sort();
   return {
-    countries: uniq(PROJECTS.map((p) => p.country)),
-    states: uniq(PROJECTS.map((p) => p.state)),
-    categories: uniq(PROJECTS.map((p) => p.category)),
-    serviceLines: uniq(PROJECTS.map((p) => p.serviceLine)),
+    countries: uniq(projects.map((p) => p.country)),
+    states: uniq(projects.map((p) => p.state).filter(Boolean)),
+    categories: uniq(projects.map((p) => p.category)),
+    serviceLines: uniq(projects.map((p) => p.serviceLine)),
     presenceTiers: ["Headquarters", "Office", "Operating", "New Market"].filter((t) =>
-      PROJECTS.some((p) => p.presenceTier === t),
+      projects.some((p) => p.presenceTier === t),
     ),
-    projectTypes: uniq(PROJECTS.map((p) => p.projectType)),
-    statuses: uniq(PROJECTS.map((p) => p.status)),
-    sources: uniq(PROJECTS.map((p) => p.source)),
-    organizations: uniq(PROJECTS.map((p) => p.organization)),
-    technologies: uniq(PROJECTS.flatMap((p) => p.technologies)),
-    industries: uniq(PROJECTS.map((p) => p.industry)),
+    projectTypes: uniq(projects.map((p) => p.projectType)),
+    statuses: uniq(projects.map((p) => p.status)),
+    sources: uniq(projects.map((p) => p.source)),
+    organizations: uniq(projects.map((p) => p.organization)),
+    technologies: uniq(projects.flatMap((p) => p.technologies)),
+    industries: uniq(projects.map((p) => p.industry)),
   };
 }
 
 // -------- smart search: autocomplete suggestions --------
-export function suggest(term: string, limit = 8): { type: string; value: string; sub?: string }[] {
+export function suggest(
+  term: string,
+  limit = 8,
+  projects: Project[] = PROJECTS,
+): { type: string; value: string; sub?: string }[] {
   const t = term.toLowerCase().trim();
   if (!t) return [];
   const out: { type: string; value: string; sub?: string }[] = [];
@@ -253,14 +265,14 @@ export function suggest(term: string, limit = 8): { type: string; value: string;
     out.push({ type, value, sub });
   };
 
-  const f = facets();
+  const f = facets(projects);
   f.serviceLines.filter((x) => x.toLowerCase().includes(t)).forEach((x) => push("Service Line", x));
   f.technologies.filter((x) => x.toLowerCase().includes(t)).forEach((x) => push("Technology", x));
   f.organizations.filter((x) => x.toLowerCase().includes(t)).forEach((x) => push("Organization", x));
   f.countries.filter((x) => x.toLowerCase().includes(t)).forEach((x) => push("Country", x));
-  PROJECTS.filter((p) => p.title.toLowerCase().includes(t)).forEach((p) =>
-    push("Project", p.title, p.referenceNumber),
-  );
+  projects
+    .filter((p) => p.title.toLowerCase().includes(t))
+    .forEach((p) => push("Project", p.title, p.referenceNumber));
   return out.slice(0, limit);
 }
 

@@ -5,17 +5,19 @@ import {
   FileText, Users, Mail, Phone, Sparkles, Bookmark, BellPlus, Tag, Target,
 } from "lucide-react";
 import { getProject, relatedProjects } from "@/lib/repository";
-import { backendGetProject } from "@/lib/backend";
+import { liveDataset } from "@/lib/live";
 import { Breadcrumbs, StatusBadge, SectionCard, TechChip, FitBadge, PresenceBadge } from "@/components/ui";
 import { ProjectCard } from "@/components/ProjectCard";
 import { money, fmtDate, deadlineLabel, daysLeft } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // Sample ids resolve from the seed; live tender UUIDs from the backend.
-  const project = getProject(id) ?? (await backendGetProject(id));
+  const { projects } = await liveDataset();
+  const project = getProject(id, projects);
   if (!project) notFound();
-  const related = relatedProjects(project);
+  const related = relatedProjects(project, 4, projects);
   const dl = daysLeft(project.deadline);
 
   const facts: [React.ComponentType<{ size?: number; className?: string }>, string, string][] = [

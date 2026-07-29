@@ -95,6 +95,10 @@ export function ProjectCard({ p, highlight }: { p: Project; highlight?: CardHigh
             {deadlineLabel(p.deadline)}
           </span>
         </span>
+        <span className="col-span-2 flex items-center gap-1.5 text-[11px] text-text-faint truncate">
+          <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+          <span className="truncate">Source: {p.source}</span>
+        </span>
       </div>
     </Link>
   );

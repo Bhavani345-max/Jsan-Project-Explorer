@@ -1,0 +1,276 @@
+// ------------------------------------------------------------------
+// Normalization + heuristic enrichment for ingested opportunities.
+//
+// Turns a raw record from any connector into the fields the portal needs,
+// deterministically and with zero external calls: currency→USD, JSAN service
+// line, delivery category, extracted technologies, tags, and a capability-fit
+// score. AI enrichment (optional, see ai-enrich.ts) can refine the summary on
+// top of this — but the portal is fully functional on these heuristics alone.
+// ------------------------------------------------------------------
+import crypto from "node:crypto";
+import type {
+  ProjectCategory,
+  ProjectType,
+  ServiceLine,
+  SourceType,
+} from "@/lib/types";
+
+/** What every connector emits — the raw, source-shaped opportunity. */
+export interface RawOpportunity {
+  sourceKey: string; // stable connector id, e.g. "uk-contracts-finder"
+  source: string; // display name, e.g. "UK Contracts Finder"
+  sourceType: SourceType;
+  referenceNumber: string;
+  title: string;
+  description: string;
+  organization: string;
+  country: string;
+  state?: string;
+  amount: number | null; // in the original currency
+  currency: string; // ISO code (GBP, EUR, USD, …)
+  deadline: string | null; // ISO date or null
+  publicationDate: string; // ISO date
+  officialLink: string;
+  contact?: { name?: string; email?: string; phone?: string } | null;
+  tags?: string[];
+}
+
+/** A fully-normalized row ready to persist. Mirrors the opportunities table. */
+export interface NormalizedOpportunity {
+  id: string;
+  referenceNumber: string;
+  title: string;
+  description: string;
+  summary: string;
+  organization: string;
+  country: string;
+  state: string;
+  budgetUsd: number | null;
+  currency: string;
+  deadline: string | null;
+  publicationDate: string;
+  source: string;
+  sourceType: SourceType;
+  category: ProjectCategory;
+  serviceLine: ServiceLine;
+  fitScore: number;
+  projectType: ProjectType;
+  technologies: string[];
+  tags: string[];
+  eligibility: string;
+  officialLink: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  industry: string;
+}
+
+// Approximate, intentionally-static FX rates to USD. Government budgets don't
+// need spot accuracy; this normalizes cross-country figures for filtering and
+// ranking. Update occasionally if precision ever matters.
+const FX_TO_USD: Record<string, number> = {
+  USD: 1, GBP: 1.27, EUR: 1.08, CAD: 0.73, AUD: 0.66, INR: 0.012,
+  SEK: 0.095, NOK: 0.093, DKK: 0.145, PLN: 0.25, CHF: 1.12, BRL: 0.18,
+  JPY: 0.0064, CNY: 0.14, ZAR: 0.055, AED: 0.27, SGD: 0.74, MYR: 0.22,
+  NZD: 0.61, MXN: 0.05,
+};
+
+export function toUsd(amount: number | null, currency: string): number | null {
+  if (amount == null || !Number.isFinite(amount)) return null;
+  const rate = FX_TO_USD[(currency || "USD").toUpperCase()] ?? 1;
+  return Math.round(amount * rate);
+}
+
+// Keyword → delivery category. First match wins; order matters (specific first).
+const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
+  [/\bgis\b|geospatial|geographic information|mapping|cartograph|lidar|remote sensing|spatial/i, "GIS"],
+  [/telecom|fibre|fiber|\b5g\b|\b4g\b|broadband|\brf\b|network engineering|oss\/bss|\bfttx\b|\bfttp\b|mobile network/i, "Telecom / Network"],
+  [/machine learning|artificial intelligence|\bai\b|\bml\b|data science|neural|llm|computer vision/i, "AI/ML"],
+  [/cyber|information security|infosec|penetration test|\bsoc\b|siem|threat|vulnerabilit/i, "Cyber Security"],
+  [/data warehouse|data platform|\betl\b|data engineering|analytics platform|data lake|big data/i, "Data Engineering"],
+  [/cloud migration|\bazure\b|\baws\b|\bgcp\b|migration to cloud|cloud transformation/i, "Cloud Migration"],
+  [/devops|ci\/cd|kubernetes|\bk8s\b|docker|site reliability|\bsre\b/i, "DevOps"],
+  [/mobile app|\bios\b|android|react native|flutter/i, "Mobile Development"],
+  [/website|web application|web development|\bportal\b|web platform|frontend|front-end/i, "Web Development"],
+  [/staff|workforce|recruitment|resourcing|managed service|contingent labour|labor supply/i, "Workforce Solutions"],
+  [/programme management|program management|\bpmo\b|project management office|delivery assurance/i, "Program Management"],
+  [/\berp\b|\bcrm\b|\bsap\b|oracle|enterprise software|business system|line of business/i, "Enterprise Software"],
+];
+
+export function categorize(text: string): ProjectCategory {
+  for (const [re, cat] of CATEGORY_RULES) if (re.test(text)) return cat;
+  return "Enterprise Software";
+}
+
+// Delivery category → JSAN service pillar. GIS and Telecom are the core lines.
+const CATEGORY_TO_SERVICE_LINE: Record<ProjectCategory, ServiceLine> = {
+  GIS: "Geospatial Intelligence",
+  "Telecom / Network": "Telecom & Network Engineering",
+  "Workforce Solutions": "Strategic Workforce Solutions",
+  "Program Management": "Structured Program Management",
+  "AI/ML": "Digital Engineering",
+  "Cloud Migration": "Digital Engineering",
+  "Web Development": "Digital Engineering",
+  "Mobile Development": "Digital Engineering",
+  "Data Engineering": "Digital Engineering",
+  "Enterprise Software": "Digital Engineering",
+  "Cyber Security": "Digital Engineering",
+  DevOps: "Digital Engineering",
+};
+
+export function serviceLineFor(category: ProjectCategory): ServiceLine {
+  return CATEGORY_TO_SERVICE_LINE[category];
+}
+
+// Technology vocabulary — extracted by presence in the notice text.
+const TECH_VOCAB: [RegExp, string][] = [
+  [/\bgis\b|geospatial|arcgis|qgis/i, "GIS"],
+  [/\b5g\b/i, "5G"],
+  [/fibre|fiber optic|\bfttx\b|\bfttp\b/i, "Fiber Optics"],
+  [/network planning|network design/i, "Network Planning"],
+  [/oss\/bss|\boss\b|\bbss\b/i, "OSS/BSS"],
+  [/\brf\b|rf planning|radio frequency/i, "RF Planning"],
+  [/\bjava\b/i, "Java"],
+  [/\bpython\b/i, "Python"],
+  [/\breact\b/i, "React"],
+  [/\bangular\b/i, "Angular"],
+  [/spring boot|spring framework/i, "Spring Boot"],
+  [/node\.?js/i, "Node.js"],
+  [/\baws\b|amazon web services/i, "AWS"],
+  [/\bazure\b/i, "Azure"],
+  [/\bgcp\b|google cloud/i, "GCP"],
+  [/artificial intelligence|\bai\b/i, "AI"],
+  [/machine learning|\bml\b/i, "Machine Learning"],
+  [/cyber security|cybersecurity/i, "Cyber Security"],
+  [/devops/i, "DevOps"],
+  [/\bsap\b/i, "SAP"],
+  [/\boracle\b/i, "Oracle"],
+  [/\bsql\b|postgres|mysql/i, "SQL"],
+  [/kubernetes|\bk8s\b/i, "Kubernetes"],
+  [/docker|container/i, "Docker"],
+];
+
+export function extractTechnologies(text: string): string[] {
+  const out: string[] = [];
+  for (const [re, name] of TECH_VOCAB) if (re.test(text) && !out.includes(name)) out.push(name);
+  return out.slice(0, 8);
+}
+
+// Transparent capability-fit heuristic (0–100). Core service lines score
+// highest; budget size and a recognized category nudge it up.
+export function fitScoreFor(serviceLine: ServiceLine, budgetUsd: number | null, hasCategory: boolean): number {
+  let score = 40;
+  if (serviceLine === "Geospatial Intelligence" || serviceLine === "Telecom & Network Engineering") score += 30;
+  else if (serviceLine === "Digital Engineering") score += 15;
+  if ((budgetUsd ?? 0) >= 1_000_000) score += 15;
+  else if ((budgetUsd ?? 0) >= 100_000) score += 8;
+  if (hasCategory) score += 7;
+  return Math.min(97, score);
+}
+
+const PROJECT_TYPE_BY_SOURCE: Record<string, ProjectType> = {
+  "Government Procurement API": "Government Tender",
+  "Public Tender API": "Government Tender",
+  "Open Data Portal": "Open Opportunity",
+  "RSS Feed": "Open Opportunity",
+  "JSON Endpoint": "Open Opportunity",
+  "XML Feed": "Open Opportunity",
+};
+
+function stableId(sourceKey: string, referenceNumber: string): string {
+  const prefix =
+    sourceKey.includes("contracts-finder") ? "UK"
+      : sourceKey.includes("ted") ? "EU"
+      : sourceKey.includes("world-bank") ? "WB"
+      : sourceKey.includes("sam") ? "US"
+      : "OP";
+  const hash = crypto
+    .createHash("sha1")
+    .update(`${sourceKey}|${referenceNumber}`)
+    .digest("hex")
+    .slice(0, 12);
+  return `${prefix}-${hash}`;
+}
+
+function fallbackSummary(description: string, title: string): string {
+  const clean = (description || "").replace(/\s+/g, " ").trim();
+  if (!clean) return title;
+  return clean.length > 240 ? `${clean.slice(0, 237)}…` : clean;
+}
+
+// Opportunities with a *disclosed* budget below this are too small for JSAN's
+// $1–10M target range and are filtered out. Undisclosed-budget notices are
+// kept (value unknown, often large — e.g. most EU TED tenders) and default to
+// $1M at read time so they sit at the bottom of the target band.
+export const MIN_BUDGET_USD = 1_000_000;
+
+export function meetsMinBudget(o: NormalizedOpportunity): boolean {
+  return o.budgetUsd == null || o.budgetUsd >= MIN_BUDGET_USD;
+}
+
+/**
+ * Is this opportunity currently pursuable? A future deadline means open; with
+ * no deadline we keep it only if it was published recently (stale, unbounded
+ * listings are dropped). This is the single gate that keeps closed/old records
+ * out of the portal across every source.
+ */
+export function isOpenOpportunity(o: NormalizedOpportunity, maxAgeDaysNoDeadline = 180): boolean {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  if (o.deadline) {
+    const d = new Date(o.deadline);
+    if (Number.isNaN(d.getTime())) return false;
+    return d.getTime() >= today.getTime();
+  }
+  const pub = new Date(o.publicationDate);
+  if (Number.isNaN(pub.getTime())) return false;
+  const ageDays = (today.getTime() - pub.getTime()) / 86_400_000;
+  return ageDays <= maxAgeDaysNoDeadline;
+}
+
+/** Normalize a raw opportunity into a persistable, fully-enriched row. */
+export function normalize(raw: RawOpportunity): NormalizedOpportunity {
+  const text = `${raw.title} ${raw.description}`;
+  const category = categorize(text);
+  const serviceLine = serviceLineFor(category);
+  const budgetUsd = toUsd(raw.amount, raw.currency);
+  const technologies = extractTechnologies(text);
+  const contact = raw.contact ?? null;
+
+  const tags = Array.from(
+    new Set([
+      raw.country,
+      category,
+      ...(raw.tags ?? []),
+    ].filter(Boolean) as string[]),
+  ).slice(0, 6);
+
+  return {
+    id: stableId(raw.sourceKey, raw.referenceNumber),
+    referenceNumber: raw.referenceNumber.slice(0, 120),
+    title: raw.title.slice(0, 400),
+    description: raw.description,
+    summary: fallbackSummary(raw.description, raw.title),
+    organization: raw.organization || "Unknown organization",
+    country: raw.country || "Unknown",
+    state: raw.state ?? "",
+    budgetUsd,
+    currency: "USD",
+    deadline: raw.deadline,
+    publicationDate: raw.publicationDate,
+    source: raw.source,
+    sourceType: raw.sourceType,
+    category,
+    serviceLine,
+    fitScore: fitScoreFor(serviceLine, budgetUsd, true),
+    projectType: PROJECT_TYPE_BY_SOURCE[raw.sourceType] ?? "Open Opportunity",
+    technologies,
+    tags,
+    eligibility: "See the official notice for full eligibility criteria.",
+    officialLink: raw.officialLink,
+    contactName: contact?.name ?? null,
+    contactEmail: contact?.email ?? null,
+    contactPhone: contact?.phone ?? null,
+    industry: "Public Sector",
+  };
+}

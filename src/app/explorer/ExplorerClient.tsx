@@ -95,6 +95,7 @@ export function ExplorerClient() {
     maxBudget: "",
     minFit: searchParams.get("minFit") ?? "",
     availableOnly: searchParams.get("availableOnly") !== "false", // hide occupied by default
+    includeLarge: searchParams.get("includeLarge") === "true", // hide >$10M by default
     sort: searchParams.get("sort") ?? "priority",
     page: 1,
   });
@@ -113,8 +114,16 @@ export function ExplorerClient() {
     setLoading(true);
     const params = new URLSearchParams();
     Object.entries(f).forEach(([k, v]) => {
+      if (k === "includeLarge") return; // not an API param — drives the soft cap below
       if (v !== "" && v != null) params.set(k, String(v));
     });
+    // Default to JSAN's $1–10M target band; the toggle lifts the $10M ceiling
+    // to reveal large (World Bank) global leads. A manual max budget still wins.
+    const TARGET_MAX = 10_000_000;
+    if (!f.includeLarge) {
+      const userMax = f.maxBudget ? Number(f.maxBudget) : Infinity;
+      params.set("maxBudget", String(Math.min(userMax, TARGET_MAX)));
+    }
     params.set("pageSize", "9");
     const t = setTimeout(() => {
       fetch(`/api/projects?${params.toString()}`)
@@ -155,6 +164,7 @@ export function ExplorerClient() {
       maxBudget: "",
       minFit: "",
       availableOnly: true,
+      includeLarge: false,
       sort: "priority",
       page: 1,
     });
@@ -309,6 +319,27 @@ export function ExplorerClient() {
                   />
                 </span>
                 <span className="text-text-muted whitespace-nowrap">Hide occupied</span>
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={f.includeLarge}
+                onClick={() => set({ includeLarge: !f.includeLarge })}
+                className="flex items-center gap-2 text-[13px]"
+                title="By default only $1–10M opportunities (JSAN's target range) are shown. Turn on to also include large >$10M global leads (e.g. World Bank programs)."
+              >
+                <span
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    f.includeLarge ? "bg-primary" : "bg-border-strong"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                      f.includeLarge ? "translate-x-4" : ""
+                    }`}
+                  />
+                </span>
+                <span className="text-text-muted whitespace-nowrap">Include large (&gt;$10M)</span>
               </button>
               <label className="flex items-center gap-2 text-[13px]">
                 <span className="text-text-faint">Sort</span>

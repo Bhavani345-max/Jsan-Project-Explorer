@@ -6,7 +6,13 @@ import { presenceFor } from "./presence";
 // these rows via connectors; here they emulate publicly-sourced feeds.
 // ------------------------------------------------------------------
 
-const REF_DATE = new Date("2026-07-22T00:00:00Z").getTime();
+// Anchored to today (UTC midnight) rather than a fixed calendar date, so the
+// sample dataset stays plausibly current — deadlines, "closing soon" and
+// publication dates read the same way on any day the demo is opened.
+const REF_DATE = (() => {
+  const n = new Date();
+  return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+})();
 const DAY = 86_400_000;
 
 function iso(offsetDays: number): string {

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { queryProjects } from "@/lib/repository";
-import { backendQueryProjects } from "@/lib/backend";
+import { liveDataset } from "@/lib/live";
 import type { ProjectQuery } from "@/lib/types";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 // GET /api/projects — filtered, paginated project search.
-// Tries the live FastAPI backend first (real ingested tenders); falls back to
-// the in-memory sample repository so the app still runs with zero infra.
+// Reads real ingested opportunities from the database; falls back to the
+// in-memory sample dataset when the DB is empty or unreachable.
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
   const num = (k: string) => (p.get(k) ? Number(p.get(k)) : undefined);
@@ -32,19 +35,6 @@ export async function GET(request: Request) {
     sort: (str("sort") as ProjectQuery["sort"]) ?? undefined,
   };
 
-  // serviceLine/presenceTier/source/availableOnly/minFit are computed
-  // client-side concepts the backend doesn't filter on — when they're set, use
-  // the sample repository which supports them natively (keeps pagination exact).
-  const backendCompatible =
-    !query.serviceLine &&
-    !query.presenceTier &&
-    !query.source &&
-    !query.availableOnly &&
-    query.minFit == null;
-  if (backendCompatible) {
-    const live = await backendQueryProjects(query);
-    if (live) return NextResponse.json({ ...live, live: true });
-  }
-
-  return NextResponse.json({ ...queryProjects(query), live: false });
+  const { projects, live } = await liveDataset();
+  return NextResponse.json({ ...queryProjects(query, projects), live });
 }

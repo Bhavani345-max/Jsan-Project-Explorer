@@ -1,15 +1,25 @@
 export function money(n: number | null): string {
   if (n == null) return "Undisclosed";
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
   return `$${n}`;
 }
 
-const REF_NOW = new Date("2026-07-22T00:00:00Z");
+// All relative-date math is anchored to the real current time so live,
+// day-by-day ingested data stays accurate. Day counts are measured from
+// today's UTC midnight, which keeps a value stable for the whole day — the
+// same on the server render and on client hydration.
+export function todayUtcMs(): number {
+  const n = new Date();
+  return Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+}
 
 export function daysLeft(iso: string): number {
   if (!iso) return Number.NaN; // no deadline listed
-  return Math.round((new Date(iso).getTime() - REF_NOW.getTime()) / 86_400_000);
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return Number.NaN;
+  return Math.round((t - todayUtcMs()) / 86_400_000);
 }
 
 export function deadlineLabel(iso: string): string {
@@ -27,7 +37,7 @@ export function fmtDate(iso: string): string {
 }
 
 export function relTime(iso: string): string {
-  const mins = Math.round((Date.parse(iso) - REF_NOW.getTime()) / 60000);
+  const mins = Math.round((Date.parse(iso) - Date.now()) / 60000);
   const abs = Math.abs(mins);
   if (abs < 60) return `${abs}m ago`;
   if (abs < 1440) return `${Math.round(abs / 60)}h ago`;

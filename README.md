@@ -7,11 +7,10 @@ procurement notices, startup announcements and more — collected from
 government procurement APIs, and open-data portals). No scraping of sites that
 prohibit automated access.
 
-> **The reference UI runs right now** — a production-quality Next.js + TypeScript
-> + Tailwind app with a repository-pattern data layer, so every module is
-> demonstrable with zero infrastructure. The full enterprise stack
-> (Python/FastAPI + PostgreSQL + Redis + OpenSearch) ships alongside it and is
-> wired for `docker compose up`.
+> **The app runs right now with zero infrastructure** — a production-quality
+> Next.js + TypeScript + Tailwind app with a repository-pattern data layer, so
+> every module is demonstrable out of the box on a bundled sample dataset. Add a
+> `DATABASE_URL` and it automatically upgrades to real, day-by-day ingested data.
 
 ---
 
@@ -27,25 +26,75 @@ Build & serve production:
 npm run build && npm run start
 ```
 
-Full enterprise stack (Postgres, Redis, OpenSearch, FastAPI backend, UI):
-```bash
-docker compose up --build
+With no database configured the portal serves the bundled sample dataset and the
+sidebar reads "Sample dataset". Nothing else is required to explore every module.
+
+---
+
+## Live data (deployed architecture)
+
+The deployed portal is **Vercel-native**: the Next.js app owns ingestion, storage
+and reads — no separate service to run.
+
+```
+Vercel Cron (daily 02:00)
+   └─→ GET /api/cron/ingest
+         ├─ src/lib/ingest/connectors/*   fetch every public source concurrently
+         ├─ src/lib/ingest/normalize.ts   FX→USD · categorize · tech extraction · fit score
+         ├─ src/lib/db.ts                 idempotent upsert into Neon Postgres + purge expired
+         └─ src/lib/ingest/ai-enrich.ts   optional summary polish (free OpenRouter models)
+
+Page / API read path
+   └─→ src/lib/live.ts → DB rows if any exist, else the bundled seed
+         └─ src/lib/repository.ts (pure query logic over an injected dataset)
 ```
 
-With the full stack running, the portal ingests **real UK government tenders**
-from the official [Contracts Finder OCDS API](https://www.contractsfinder.service.gov.uk)
-(no key required, Open Government Licence) on the built-in schedule, and the UI
-sidebar switches from "Sample dataset" to **"Live data connected"**. Every raw
-API response is captured with a SHA-256 by the `ApiInterceptor` for provenance
-(`backend/app/connectors/interceptor.py`). Quality audit: [`score.md`](score.md).
+**Sources** (all public, no scraping):
+
+| Source | Key required | Coverage |
+|---|---|---|
+| [UK Contracts Finder](https://www.contractsfinder.service.gov.uk) (OCDS) | no | UK public sector, OGL v3 |
+| [EU TED](https://api.ted.europa.eu) (Search API v3) | no | 27 EU member states + EEA |
+| [World Bank Projects](https://search.worldbank.org) | no | ~150 borrower countries |
+| US SAM.gov | `SAM_GOV_API_KEY` | US federal — skipped silently without a key |
+
+One failing source never blocks the others (`Promise.allSettled`), and every
+record carries its official notice URL for provenance.
+
+### Environment variables
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | for live data | Neon Postgres connection string (`POSTGRES_URL` also accepted) |
+| `CRON_SECRET` | recommended | Gates `/api/cron/ingest`; Vercel Cron sends it as a bearer token |
+| `OPENROUTER_API_KEY` | optional | Enables AI summary enrichment — free models by default |
+| `OPENROUTER_ENRICH_MODEL` | optional | Comma-separated model fallback chain |
+| `SAM_GOV_API_KEY` | optional | Enables the US SAM.gov connector |
+
+Schema is created on demand (`ensureSchema()`), so a fresh Neon database needs no
+migration step. Trigger the first ingest manually with:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<your-app>/api/cron/ingest
+```
+
+Once any row lands, `/api/status` flips the sidebar to **"Live data connected"**.
+
+---
+
+## Reference enterprise backend (Python)
+
+The repo also ships a complete **FastAPI + PostgreSQL + Redis + OpenSearch**
+implementation under [`backend/`](backend/), wired for `docker compose up --build`.
+It is the reference/enterprise deployment target — the Vercel path above is what
+runs in production today. Quality audit: [`score.md`](score.md).
 
 Dev/demo login (rotate before shared deployment): `admin@discovery.io` / `Admin#2026!`
 
-**Data seeding & backups** — fresh deployments auto-load three init scripts:
-`db/schema.sql` → `db/sample_data.sql` → `db/live_snapshot.sql` (a portable,
-idempotent snapshot of real ingested tenders; regenerate anytime with
-`python db/make_live_snapshot.py` while the stack is up). Full backups live in
-`db/backups/`; create one with:
+**Data seeding & backups** (Docker stack only) — fresh deployments auto-load three
+init scripts: `db/schema.sql` → `db/sample_data.sql` → `db/live_snapshot.sql`
+(regenerate anytime with `python db/make_live_snapshot.py` while the stack is up).
+Full backups live in `db/backups/`; create one with:
 ```bash
 docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full_backup_$(date +%F).sql
 ```
@@ -82,7 +131,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 - **API Connectors** — connector cards (auth, schedule, rate limit, pagination, retry, status), add-connector form, scheduler cadences, and live connector logs.
 - **Smart Search** — global autocomplete over technologies, organizations, countries and projects.
 - **AI Features** — summaries, technology/budget/deadline/org extraction, auto-categorization, tags, recommendations (surfaced on the details page; pipeline hooks in the backend).
-- **Analytics** — projects per month, by country, by technology, win/loss, success rate, trending technologies, top organizations.
+- **Analytics** — projects per month, by country, by technology, top technologies in demand, top organizations.
 - **User Roles** — Administrator, Business Development, Sales, Manager, Read Only (role switcher + backend RBAC).
 - **Theme** — polished light **and** dark mode.
 
@@ -91,9 +140,10 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 ## Tech stack
 
 **Frontend** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Recharts · lucide-react
-**Backend** Python 3.13+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · PyJWT + bcrypt (JWT + RBAC) · APScheduler · psycopg 3
+**Deployed backend** Next.js route handlers · Vercel Cron · Neon serverless Postgres (`@neondatabase/serverless`) · OpenRouter (optional AI enrichment)
+**Reference backend** Python 3.13+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · PyJWT + bcrypt (JWT + RBAC) · APScheduler · psycopg 3
 **Data** PostgreSQL 16 (partitioned, `tsvector` full-text, `pg_trgm`) · Redis · OpenSearch
-**Ops** Docker · Nginx · Prometheus/Grafana · ELK · pytest
+**Ops** Vercel · Docker · Nginx · Prometheus/Grafana · ELK · pytest
 
 ---
 
@@ -109,11 +159,21 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │  │  ├─ connectors/                 # API Connector module
 │  │  ├─ analytics/                  # Analytics
 │  │  ├─ api/                        # REST route handlers (backend contract)
+│  │  │  └─ cron/ingest/             # Vercel Cron entry point — the ingest run
 │  │  ├─ layout.tsx · globals.css    # Shell, theme tokens
 │  ├─ components/                    # Shell, charts, cards, UI primitives
-│  └─ lib/                           # types · seed · repository · format
+│  └─ lib/
+│     ├─ db.ts                       # Neon data access (schema, upsert, purge, reads)
+│     ├─ live.ts                     # live-vs-seed dataset seam
+│     ├─ repository.ts               # pure query logic over an injected dataset
+│     ├─ ingest/
+│     │  ├─ connectors/              # UK · EU TED · World Bank · SAM.gov
+│     │  ├─ normalize.ts             # FX · categorize · tech · fit score · gates
+│     │  └─ ai-enrich.ts             # optional OpenRouter summary polish
+│     └─ types · seed · format · presence
 │
-├─ backend/                         # Python FastAPI service
+├─ vercel.json                       # cron schedule + function maxDuration
+├─ backend/                          # Python FastAPI service (reference stack)
 │  ├─ app/
 │  │  ├─ models.py                   # SQLAlchemy entities (audit + soft delete)
 │  │  ├─ repositories/               # query builders + composable filters

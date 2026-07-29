@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { FolderKanban, Sparkles, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower } from "lucide-react";
 import { dashboardStats, queryProjects } from "@/lib/repository";
+import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
 import { SectionCard, Breadcrumbs, StatusBadge, FitBadge, PresenceBadge } from "@/components/ui";
 import { VBarChart, DonutChart, HBarChart, TrendArea } from "@/components/charts";
 import { money, deadlineLabel, relTime, fmtDate } from "@/lib/format";
 
-export default function DashboardPage() {
-  const stats = dashboardStats();
-  const recent = queryProjects({ sort: "publicationDate", pageSize: 6 }).items;
-  const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }).items;
-  const bestFit = queryProjects({ sort: "priority", pageSize: 5 }).items;
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const { projects } = await liveDataset();
+  const stats = dashboardStats(projects);
+  const recent = queryProjects({ sort: "publicationDate", pageSize: 6 }, projects).items;
+  const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }, projects).items;
+  const bestFit = queryProjects({ sort: "priority", pageSize: 5 }, projects).items;
 
   const lineCount = (label: string) => stats.byServiceLine.find((s) => s.label === label)?.value ?? 0;
   const gisCount = lineCount("Geospatial Intelligence");
@@ -84,10 +88,10 @@ export default function DashboardPage() {
 
       {/* KPI row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Total Opportunities" value={String(stats.totalProjects)} icon={FolderKanban} delta={8} hint="Across 6 active connectors" />
+        <StatCard label="Total Opportunities" value={String(stats.totalProjects)} icon={FolderKanban} delta={8} hint="Live across UK · EU · World Bank" />
         <StatCard label="Best-Fit for JSAN" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" delta={12} hint="Capability fit ≥ 85%" />
         <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" delta={-3} hint="Deadline within 7 days" />
-        <StatCard label="Pipeline Value" value={money(stats.totalBudget)} icon={Wallet} accent="var(--accent)" delta={15} hint="Sum of disclosed budgets" />
+        <StatCard label="Target Pipeline ($1–10M)" value={money(stats.targetPipeline)} icon={Wallet} accent="var(--accent)" delta={15} hint={`${stats.targetCount} opportunities in JSAN's range`} />
       </div>
 
       {/* JSAN service-line focus */}

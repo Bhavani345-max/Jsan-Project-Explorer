@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.84",
+    "@neondatabase/serverless": "^1.1.0",
     "clsx": "2.1.1",
     "jspdf": "^4.2.1",
     "lucide-react": "0.544.0",

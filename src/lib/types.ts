@@ -123,6 +123,9 @@ export interface DashboardStats {
   newToday: number;
   closingSoon: number;
   totalBudget: number;
+  // Addressable pipeline in JSAN's $1–10M target band.
+  targetPipeline: number;
+  targetCount: number;
   byCountry: { label: string; value: number }[];
   byTechnology: { label: string; value: number }[];
   byBudget: { label: string; value: number }[];

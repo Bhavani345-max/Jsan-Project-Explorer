@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { countOpportunities, dbConfigured } from "@/lib/db";
+import { countInDomain, dbConfigured } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 // "Live data connected" vs "Sample dataset" marker.
 export async function GET() {
   if (!dbConfigured()) return NextResponse.json({ live: false, count: 0 });
-  const count = await countOpportunities();
+  // Counts in-domain rows only — the same set the portal renders.
+  const count = await countInDomain();
   return NextResponse.json({ live: count > 0, count });
 }

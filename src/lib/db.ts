@@ -10,6 +10,7 @@ import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { Project } from "@/lib/types";
 import { presenceFor } from "@/lib/presence";
 import { money } from "@/lib/format";
+import { TARGET_SERVICE_LINES } from "@/lib/domain";
 import type { NormalizedOpportunity } from "@/lib/ingest/normalize";
 
 let _sql: NeonQueryFunction<false, false> | null = null;
@@ -146,11 +147,27 @@ export async function purgeExpired(
   }
 }
 
+/** Every row held, in-domain or not. Used for ingest reporting. */
 export async function countOpportunities(): Promise<number> {
   const sql = getSql();
   if (!sql) return 0;
   try {
     const rows = (await sql.query(`SELECT COUNT(*)::int AS n FROM opportunities`)) as { n: number }[];
+    return rows[0]?.n ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Rows the portal actually surfaces — geospatial and telecom only. */
+export async function countInDomain(): Promise<number> {
+  const sql = getSql();
+  if (!sql) return 0;
+  try {
+    const rows = (await sql.query(
+      `SELECT COUNT(*)::int AS n FROM opportunities WHERE service_line = ANY($1)`,
+      [TARGET_SERVICE_LINES],
+    )) as { n: number }[];
     return rows[0]?.n ?? 0;
   } catch {
     return 0;
@@ -261,7 +278,12 @@ function toProject(r: Row): Project {
 }
 
 /**
- * Load all persisted opportunities as Project objects (capped for safety).
+ * Load in-domain opportunities as Project objects (capped for safety).
+ *
+ * The service-line filter runs in SQL — not after loading — so the limit
+ * applies to rows the portal will actually show. Out-of-domain records stay
+ * in the table untouched; they are simply not selected.
+ *
  * Returns null when the DB is unconfigured, empty, or unreachable so callers
  * can fall back to the seed dataset.
  */
@@ -270,8 +292,11 @@ export async function loadLiveProjects(limit = 4000): Promise<Project[] | null> 
   if (!sql) return null;
   try {
     const rows = (await sql.query(
-      `SELECT * FROM opportunities ORDER BY publication_date DESC, ingested_at DESC LIMIT $1`,
-      [limit],
+      `SELECT * FROM opportunities
+        WHERE service_line = ANY($1)
+        ORDER BY publication_date DESC, ingested_at DESC
+        LIMIT $2`,
+      [TARGET_SERVICE_LINES, limit],
     )) as Row[];
     if (!rows.length) return null;
     return rows.map(toProject);

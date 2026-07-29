@@ -65,11 +65,38 @@ function noticeLink(n: TedNotice): string {
   return pub ? `https://ted.europa.eu/en/notice/${pub}/html` : "https://ted.europa.eu";
 }
 
-export async function fetchEuTed(limit = 60): Promise<RawOpportunity[]> {
-  // JSAN-relevant CPV families: IT services, telecom equipment/networks,
-  // mapping/GIS services, and software packages.
-  const query =
-    "classification-cpv IN (72000000 32000000 32400000 71354000 48000000) SORT BY publication-date DESC";
+// CPV families to request from TED, each verified against the live API.
+//
+// Only narrow, domain-specific codes are used. The broad parents that used to
+// be here — 72000000 (IT services), 48000000 (software packages), 32000000
+// (radio/TV/telecom equipment) and 32500000 (telecom equipment & supplies) —
+// were removed: TED notices carry several CPV codes each, so those families
+// dragged in servers, medical devices and web design, and accounted for
+// essentially all of the off-domain noise in the store.
+//
+// CPV still only narrows the funnel — a notice can carry a telecom code and be
+// about something else entirely — so every record is re-checked locally by the
+// domain gate in connectors/index.ts.
+const CPV_TELECOM = [
+  "32400000", // Networks
+  "32520000", // Telecommunications cable and equipment
+  "32562000", // Fibre optic cables
+  "64200000", // Telecommunications services
+  "45231600", // Construction work for communication lines
+  "72700000", // Computer network services
+];
+const CPV_GEOSPATIAL = [
+  "38221000", // Geographic information systems (GIS)
+  "71354000", // Map-making services
+  "71355000", // Surveying services
+  "71353000", // Surface surveying services
+  "71352000", // Subsurface surveying services
+  "71351000", // Geological, geophysical and other prospecting services
+];
+
+export async function fetchEuTed(limit = 120): Promise<RawOpportunity[]> {
+  const cpv = [...CPV_TELECOM, ...CPV_GEOSPATIAL].join(" ");
+  const query = `classification-cpv IN (${cpv}) SORT BY publication-date DESC`;
   const res = await fetch(SEARCH_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },

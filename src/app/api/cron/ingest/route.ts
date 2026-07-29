@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { ensureSchema, upsertOpportunities, purgeExpired, countOpportunities, dbConfigured } from "@/lib/db";
+import {
+  ensureSchema,
+  upsertOpportunities,
+  purgeExpired,
+  countOpportunities,
+  countInDomain,
+  dbConfigured,
+} from "@/lib/db";
 import { runConnectors } from "@/lib/ingest/connectors";
 import { enrichPending } from "@/lib/ingest/ai-enrich";
 
@@ -31,6 +38,7 @@ async function handle(request: Request): Promise<Response> {
     const purged = await purgeExpired();
     const enrichment = await enrichPending();
     const total = await countOpportunities();
+    const inDomain = await countInDomain();
 
     return NextResponse.json({
       ok: true,
@@ -41,6 +49,9 @@ async function handle(request: Request): Promise<Response> {
       written,
       purgedExpired: purged,
       enrichment,
+      // inDomain is what the portal shows; totalInDb includes older
+      // out-of-domain rows, which are retained but never surfaced.
+      inDomain,
       totalInDb: total,
     });
   } catch (err) {

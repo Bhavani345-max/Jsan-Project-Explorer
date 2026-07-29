@@ -1,11 +1,36 @@
 # Project Discovery Portal
 
 An enterprise web application that helps a business-development team **discover
-software development opportunities** — RFPs, RFQs, government tenders, IT
-procurement notices, startup announcements and more — collected from
-**publicly available sources only** (official public APIs, RSS feeds,
-government procurement APIs, and open-data portals). No scraping of sites that
-prohibit automated access.
+geospatial and telecom engineering opportunities** — RFPs, RFQs, government
+tenders and public procurement notices — collected from **publicly available
+sources only** (official public APIs, government procurement APIs, and
+open-data portals). No scraping of sites that prohibit automated access.
+
+## Scope: geospatial and telecom only
+
+The portal deliberately carries just two service lines — **Geospatial
+Intelligence** and **Telecom & Network Engineering**. Generic software
+development, health, education, finance and construction notices are filtered
+out. [`src/lib/domain.ts`](src/lib/domain.ts) is the single source of truth;
+widening the portal is a one-line change there.
+
+The filter runs in two stages, because neither alone is sufficient:
+
+1. **At the source** — connectors request only narrow, domain-specific CPV
+   families (fibre optic cables, telecom services, GIS, cadastral and
+   topographical surveying). The broad families `72000000` (IT services) and
+   `48000000` (software packages) were removed: they carry ~640k notices
+   between them and accounted for essentially all off-domain noise.
+2. **Locally** — every record is re-checked against the categorizer before it
+   is persisted. CPV only narrows the funnel; a TED notice carries several CPV
+   codes, so a telecom code can still arrive attached to medical equipment.
+
+Measured against live TED, the same 120 notices fetched: **3% in-domain before,
+42% after**.
+
+Nothing is ever deleted to achieve this. Out-of-domain records already
+collected are retained in the database and simply not selected — reads filter
+in SQL, so paging and limits stay correct.
 
 > **The app runs right now with zero infrastructure** — a production-quality
 > Next.js + TypeScript + Tailwind app with a repository-pattern data layer, so
@@ -79,6 +104,24 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<your-app>/api/cron/ingest
 ```
 
 Once any row lands, `/api/status` flips the sidebar to **"Live data connected"**.
+
+### Re-classifying stored records
+
+After tuning the categorizer, `/api/cron/reclassify` re-runs it across rows
+already stored and promotes any that are really geospatial or telecom work.
+Preview first — it writes nothing with `dryRun`:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://<your-app>/api/cron/reclassify?dryRun=1"
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<your-app>/api/cron/reclassify
+```
+
+It is `UPDATE`-only and **promote-only**: no row is deleted, and a record
+already in the target domain is never demoted out of it, so nothing visible can
+disappear. Rows the current rules disagree with are reported for review rather
+than changed. Classification here reads the **title only** — deliberately
+stricter than ingest, since long project abstracts mention "network" or
+"broadband" in passing and drag in unrelated programmes.
 
 ---
 

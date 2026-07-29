@@ -9,6 +9,12 @@
 import type { Project } from "@/lib/types";
 import { PROJECTS } from "@/lib/seed";
 import { loadLiveProjects } from "@/lib/db";
+import { toTargetDomain } from "@/lib/domain";
+
+// The seed carries the full sample catalogue; narrow it to the target domain
+// so the zero-infrastructure demo shows the same scope as the live portal.
+// Nothing is removed from the seed itself.
+const SEED_IN_DOMAIN = toTargetDomain(PROJECTS);
 
 let cache: { projects: Project[]; at: number } | null = null;
 const TTL_MS = 60_000;
@@ -28,5 +34,5 @@ export async function liveDataset(): Promise<Dataset> {
     cache = { projects: live, at: Date.now() };
     return { projects: live, live: true };
   }
-  return { projects: PROJECTS, live: false };
+  return { projects: SEED_IN_DOMAIN, live: false };
 }

@@ -86,14 +86,14 @@ const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
   // GIS / geospatial. Deliberately specific: bare "mapping" and "spatial" were
   // dropped because "data mapping" and "spatial planning" are common in
   // unrelated IT and urban-planning notices.
-  [/\bgis\b|geospatial|geographic information|digital mapping|mapping services|map-?making|cartograph|lidar|remote sensing|photogramm|orthophoto|topograph|cadastr|geodet|\bgnss\b|hydrographic|aerial survey|spatial data|surveying services/i, "GIS"],
+  [/\bgis\b|geospatial|geographic information|digital mapping|mapping services|map-?making|cartograph|lidar|remote sensing|photogramm|orthophoto|topograph|cadastr|geodet|\bgnss\b|hydrographic|aerial survey|spatial data|surveying services|land administration|land registry/i, "GIS"],
   // Telecom / network engineering. "rf" as a bare token was dropped — too
   // short to be safe across TED's multilingual titles.
   //
   // Bare "networks" is accepted because it is a CPV category label in its own
   // right (32400000), but only when it isn't one of the many non-telecom
   // networks a procurement feed carries — road, rail, heating, water, power.
-  [/telecom|fibre|fiber|\b5g\b|\b4g\b|\blte\b|\bgsm\b|broadband|network engineering|network cabling|structured cabling|network equipment|network infrastructure|network technolog|data network|oss\/bss|\bfttx\b|\bfttp\b|\bftth\b|mobile network|mobile-telephone|base station|antenna|microwave link|satellite communication|\bvsat\b|sd-wan|backhaul|broadcast transmission|radio frequency|communication lines|(?<!road |rail |railway |transport |heating |water |sewer |power |energy |social |distribution |pipeline )\bnetworks\b/i, "Telecom / Network"],
+  [/telecom|fibre|fiber|\b5g\b|\b4g\b|\blte\b|\bgsm\b|broadband|network engineering|network cabling|structured cabling|network equipment|network infrastructure|network technolog|data network|oss\/bss|\bfttx\b|\bfttp\b|\bftth\b|mobile network|mobile-telephone|base station|antenna|microwave link|satellite communication|\bvsat\b|sd-wan|backhaul|broadcast transmission|radio frequency|communication lines|\bcommunications?\b|\bconnectivity\b|digital infrastructure|(?<!road |rail |railway |transport |heating |water |sewer |power |energy |social |distribution |pipeline )\bnetworks\b/i, "Telecom / Network"],
   [/machine learning|artificial intelligence|\bai\b|\bml\b|data science|neural|llm|computer vision/i, "AI/ML"],
   [/cyber|information security|infosec|penetration test|\bsoc\b|siem|threat|vulnerabilit/i, "Cyber Security"],
   [/data warehouse|data platform|\betl\b|data engineering|analytics platform|data lake|big data/i, "Data Engineering"],

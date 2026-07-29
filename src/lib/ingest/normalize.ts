@@ -240,7 +240,15 @@ export function isOpenOpportunity(o: NormalizedOpportunity, maxAgeDaysNoDeadline
 /** Normalize a raw opportunity into a persistable, fully-enriched row. */
 export function normalize(raw: RawOpportunity): NormalizedOpportunity {
   const text = `${raw.title} ${raw.description}`;
-  const category = categorize(text);
+  // Categorize on the TITLE ALONE. Long descriptions — World Bank project
+  // abstracts especially — mention "network" or "broadband" in passing and
+  // pull in agriculture, disaster-relief and energy programmes that are
+  // nothing to do with this portal. The title is the reliable signal: TED
+  // titles carry the CPV label, and procurement titles are descriptive.
+  //
+  // Technologies still read the full text: they only decorate a record, they
+  // never decide whether it is in domain.
+  const category = categorize(raw.title);
   const serviceLine = serviceLineFor(category);
   const budgetUsd = toUsd(raw.amount, raw.currency);
   const technologies = extractTechnologies(text);

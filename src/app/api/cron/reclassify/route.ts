@@ -30,11 +30,14 @@ interface Change {
 //
 // Deliberately conservative:
 //   · UPDATE only — no row is ever deleted;
-//   · promote only — a record already in the target domain is never demoted
-//     out of it, so nothing that is visible today can disappear. Rows the
-//     current rules would disagree with are reported, not changed.
+//   · promote only by default — a record already in the target domain is never
+//     demoted out of it, so nothing visible can vanish unexpectedly. Rows the
+//     current rules disagree with are reported for review.
 //
 // ?dryRun=1  report what would change, write nothing.
+// ?demote=1  also apply the disagreements, moving mis-filed records back out
+//            of the target domain. Opt-in, because it removes rows from view.
+//            Still an UPDATE — the records themselves are retained.
 async function handle(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const secret = process.env.CRON_SECRET;
@@ -49,8 +52,12 @@ async function handle(request: Request): Promise<Response> {
   const sql = getSql();
   if (!sql) return NextResponse.json({ error: "DATABASE_URL not configured" }, { status: 503 });
 
-  const dryRunParam = url.searchParams.get("dryRun");
-  const dryRun = dryRunParam === "1" || dryRunParam === "true";
+  const flag = (name: string) => {
+    const v = url.searchParams.get(name);
+    return v === "1" || v === "true";
+  };
+  const dryRun = flag("dryRun");
+  const demote = flag("demote");
   const startedAt = new Date().toISOString();
 
   try {
@@ -61,7 +68,7 @@ async function handle(request: Request): Promise<Response> {
     )) as Row[];
 
     const promote: (Change & { fitScore: number })[] = [];
-    const disagreements: Change[] = [];
+    const disagreements: (Change & { fitScore: number })[] = [];
     let unchanged = 0;
 
     for (const r of rows) {
@@ -93,21 +100,24 @@ async function handle(request: Request): Promise<Response> {
         // Already in-domain but the current rules read it differently — surfaced
         // for review only. Never applied, so nothing visible is taken away.
         if (wasInDomain && !nowInDomain) {
+          const budget = r.budget_usd == null ? null : Number(r.budget_usd);
           disagreements.push({
             id: r.id,
             title: r.title.slice(0, 110),
             from: r.service_line,
             to: serviceLine,
             category,
+            fitScore: fitScoreFor(serviceLine, budget, true),
           });
         }
         unchanged++;
       }
     }
 
+    const toWrite = demote ? [...promote, ...disagreements] : promote;
     let written = 0;
     if (!dryRun) {
-      for (const p of promote) {
+      for (const p of toWrite) {
         await sql.query(
           `UPDATE opportunities
               SET category = $1, service_line = $2, fit_score = $3, updated_at = now()
@@ -123,6 +133,8 @@ async function handle(request: Request): Promise<Response> {
     return NextResponse.json({
       ok: true,
       dryRun,
+      demote,
+      demoted: demote ? disagreements.length : 0,
       startedAt,
       finishedAt: new Date().toISOString(),
       scanned: rows.length,

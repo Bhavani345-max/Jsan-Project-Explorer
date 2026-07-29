@@ -31,10 +31,12 @@ interface Paged {
   totalPages: number;
 }
 
+// Quick filters for the two service lines the portal carries (see lib/domain).
+// General software technologies were removed along with the software-development
+// scope; any technology still present in the data stays reachable through the
+// Technology dropdown in the filter panel.
 const TECH_QUICK = [
   "GIS", "5G", "Fiber Optics", "Network Planning", "OSS/BSS", "RF Planning",
-  "Java", "Python", "React", "Angular", "Spring Boot", "Node.js", "AWS", "Azure",
-  "GCP", "AI", "Machine Learning", "Cyber Security", "DevOps", "SAP", "Oracle", "SQL",
 ];
 
 const SORTS = [

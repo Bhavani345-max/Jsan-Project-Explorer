@@ -61,7 +61,11 @@ export type AuthType = "None" | "API Key" | "OAuth" | "Bearer Token";
 export interface Project {
   id: string;
   referenceNumber: string;
+  /** Display title — the English translation when one exists, else the original. */
   title: string;
+  /** The notice's title exactly as published. Kept for provenance and shown on
+   *  the details page: these are official notices and must stay citable. */
+  originalTitle: string;
   description: string;
   summary: string; // AI-generated
   organization: string;

@@ -1245,6 +1245,7 @@ export const PROJECTS: Project[] = SPECS.map((s, i) => {
     id: `PRJ-${String(1001 + i)}`,
     referenceNumber: `${s.source.replace(/[^A-Z]/gi, "").slice(0, 4).toUpperCase()}-2026-${String(4820 + i * 7)}`,
     title: s.title,
+    originalTitle: s.title, // sample data is authored in English; nothing to translate
     description: s.description,
     summary: summarize(s.description),
     organization: s.organization,

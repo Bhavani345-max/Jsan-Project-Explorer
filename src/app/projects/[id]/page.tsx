@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Building2, MapPin, Wallet, CalendarClock, CalendarDays, ExternalLink, Hash,
-  FileText, Users, Mail, Phone, Sparkles, Bookmark, BellPlus, Tag, Target,
+  FileText, Users, Mail, Phone, Sparkles, Bookmark, BellPlus, Tag, Target, Languages,
 } from "lucide-react";
 import { getProject, relatedProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
@@ -61,6 +61,18 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
               )}
             </div>
             <h1 className="text-2xl font-bold tracking-tight leading-tight">{project.title}</h1>
+            {/* These are official notices, so the published wording has to stay
+                visible and citable — the English title is for reading, this is
+                what the buyer actually published. */}
+            {project.originalTitle !== project.title && (
+              <p className="text-[13px] text-text-faint mt-2 flex items-start gap-2">
+                <Languages size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  <span className="font-semibold">Translated to English.</span>{" "}
+                  <span className="italic">{project.originalTitle}</span>
+                </span>
+              </p>
+            )}
             <p className="text-text-muted mt-2 flex items-center gap-2 text-sm">
               <Building2 size={15} /> {project.organization} · {project.country}
             </p>

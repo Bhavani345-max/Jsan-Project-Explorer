@@ -130,6 +130,7 @@ record carries its official notice URL for provenance.
 | `CRON_SECRET` | recommended | Gates `/api/cron/ingest`; Vercel Cron sends it as a bearer token |
 | `OPENROUTER_API_KEY` | optional | Enables AI summary enrichment — free models by default |
 | `OPENROUTER_ENRICH_MODEL` | optional | Comma-separated model fallback chain |
+| `OPENROUTER_TRANSLATE_MODEL` | optional | Comma-separated chain for title translation. Unset → free models, then `OPENROUTER_MODEL` as last resort |
 | `SAM_GOV_API_KEY` | optional | Enables the US SAM.gov connector |
 
 Schema is created on demand (`ensureSchema()`), so a fresh Neon database needs no
@@ -140,6 +141,42 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://<your-app>/api/cron/ingest
 ```
 
 Once any row lands, `/api/status` flips the sidebar to **"Live data connected"**.
+
+### English translation
+
+93% of collected notices are not in English — TED renders every title as
+`Country – <English CPV label> – <native title>`, and that native tail arrives in
+Polish, Lithuanian, French, Croatian, Spanish, German and 20-odd others.
+
+Translation runs **server-side at ingest** and is stored, because the portal's job
+is discovery: the Explorer's keyword search, the facets, the assistant's grounding
+context and the PDF/PPTX exports all read the stored title. A client-side page
+widget (GTranslate and similar) translates what is painted on screen and leaves
+every one of those monolingual — searching "cadastral survey" would still never
+match `kadastrinių matavimų`.
+
+The original is never overwritten. It stays in `title`, the translation lands in
+`title_en`, and the read layer prefers the translation while keeping the original
+searchable and shown on the details page — these are official notices and must
+remain citable. Search therefore works in **both** languages: `cadastral` and
+`kadastrini` each find the Lithuanian notice.
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://<your-app>/api/cron/translate?limit=150"
+```
+
+Ingest translates a small batch each run for upkeep; the endpoint above clears a
+backlog and is safe to call repeatedly. Only in-domain rows are translated —
+retained out-of-domain records are never shown, so translating them would be
+paying to render text nobody sees.
+
+> **Model quota.** OpenRouter's free tier is capped **per account per day** (50
+> requests), not per model, so once spent every `:free` model returns 429 together
+> and a free-only chain silently translates nothing. The chain therefore falls back
+> to whatever `OPENROUTER_MODEL` is set to — a model you have already chosen and
+> are already paying for. Backfilling 425 titles on a Haiku-class model costs
+> roughly **$0.15**. Set `OPENROUTER_TRANSLATE_MODEL` to control this explicitly,
+> including pinning it back to free-only.
 
 ### Re-classifying stored records
 

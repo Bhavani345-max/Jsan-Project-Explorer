@@ -9,6 +9,7 @@ import {
 } from "@/lib/db";
 import { runConnectors } from "@/lib/ingest/connectors";
 import { enrichPending } from "@/lib/ingest/ai-enrich";
+import { translatePending } from "@/lib/ingest/translate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,10 @@ async function handle(request: Request): Promise<Response> {
     const { rows, stats } = await runConnectors();
     const written = await upsertOpportunities(rows);
     const purged = await purgeExpired();
+    // Steady-state upkeep only — enough to keep pace with a day's new notices.
+    // A large backlog is cleared by calling /api/cron/translate directly, so a
+    // one-off backfill can never threaten this run's 300s budget.
+    const translation = await translatePending(48);
     const enrichment = await enrichPending();
     const total = await countOpportunities();
     const inDomain = await countInDomain();
@@ -48,6 +53,7 @@ async function handle(request: Request): Promise<Response> {
       openFetched: rows.length,
       written,
       purgedExpired: purged,
+      translation,
       enrichment,
       // inDomain is what the portal shows; totalInDb includes older
       // out-of-domain rows, which are retained but never surfaced.

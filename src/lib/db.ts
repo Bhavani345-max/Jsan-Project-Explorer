@@ -63,6 +63,18 @@ const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_opp_service_line ON opportunities (service_line)`,
   `CREATE INDEX IF NOT EXISTS idx_opp_publication  ON opportunities (publication_date DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_opp_source       ON opportunities (source)`,
+  // English translation of the notice title. 93% of stored notices are
+  // non-English (TED renders titles as "Country - English CPV label - native
+  // title"), so this is what the portal actually displays and searches on. The
+  // original is never overwritten — it stays in `title` for provenance, since
+  // these are official notices that must remain citable.
+  //
+  // Added with ALTER rather than in CREATE TABLE: ensureSchema runs against
+  // databases that already hold data, and CREATE TABLE IF NOT EXISTS is a no-op
+  // there, so a new column would never appear.
+  `ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS title_en TEXT`,
+  `ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS translated BOOLEAN NOT NULL DEFAULT FALSE`,
+  `CREATE INDEX IF NOT EXISTS idx_opp_translated   ON opportunities (translated)`,
 ];
 
 /** Create the table + indexes if they don't exist. Safe to call repeatedly. */
@@ -198,6 +210,7 @@ interface Row {
   id: string;
   reference_number: string;
   title: string;
+  title_en: string | null;
   description: string;
   summary: string;
   organization: string;
@@ -262,12 +275,27 @@ function toProject(r: Row): Project {
     r.contact_name || r.contact_email || r.contact_phone
       ? { name: r.contact_name ?? undefined, email: r.contact_email ?? undefined, phone: r.contact_phone ?? undefined }
       : null;
+  // Present the English title everywhere. Because this is resolved once here,
+  // every consumer downstream — cards, search, facets, the assistant's grounding
+  // context, PDF/PPTX export — gets English for free, with no per-call handling.
+  const englishTitle = r.title_en?.trim() || r.title;
+
+  // TED search returns metadata only, so description === title and the heuristic
+  // summary is just that title repeated. When such a summary is still the
+  // untranslated original, show the English title instead. An AI-written summary
+  // is already English and is left alone.
+  const summary =
+    r.summary && r.summary !== r.title
+      ? r.summary
+      : englishTitle;
+
   return {
     id: r.id,
     referenceNumber: r.reference_number,
-    title: r.title,
+    title: englishTitle,
+    originalTitle: r.title,
     description: r.description,
-    summary: r.summary || (r.description ? `${r.description.slice(0, 220)}…` : r.title),
+    summary,
     organization: r.organization,
     country: r.country,
     state: r.state,

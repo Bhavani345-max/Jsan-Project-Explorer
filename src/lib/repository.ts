@@ -17,6 +17,10 @@ function matches(p: Project, q: ProjectQuery): boolean {
     const needle = q.q.toLowerCase();
     const haystack = [
       p.title,
+      // Search the original wording too, so a buyer who knows the notice by its
+      // native name ("kadastrinių matavimų") finds it just as readily as someone
+      // searching the English translation ("cadastral surveying").
+      p.originalTitle,
       p.description,
       p.organization,
       p.country,

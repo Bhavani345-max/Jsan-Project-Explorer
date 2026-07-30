@@ -69,7 +69,11 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                 <Languages size={14} className="shrink-0 mt-0.5" />
                 <span>
                   <span className="font-semibold">Translated to English.</span>{" "}
-                  <span className="italic">{project.originalTitle}</span>
+                  {/* `notranslate` exempts this from the GTranslate switcher.
+                      It exists precisely to show the buyer's own published
+                      wording — letting a page translator rewrite it would
+                      destroy the one thing it is here to preserve. */}
+                  <span className="italic notranslate">{project.originalTitle}</span>
                 </span>
               </p>
             )}
@@ -174,7 +178,8 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
             <div className="mt-5 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-text-faint">Project ID</span>
-                <span className="font-mono font-semibold">{project.id}</span>
+                {/* Identifiers are quoted back to buyers verbatim — never translate. */}
+                <span className="font-mono font-semibold notranslate">{project.id}</span>
               </div>
               <div className="flex items-center justify-between text-[13px] mt-2">
                 <span className="text-text-faint">Industry</span>

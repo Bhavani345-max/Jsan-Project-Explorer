@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
+import { GTranslate } from "./GTranslate";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -192,6 +193,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            {/* Sticky with the topbar itself, which is `sticky top-0 z-30`. */}
+            <GTranslate />
+
             <button
               onClick={toggle}
               aria-label="Toggle theme"

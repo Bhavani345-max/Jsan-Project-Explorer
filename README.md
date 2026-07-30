@@ -178,6 +178,33 @@ paying to render text nobody sees.
 > roughly **$0.15**. Set `OPENROUTER_TRANSLATE_MODEL` to control this explicitly,
 > including pinning it back to free-only.
 
+### Language switcher (GTranslate)
+
+The sticky topbar carries a [GTranslate](https://gtranslate.io) dropdown
+([`src/components/GTranslate.tsx`](src/components/GTranslate.tsx)) that renders
+the finished English page in the visitor's own language. It is the **opposite
+direction** to the ingest translation above, and the two are complementary:
+
+| | Direction | Where | Persisted |
+|---|---|---|---|
+| `lib/ingest/translate.ts` | foreign notice data → **English** | server, at ingest | yes — search, facets, exports and the assistant all read it |
+| `components/GTranslate.tsx` | English page → **visitor's language** | browser, on demand | no |
+
+Only the widget is client-side, and deliberately so: it cannot do the ingest
+job, because it rewrites rendered text rather than stored text, so a server-side
+search for `cadastral survey` would still never match `kadastrinių matavimų`.
+
+Anything that must survive a language switch is marked `notranslate` — the
+original published title on the details page (it exists precisely to show the
+buyer's own wording) and record identifiers, which get quoted back to buyers
+verbatim. Add that class to anything else that must stay literal.
+
+No key or account is needed; the widget is loaded from GTranslate's CDN on the
+client. Note that it sends page text to the translation service — everything in
+this portal is already public-source data, but it is worth knowing before adding
+anything private to a page. Remove the `<GTranslate />` line in
+[`src/components/Shell.tsx`](src/components/Shell.tsx) to drop it entirely.
+
 ### Re-classifying stored records
 
 After tuning the categorizer, `/api/cron/reclassify` re-runs it across rows

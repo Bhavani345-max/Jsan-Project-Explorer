@@ -212,6 +212,52 @@ body {
     background: rgba(255, 255, 255, 0.18);
     color: #ffffff;
   }
+
+  /* GTranslate language switcher sitting on the brand band.
+     The widget injects its own <select class="gt_selector">, so it is styled by
+     descendant selector rather than by a class we control. Matched to
+     .btn-on-brand so it reads as one of the topbar controls. */
+  .gtranslate_wrapper .gt_selector {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 2.25rem;
+    max-width: 11rem;
+    padding: 0 1.75rem 0 0.65rem;
+    border-radius: 0.5rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    cursor: pointer;
+    /* Chevron, inlined so no network request and no CSP exception is needed. */
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.45rem center;
+    background-size: 0.85rem;
+    transition: background-color 0.15s ease;
+  }
+  .gtranslate_wrapper .gt_selector:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+  .gtranslate_wrapper .gt_selector:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 1px;
+  }
+  /* The open list renders with the OS palette, so force readable colours. */
+  .gtranslate_wrapper .gt_selector option {
+    color: #0f1b28;
+    background: #ffffff;
+  }
+
+  /* Google's injected top banner shifts the whole page down and collides with
+     the sticky header. The switcher already shows the active language. */
+  .skiptranslate iframe.skiptranslate {
+    display: none !important;
+  }
+  body {
+    top: 0 !important;
+  }
 }
 
 @keyframes fadeInUp {

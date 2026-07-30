@@ -6,13 +6,35 @@ tenders and public procurement notices — collected from **publicly available
 sources only** (official public APIs, government procurement APIs, and
 open-data portals). No scraping of sites that prohibit automated access.
 
-## Scope: geospatial and telecom only
+## Scope: geospatial, telecom, and closely related work
 
-The portal deliberately carries just two service lines — **Geospatial
-Intelligence** and **Telecom & Network Engineering**. Generic software
-development, health, education, finance and construction notices are filtered
-out. [`src/lib/domain.ts`](src/lib/domain.ts) is the single source of truth;
-widening the portal is a one-line change there.
+The portal carries three service lines — **Geospatial Intelligence**, **Telecom
+& Network Engineering**, and **Geospatial & Telecom Adjacent**. Generic software
+development, health, education, finance, agriculture, energy and construction
+notices are filtered out. [`src/lib/domain.ts`](src/lib/domain.ts) is the single
+source of truth; widening the portal is a one-line change there.
+
+The adjacent line is work in the same field that isn't a pure GIS or telecom
+contract — earth observation, digital twins, BIM, IoT and sensor networks,
+SCADA/telemetry, spectrum and emergency communications, and national
+digital-infrastructure programmes. It is a **separate** line rather than being
+folded into the two core ones so capability-fit scores stay meaningful: adjacent
+work scores +20, against +30 for core, so a national digital programme never
+outranks a real fibre build.
+
+### Worldwide by design — no location preference
+
+The scope says nothing about *where* an opportunity is. Every country a source
+reports is carried and appears in the Explorer's Country filter (which shows its
+own count, so the coverage is visible rather than something you scroll to find).
+
+An earlier version ranked results by JSAN's office footprint — a
+`presenceTier`/`presenceRank` on every record, a "JSAN Location Priority" filter,
+and a default sort that put office countries first. That has been **removed**:
+where JSAN happens to have an office is not a property of the opportunity, and
+ranking by it pushed every other country onto the back pages. Default ranking is
+now **capability fit, then nearest deadline**. Narrow by location with the
+Country filter instead.
 
 The filter runs in two stages, because neither alone is sufficient:
 
@@ -27,6 +49,20 @@ The filter runs in two stages, because neither alone is sufficient:
 
 Measured against live TED, the same 120 notices fetched: **3% in-domain before,
 42% after**.
+
+The vocabulary is maintained by auditing what the store is *wrongly hiding*, not
+by loosening the rules. TED renders every title as
+`Country – <English CPV label> – <native title>`, so the CPV wording is always
+present and worth matching directly ("Telephone and data transmission services");
+a few high-value native terms are matched too, since the native half is often the
+only place the work is described — German *Breitbandausbau* (broadband rollout)
+and French *boucle optique locale* (local optical loop) were both being missed.
+Re-running the classifier over 436 stored rows after the most recent audit
+promoted **10** records and reinterpreted none.
+
+Bare `digitalisation` is deliberately **not** matched: across TED it
+overwhelmingly means scanning paper records, not building infrastructure. Only
+programme-shaped phrasings are ("Chad Digital Transformation Project").
 
 Nothing is ever deleted to achieve this. Out-of-domain records already
 collected are retained in the database and simply not selected — reads filter
@@ -168,8 +204,8 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 
 ## Modules (all implemented in the UI)
 
-- **Dashboard** — totals, new today, closing soon, pipeline value; charts by country, technology, budget, source, category; recent + closing-soon lists.
-- **Project Explorer** — advanced filters (country, state, category, technology, project type, status, organization, source, budget range), keyword search, quick tech chips, grid/table views, sorting, pagination, breadcrumbs.
+- **Dashboard** — totals, countries covered, best-fit count, closing soon, pipeline value; per-service-line shortcuts whose counts are derived from the same filter as the link they open; real monthly discovery trend from publication dates; charts by country, technology, budget, source, category; recent + closing-soon lists. No invented period-over-period deltas — the store keeps no historical snapshots, so there is nothing real to compare against.
+- **Project Explorer** — advanced filters (country, state, category, service line, technology, project type, status, organization, source, budget range), keyword search, quick tech chips, grid/table views, sorting, pagination, breadcrumbs.
 - **Project Details** — full record: description, org, country, budget, deadlines, source, reference number, technologies, eligibility, contact, official link, **AI summary + tags**, and technology/category-matched recommendations.
 - **API Connectors** — connector cards (auth, schedule, rate limit, pagination, retry, status), add-connector form, scheduler cadences, and live connector logs.
 - **Smart Search** — global autocomplete over technologies, organizations, countries and projects.
@@ -213,7 +249,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │     │  ├─ connectors/              # UK · EU TED · World Bank · SAM.gov
 │     │  ├─ normalize.ts             # FX · categorize · tech · fit score · gates
 │     │  └─ ai-enrich.ts             # optional OpenRouter summary polish
-│     └─ types · seed · format · presence
+│     └─ domain.ts · types · seed · format
 │
 ├─ vercel.json                       # cron schedule + function maxDuration
 ├─ backend/                          # Python FastAPI service (reference stack)

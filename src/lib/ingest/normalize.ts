@@ -8,6 +8,7 @@
 // top of this — but the portal is fully functional on these heuristics alone.
 // ------------------------------------------------------------------
 import crypto from "node:crypto";
+import { TARGET_MIN_BUDGET_USD } from "@/lib/domain";
 import type {
   ProjectCategory,
   ProjectType,
@@ -93,7 +94,27 @@ const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
   // Bare "networks" is accepted because it is a CPV category label in its own
   // right (32400000), but only when it isn't one of the many non-telecom
   // networks a procurement feed carries — road, rail, heating, water, power.
-  [/telecom|fibre|fiber|\b5g\b|\b4g\b|\blte\b|\bgsm\b|broadband|network engineering|network cabling|structured cabling|network equipment|network infrastructure|network technolog|data network|oss\/bss|\bfttx\b|\bfttp\b|\bftth\b|mobile network|mobile-telephone|base station|antenna|microwave link|satellite communication|\bvsat\b|sd-wan|backhaul|broadcast transmission|radio frequency|communication lines|communications? and connectivity|communications? (?:products|services|systems|equipment|infrastructure|networks?)|digital infrastructure|(?<!road |rail |railway |transport |heating |water |sewer |power |energy |social |distribution |pipeline )\bnetworks\b/i, "Telecom / Network"],
+  //
+  // The tail of this pattern closes gaps found by auditing real stored notices
+  // that the portal was wrongly hiding: TED renders each title as
+  // "Country – <English CPV label> – <native title>", so the CPV wording
+  // ("Telephone and data transmission services") is always present and worth
+  // matching directly. A few high-value native terms are included too, since the
+  // native half of the title is often the only place the work is described —
+  // German "Breitbandausbau" (broadband rollout) and French "boucle optique
+  // locale" (local optical loop) were both being missed.
+  [/telecom|fibre|fiber|\b5g\b|\b4g\b|\blte\b|\bgsm\b|broadband|network engineering|network cabling|structured cabling|network equipment|network infrastructure|network technolog|data network|oss\/bss|\bfttx\b|\bfttp\b|\bftth\b|mobile network|mobile-telephone|base station|antenna|microwave link|satellite communication|\bvsat\b|sd-wan|backhaul|broadcast transmission|radio frequency|communication lines|communications? and connectivity|communications? (?:products|services|systems|equipment|infrastructure|networks?)|digital infrastructure|telephone|data transmission|breitband|boucle optique|optical loop|local loop|leased line|dark fib|\bpstn\b|\bvoip\b|(?<!road |rail |railway |transport |heating |water |sewer |power |energy |social |distribution |pipeline )\bnetworks\b/i, "Telecom / Network"],
+  // Geospatial- and telecom-ADJACENT work: same field, not a pure GIS or
+  // telecom contract. Ordered after both core rules so a fibre or surveying
+  // notice always lands in its core line first, and before the generic
+  // AI/cyber/data rules so this vocabulary wins over them.
+  //
+  // Kept deliberately tight. Bare "digitalisation" is NOT here: across TED it
+  // overwhelmingly means scanning paper records ("Digitalisierung von Akten"),
+  // not building infrastructure. Only the programme-shaped phrasings are
+  // matched, which is how the World Bank names national broadband and digital
+  // infrastructure operations ("Chad Digital Transformation Project").
+  [/earth observation|copernicus|satellite imagery|aerial imagery|\buav\b|unmanned aerial|\bdrone\b|digital twin|\bbim\b|building information model|spatial data infrastructure|geodata|geo-?portal|geoinformation|land information system|smart cit|\biot\b|internet of things|sensor network|telemetry|\bscada\b|spectrum management|radio spectrum|emergency communication|public safety network|\btetra\b|network monitoring|network security|network operations cent|digital (?:transformation|acceleration|infrastructure|econom|connectivity|development)/i, "Geospatial / Telecom Adjacent"],
   [/machine learning|artificial intelligence|\bai\b|\bml\b|data science|neural|llm|computer vision/i, "AI/ML"],
   [/cyber|information security|infosec|penetration test|\bsoc\b|siem|threat|vulnerabilit/i, "Cyber Security"],
   [/data warehouse|data platform|\betl\b|data engineering|analytics platform|data lake|big data/i, "Data Engineering"],
@@ -115,6 +136,7 @@ export function categorize(text: string): ProjectCategory {
 const CATEGORY_TO_SERVICE_LINE: Record<ProjectCategory, ServiceLine> = {
   GIS: "Geospatial Intelligence",
   "Telecom / Network": "Telecom & Network Engineering",
+  "Geospatial / Telecom Adjacent": "Geospatial & Telecom Adjacent",
   "Workforce Solutions": "Strategic Workforce Solutions",
   "Program Management": "Structured Program Management",
   "AI/ML": "Digital Engineering",
@@ -139,6 +161,16 @@ const TECH_VOCAB: [RegExp, string][] = [
   [/network planning|network design/i, "Network Planning"],
   [/oss\/bss|\boss\b|\bbss\b/i, "OSS/BSS"],
   [/\brf\b|rf planning|radio frequency/i, "RF Planning"],
+  // Adjacent-field vocabulary, so the Technology filter is useful for the
+  // adjacent service line too. Listed before the generic stack entries because
+  // extractTechnologies keeps only the first 8 matches.
+  [/lidar/i, "LiDAR"],
+  [/remote sensing/i, "Remote Sensing"],
+  [/earth observation|copernicus/i, "Earth Observation"],
+  [/satellite/i, "Satellite"],
+  [/digital twin/i, "Digital Twin"],
+  [/\biot\b|internet of things|sensor network/i, "IoT"],
+  [/\bscada\b|telemetry/i, "SCADA"],
   [/\bjava\b/i, "Java"],
   [/\bpython\b/i, "Python"],
   [/\breact\b/i, "React"],
@@ -166,10 +198,13 @@ export function extractTechnologies(text: string): string[] {
 }
 
 // Transparent capability-fit heuristic (0–100). Core service lines score
-// highest; budget size and a recognized category nudge it up.
+// highest; adjacent work sits below them but above generic digital work, so a
+// national digital-infrastructure programme never outranks a real fibre build.
+// Budget size and a recognized category nudge it up.
 export function fitScoreFor(serviceLine: ServiceLine, budgetUsd: number | null, hasCategory: boolean): number {
   let score = 40;
   if (serviceLine === "Geospatial Intelligence" || serviceLine === "Telecom & Network Engineering") score += 30;
+  else if (serviceLine === "Geospatial & Telecom Adjacent") score += 20;
   else if (serviceLine === "Digital Engineering") score += 15;
   if ((budgetUsd ?? 0) >= 1_000_000) score += 15;
   else if ((budgetUsd ?? 0) >= 100_000) score += 8;
@@ -211,7 +246,7 @@ function fallbackSummary(description: string, title: string): string {
 // $1–10M target range and are filtered out. Undisclosed-budget notices are
 // kept (value unknown, often large — e.g. most EU TED tenders) and default to
 // $1M at read time so they sit at the bottom of the target band.
-export const MIN_BUDGET_USD = 1_000_000;
+export const MIN_BUDGET_USD = TARGET_MIN_BUDGET_USD;
 
 export function meetsMinBudget(o: NormalizedOpportunity): boolean {
   return o.budgetUsd == null || o.budgetUsd >= MIN_BUDGET_USD;

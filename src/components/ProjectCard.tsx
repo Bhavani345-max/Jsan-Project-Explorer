@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MapPin, Building2, CalendarClock, Wallet } from "lucide-react";
 import type { Project } from "@/lib/types";
-import { StatusBadge, FitBadge, PresenceBadge } from "./ui";
+import { StatusBadge, FitBadge } from "./ui";
 import { money, deadlineLabel, daysLeft } from "@/lib/format";
 
 // The active search context, so a card can lead with the exact thing the user
@@ -64,7 +64,6 @@ export function ProjectCard({ p, highlight }: { p: Project; highlight?: CardHigh
       </div>
 
       <div className="flex flex-wrap gap-1.5 items-center">
-        <PresenceBadge tier={p.presenceTier} label={p.presenceLabel} />
         {orderedTech.slice(0, 3).map((t) => (
           <span
             key={t}

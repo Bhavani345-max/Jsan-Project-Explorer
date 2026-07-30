@@ -32,7 +32,7 @@ const SEARCH_SIGNALS: RegExp[] = [
   /\bfind\b/, /\bsearch\b/, /\bshow\b/, /\blist\b/, /\bbrowse\b/, /\bsurface\b/,
   /opportunit/, /\btender/, /\brfp\b/, /\brfq\b/, /procure/, /solicitation/,
   /\bbid\b/, /\bcontract/, /\bproject/, /\bpipeline\b/, /\blead\b/, /\bdeal\b/,
-  /best fit/, /closing soon/, /\bfootprint\b/, /in our (offices|markets|footprint)/,
+  /best fit/, /closing soon/,
 ];
 const KNOWLEDGE_SIGNALS: RegExp[] = [
   /^\s*(what|who|why|how|when|where|which)\b/, /what('s| is| are)\b/,
@@ -63,6 +63,7 @@ const COUNTRY_ALIASES: Record<string, string> = {
 const SERVICE_LINE_KEYWORDS: { re: RegExp; line: string }[] = [
   { re: /\bgis\b|geospatial|geospacial|mapping|spatial|cartograph/i, line: "Geospatial Intelligence" },
   { re: /telecom|telecoms|fibre|fiber|5g|broadband|\brf\b|gsm|network engineering/i, line: "Telecom & Network Engineering" },
+  { re: /adjacent|related work|earth observation|digital twin|smart cit|\biot\b|internet of things|\bscada\b|sensor network/i, line: "Geospatial & Telecom Adjacent" },
   { re: /programme management|program management|\bpmo\b/i, line: "Structured Program Management" },
   { re: /workforce|staffing|resourcing|recruitment/i, line: "Strategic Workforce Solutions" },
 ];
@@ -102,7 +103,7 @@ export function runAssistant(message: string): AssistantResult {
 
   const f = facets();
   const understood: string[] = [];
-  const query: ProjectQuery = { sort: "priority", pageSize: 60, page: 1 };
+  const query: ProjectQuery = { sort: "fitScore", pageSize: 60, page: 1 };
   const filters: Record<string, string> = {};
 
   // --- technology ---
@@ -191,7 +192,7 @@ export function runAssistant(message: string): AssistantResult {
       const kw = tokens.reduce((s, t) => (hay.includes(t) ? s + 1 : s), 0);
       return { p, kw };
     })
-    .sort((a, b) => b.kw - a.kw || b.p.presenceRank - a.p.presenceRank || b.p.fitScore - a.p.fitScore);
+    .sort((a, b) => b.kw - a.kw || b.p.fitScore - a.p.fitScore);
 
   const projects = scored.slice(0, 6).map((s) => s.p);
 
@@ -228,5 +229,5 @@ export const ASSISTANT_SUGGESTIONS = [
   "Open GIS opportunities best fit for us",
   "Telecom & 5G tenders in the UK under $6M",
   "Highest-value projects closing soon",
-  "AI/ML projects in our operating markets",
+  "Smart city and IoT projects worldwide",
 ];

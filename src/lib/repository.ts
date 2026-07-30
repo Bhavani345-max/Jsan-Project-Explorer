@@ -1,5 +1,5 @@
 import { PROJECTS, CONNECTORS, CONNECTOR_LOGS } from "./seed";
-import { JSAN_OFFICES, JSAN_OPERATING } from "./presence";
+import { TARGET_MIN_BUDGET_USD, TARGET_MAX_BUDGET_USD } from "./domain";
 import { daysLeft } from "./format";
 import type { Project, ProjectQuery, DashboardStats, APIConnector, ConnectorLog } from "./types";
 
@@ -33,7 +33,6 @@ function matches(p: Project, q: ProjectQuery): boolean {
   if (q.state && p.state !== q.state) return false;
   if (q.category && p.category !== q.category) return false;
   if (q.serviceLine && p.serviceLine !== q.serviceLine) return false;
-  if (q.presenceTier && p.presenceTier !== q.presenceTier) return false;
   if (q.projectType && p.projectType !== q.projectType) return false;
   if (q.status && p.status !== q.status) return false;
   if (q.source && p.source !== q.source) return false;
@@ -59,20 +58,20 @@ export interface PagedProjects {
 export function queryProjects(q: ProjectQuery, projects: Project[] = PROJECTS): PagedProjects {
   let items = projects.filter((p) => matches(p, q));
 
-  const sort = q.sort ?? "priority";
+  // Default ranking is capability fit, tie-broken by the nearest deadline. There
+  // is no location-preference ranking: it is not a property of the opportunity,
+  // and it pushed every country outside JSAN's office list onto the back pages.
+  const sort = q.sort ?? "fitScore";
+  const byDeadline = (a: Project, b: Project) =>
+    new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
   items = [...items].sort((a, b) => {
-    // Priority = JSAN location footprint first, then capability fit, then deadline.
-    if (sort === "priority")
-      return (
-        b.presenceRank - a.presenceRank ||
-        b.fitScore - a.fitScore ||
-        new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-      );
     if (sort === "budget") return (b.budget ?? 0) - (a.budget ?? 0);
-    if (sort === "fitScore") return b.fitScore - a.fitScore;
+    if (sort === "deadline") return byDeadline(a, b);
     if (sort === "publicationDate")
       return new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime();
-    return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    // fitScore, and the fallback for any unrecognized value (e.g. an old
+    // bookmarked ?sort=priority link).
+    return b.fitScore - a.fitScore || byDeadline(a, b);
   });
 
   const total = items.length;
@@ -107,6 +106,52 @@ export function relatedProjects(p: Project, limit = 4, projects: Project[] = PRO
     .map((r) => r.x);
 }
 
+// -------- monthly discovery trend --------
+// Counted from the real publication dates on the records themselves. The window
+// is a rolling N months ending at the *current* month, so the right-hand edge is
+// always "now": if ingestion stalls, the line visibly falls to zero instead of
+// the chart quietly re-scaling to the last month that happened to have data.
+//
+// Records published before the window are not shown here — they still appear
+// everywhere else in the portal, this chart is only the recent trend.
+export const TREND_MONTHS = 6;
+
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function perMonthTrend(
+  projects: Project[] = PROJECTS,
+  months = TREND_MONTHS,
+): { label: string; value: number }[] {
+  // Tally by calendar month, keyed "YYYY-MM" straight off the ISO date.
+  const counts = new Map<string, number>();
+  for (const p of projects) {
+    const key = (p.publicationDate ?? "").slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(key)) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  // Walk back from the current UTC month (matching the rest of the app's date
+  // math), then reverse into chronological order.
+  const now = new Date();
+  let year = now.getUTCFullYear();
+  let month = now.getUTCMonth(); // 0-11
+  const window: { year: number; month: number; key: string }[] = [];
+  for (let i = 0; i < months; i++) {
+    window.push({ year, month, key: `${year}-${String(month + 1).padStart(2, "0")}` });
+    if (--month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
+  window.reverse();
+
+  // Only disambiguate with a year when the window straddles one.
+  const spansYears = window[0].year !== window[window.length - 1].year;
+  return window.map((w) => ({
+    label: spansYears ? `${MONTH_SHORT[w.month]} '${String(w.year).slice(2)}` : MONTH_SHORT[w.month],
+    value: counts.get(w.key) ?? 0,
+  }));
+}
+
 function tally(items: Project[], key: (p: Project) => string): { label: string; value: number }[] {
   const map = new Map<string, number>();
   for (const p of items) {
@@ -130,17 +175,10 @@ export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
     { label: "> $8M", test: (b: number) => b >= 8_000_000 },
   ];
 
-  const perMonthLabels = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-  const perMonth = perMonthLabels.map((label, i) => ({
-    label,
-    value: 6 + Math.round(Math.sin(i * 1.1) * 3 + i * 1.4),
-  }));
-
   // JSAN's target band: opportunities whose value falls in $1–10M.
-  const TARGET_MIN = 1_000_000;
-  const TARGET_MAX = 10_000_000;
   const inTarget = projects.filter(
-    (p) => p.budget != null && p.budget >= TARGET_MIN && p.budget <= TARGET_MAX,
+    (p) =>
+      p.budget != null && p.budget >= TARGET_MIN_BUDGET_USD && p.budget <= TARGET_MAX_BUDGET_USD,
   );
 
   return {
@@ -150,7 +188,10 @@ export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
     totalBudget: projects.reduce((s, p) => s + (p.budget ?? 0), 0),
     targetPipeline: inTarget.reduce((s, p) => s + (p.budget ?? 0), 0),
     targetCount: inTarget.length,
-    byCountry: tally(projects, (p) => p.country).slice(0, 8),
+    // Top 12 rather than 8 — the portal is worldwide and the chart is the main
+    // place the spread of countries is visible. countryCount reports the full
+    // number, and the Explorer's country filter lists every one of them.
+    byCountry: tally(projects, (p) => p.country).slice(0, 12),
     byTechnology: [...byTech.entries()]
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
@@ -162,73 +203,16 @@ export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
     bySource: tally(projects, (p) => p.source).slice(0, 8),
     byCategory: tally(projects, (p) => p.category),
     byServiceLine: tally(projects, (p) => p.serviceLine),
-    byPresence: tally(projects, (p) => p.presenceTier),
     highFitCount: projects.filter((p) => p.fitScore >= 85).length,
-    inFootprintCount: projects.filter((p) => p.presenceRank >= 2).length,
-    perMonth,
+    countryCount: new Set(projects.map((p) => p.country)).size,
+    perMonth: perMonthTrend(projects),
   };
 }
 
-// -------- JSAN location footprint breakdown (dashboard panel) --------
-export function jsanPresence(projects: Project[] = PROJECTS) {
-  const byCountry = new Map<string, number>();
-  for (const p of projects) byCountry.set(p.country, (byCountry.get(p.country) ?? 0) + 1);
-
-  const offices = JSAN_OFFICES.map((o) => ({
-    country: o.country,
-    city: o.city,
-    short: o.short,
-    tier: o.tier,
-    count: byCountry.get(o.country) ?? 0,
-  }));
-
-  const operatingCountries = Object.keys(JSAN_OPERATING);
-  const operatingCount = projects.filter((p) => operatingCountries.includes(p.country)).length;
-  const officeSet = new Set(JSAN_OFFICES.map((o) => o.country));
-  const newMarketCount = projects.filter(
-    (p) => !officeSet.has(p.country) && !operatingCountries.includes(p.country),
-  ).length;
-
-  return { offices, operatingCount, operatingCountries, newMarketCount };
-}
-
-export interface FootprintPoint {
-  country: string;
-  city: string;
-  short: string;
-  tier: string;
-  count: number;
-  lat: number;
-  lon: number;
-}
-
-// Geo points for the dashboard world map — offices + operating markets.
-export function footprintPoints(projects: Project[] = PROJECTS): FootprintPoint[] {
-  const byCountry = new Map<string, number>();
-  for (const p of projects) byCountry.set(p.country, (byCountry.get(p.country) ?? 0) + 1);
-
-  const offices: FootprintPoint[] = JSAN_OFFICES.map((o) => ({
-    country: o.country,
-    city: o.city,
-    short: o.short,
-    tier: o.tier,
-    count: byCountry.get(o.country) ?? 0,
-    lat: o.lat,
-    lon: o.lon,
-  }));
-  const operating: FootprintPoint[] = Object.entries(JSAN_OPERATING).map(([country, v]) => ({
-    country,
-    city: v.city,
-    short: country,
-    tier: "Operating",
-    count: byCountry.get(country) ?? 0,
-    lat: v.lat,
-    lon: v.lon,
-  }));
-  return [...offices, ...operating];
-}
-
 // -------- facet helpers for filter dropdowns --------
+// Every facet is derived from the data, so the filters describe exactly what is
+// there. `countries` is intentionally uncapped: the portal is worldwide and the
+// country dropdown is now the only way location narrows results.
 export function facets(projects: Project[] = PROJECTS) {
   const uniq = (arr: string[]) => [...new Set(arr)].sort();
   return {
@@ -236,9 +220,6 @@ export function facets(projects: Project[] = PROJECTS) {
     states: uniq(projects.map((p) => p.state).filter(Boolean)),
     categories: uniq(projects.map((p) => p.category)),
     serviceLines: uniq(projects.map((p) => p.serviceLine)),
-    presenceTiers: ["Headquarters", "Office", "Operating", "New Market"].filter((t) =>
-      projects.some((p) => p.presenceTier === t),
-    ),
     projectTypes: uniq(projects.map((p) => p.projectType)),
     statuses: uniq(projects.map((p) => p.status)),
     sources: uniq(projects.map((p) => p.source)),

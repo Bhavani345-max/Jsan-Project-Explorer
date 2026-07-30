@@ -1,24 +1,48 @@
 import Link from "next/link";
-import { FolderKanban, Sparkles, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower } from "lucide-react";
+import { FolderKanban, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower, Layers, Globe } from "lucide-react";
 import { dashboardStats, queryProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
-import { SectionCard, Breadcrumbs, StatusBadge, FitBadge, PresenceBadge } from "@/components/ui";
+import { SectionCard, Breadcrumbs, StatusBadge, FitBadge } from "@/components/ui";
 import { VBarChart, DonutChart, HBarChart, TrendArea } from "@/components/charts";
 import { money, deadlineLabel, relTime, fmtDate } from "@/lib/format";
+import type { ProjectQuery, ServiceLine } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+// The count shown on a core service-line card and the Explorer link it opens are
+// both derived from ONE filter object, so the card can never claim a number the
+// results page then contradicts.
+//
+// `availableOnly` matches the Explorer's own default (awarded/closed hidden), and
+// `includeLarge` lifts its $10M soft cap — queryProjects applies no ceiling here,
+// so without that flag the card would over-count by however many >$10M leads exist.
+function coreServiceLine(serviceLine: ServiceLine, projects: Parameters<typeof queryProjects>[1]) {
+  const sort = "fitScore" as const;
+  const query: ProjectQuery = { serviceLine, availableOnly: true, sort };
+  const params = new URLSearchParams({
+    serviceLine,
+    availableOnly: String(query.availableOnly),
+    includeLarge: "true",
+    sort,
+  });
+  return {
+    count: queryProjects({ ...query, pageSize: 1 }, projects).total,
+    href: `/explorer?${params.toString()}`,
+  };
+}
 
 export default async function DashboardPage() {
   const { projects } = await liveDataset();
   const stats = dashboardStats(projects);
   const recent = queryProjects({ sort: "publicationDate", pageSize: 6 }, projects).items;
   const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }, projects).items;
-  const bestFit = queryProjects({ sort: "priority", pageSize: 5 }, projects).items;
+  const bestFit = queryProjects({ sort: "fitScore", pageSize: 5 }, projects).items;
 
-  const lineCount = (label: string) => stats.byServiceLine.find((s) => s.label === label)?.value ?? 0;
-  const gisCount = lineCount("Geospatial Intelligence");
-  const telecomCount = lineCount("Telecom & Network Engineering");
+  const gis = coreServiceLine("Geospatial Intelligence", projects);
+  const telecom = coreServiceLine("Telecom & Network Engineering", projects);
+  const adjacent = coreServiceLine("Geospatial & Telecom Adjacent", projects);
+  const sourceCount = new Set(projects.map((p) => p.source)).size;
 
   return (
     <div className="space-y-6">
@@ -28,8 +52,8 @@ export default async function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Opportunity Dashboard</h1>
             <p className="text-text-muted text-sm mt-1">
-              GIS and telecom opportunities — plus adjacent digital engineering, workforce, and
-              program-management work — discovered from public sources.
+              Geospatial, telecom and closely related engineering opportunities — discovered from
+              public sources worldwide, in every country those sources report.
             </p>
           </div>
           <Link href="/explorer" className="btn btn-primary">
@@ -38,14 +62,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Core-business shortcuts */}
+      {/* Service-line shortcuts */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-text-faint mb-2">
-          Core service lines · quick access
+          Service lines · quick access
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link
-            href="/explorer?serviceLine=Geospatial%20Intelligence&sort=fitScore"
+            href={gis.href}
             className="card p-5 flex items-center gap-4 hover:shadow-[var(--shadow-lg)] hover:-translate-y-0.5 transition-all group"
           >
             <span
@@ -58,14 +82,14 @@ export default async function DashboardPage() {
               <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">Core · Geospatial</div>
               <div className="font-semibold text-[15px] mt-0.5 group-hover:text-primary transition-colors">GIS Opportunities</div>
               <div className="text-[12px] text-text-faint mt-0.5">
-                {gisCount} open · GIS platforms, spatial analytics, field survey
+                {gis.count} open · GIS platforms, spatial analytics, field survey
               </div>
             </div>
             <ArrowRight size={18} className="text-text-faint shrink-0 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
           </Link>
 
           <Link
-            href="/explorer?serviceLine=Telecom%20%26%20Network%20Engineering&sort=fitScore"
+            href={telecom.href}
             className="card p-5 flex items-center gap-4 hover:shadow-[var(--shadow-lg)] hover:-translate-y-0.5 transition-all group"
           >
             <span
@@ -78,7 +102,27 @@ export default async function DashboardPage() {
               <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--accent)" }}>Core · Telecom</div>
               <div className="font-semibold text-[15px] mt-0.5">Telecom Opportunities</div>
               <div className="text-[12px] text-text-faint mt-0.5">
-                {telecomCount} open · fibre/OSP, 5G &amp; RF planning, OSS/BSS
+                {telecom.count} open · fibre/OSP, 5G &amp; RF planning, OSS/BSS
+              </div>
+            </div>
+            <ArrowRight size={18} className="text-text-faint shrink-0 group-hover:translate-x-0.5 transition-all" />
+          </Link>
+
+          <Link
+            href={adjacent.href}
+            className="card p-5 flex items-center gap-4 hover:shadow-[var(--shadow-lg)] hover:-translate-y-0.5 transition-all group"
+          >
+            <span
+              className="grid place-items-center w-12 h-12 rounded-xl shrink-0"
+              style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}
+            >
+              <Layers size={24} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Related</div>
+              <div className="font-semibold text-[15px] mt-0.5">Adjacent Opportunities</div>
+              <div className="text-[12px] text-text-faint mt-0.5">
+                {adjacent.count} open · earth observation, digital twin, IoT, SCADA
               </div>
             </div>
             <ArrowRight size={18} className="text-text-faint shrink-0 group-hover:translate-x-0.5 transition-all" />
@@ -87,11 +131,15 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Total Opportunities" value={String(stats.totalProjects)} icon={FolderKanban} delta={8} hint="Live across UK · EU · World Bank" />
-        <StatCard label="Best-Fit for JSAN" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" delta={12} hint="Capability fit ≥ 85%" />
-        <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" delta={-3} hint="Deadline within 7 days" />
-        <StatCard label="Target Pipeline ($1–10M)" value={money(stats.targetPipeline)} icon={Wallet} accent="var(--accent)" delta={15} hint={`${stats.targetCount} opportunities in JSAN's range`} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* No period-over-period deltas: the portal holds only currently-open
+            notices and keeps no historical snapshots, so there is nothing real to
+            compare against. Every figure below is a straight count of the data. */}
+        <StatCard label="Total Opportunities" value={String(stats.totalProjects)} icon={FolderKanban} hint={`Open, across ${sourceCount} public ${sourceCount === 1 ? "source" : "sources"}`} />
+        <StatCard label="Countries Covered" value={String(stats.countryCount)} icon={Globe} accent="var(--accent)" hint="Every country the sources report" />
+        <StatCard label="Best-Fit for JSAN" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" hint="Capability fit ≥ 85%" />
+        <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" hint="Deadline within 7 days" />
+        <StatCard label="Target Pipeline ($1–10M)" value={money(stats.targetPipeline)} icon={Wallet} hint={`${stats.targetCount} opportunities in JSAN's range`} />
       </div>
 
       {/* JSAN service-line focus */}
@@ -100,11 +148,11 @@ export default async function DashboardPage() {
           <DonutChart data={stats.byServiceLine} />
         </SectionCard>
         <SectionCard
-          title="Priority Opportunities for JSAN"
-          subtitle="Ranked by location footprint, then capability fit"
+          title="Best-Fit Opportunities for JSAN"
+          subtitle="Ranked by capability fit, then nearest deadline"
           className="lg:col-span-2"
           action={
-            <Link href="/explorer?sort=priority" className="text-[13px] font-semibold text-primary hover:underline">
+            <Link href="/explorer?sort=fitScore" className="text-[13px] font-semibold text-primary hover:underline">
               View all
             </Link>
           }
@@ -118,10 +166,7 @@ export default async function DashboardPage() {
               >
                 <FitBadge score={p.fitScore} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-sm truncate">{p.title}</p>
-                    <PresenceBadge tier={p.presenceTier} label={p.presenceLabel} />
-                  </div>
+                  <p className="font-medium text-sm truncate">{p.title}</p>
                   <p className="text-[12px] text-text-faint truncate">
                     {p.serviceLine} · {p.organization} · {p.country}
                   </p>

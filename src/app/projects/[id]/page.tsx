@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { getProject, relatedProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
-import { Breadcrumbs, StatusBadge, SectionCard, TechChip, FitBadge, PresenceBadge } from "@/components/ui";
+import { Breadcrumbs, StatusBadge, SectionCard, TechChip, FitBadge } from "@/components/ui";
 import { ProjectCard } from "@/components/ProjectCard";
 import { money, fmtDate, deadlineLabel, daysLeft } from "@/lib/format";
 
@@ -23,7 +23,6 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
   const facts: [React.ComponentType<{ size?: number; className?: string }>, string, string][] = [
     [Building2, "Organization", project.organization],
     [MapPin, "Location", project.state ? `${project.state}, ${project.country}` : project.country],
-    [Building2, "JSAN Footprint", project.presenceLabel],
     [Wallet, "Budget", project.budgetLabel],
     [CalendarClock, "Deadline", project.deadline
       ? `${fmtDate(project.deadline)} · ${deadlineLabel(project.deadline)}`
@@ -54,7 +53,6 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
               <span className="chip">{project.category}</span>
               <span className="chip">{project.projectType}</span>
               <FitBadge score={project.fitScore} showLabel />
-              <PresenceBadge tier={project.presenceTier} label={project.presenceLabel} showAll />
               <StatusBadge status={project.status} />
               {dl >= 0 && dl <= 7 && (
                 <span className="chip !bg-warning-soft !text-warning !border-transparent">

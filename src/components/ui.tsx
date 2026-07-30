@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Building2, MapPin } from "lucide-react";
-import type { ProjectStatus, PresenceTier } from "@/lib/types";
+import type { ProjectStatus } from "@/lib/types";
 
 export function StatusBadge({ status }: { status: ProjectStatus }) {
   const map: Record<ProjectStatus, { bg: string; text: string; label: string }> = {
@@ -23,41 +22,6 @@ export function StatusBadge({ status }: { status: ProjectStatus }) {
 
 export function TechChip({ label }: { label: string }) {
   return <span className="chip">{label}</span>;
-}
-
-/**
- * JSAN location-footprint badge. Offices and operating markets get a visible
- * badge (signalling location priority); new markets render nothing unless
- * `showAll` is set. Colour encodes tier.
- */
-export function PresenceBadge({
-  tier,
-  label,
-  showAll = false,
-}: {
-  tier: PresenceTier;
-  label: string;
-  showAll?: boolean;
-}) {
-  if (tier === "New Market" && !showAll) return null;
-  const map: Record<PresenceTier, { bg: string; text: string; icon: typeof Building2 }> = {
-    Headquarters: { bg: "var(--primary-soft)", text: "var(--primary)", icon: Building2 },
-    Office: { bg: "color-mix(in srgb, var(--accent) 15%, transparent)", text: "var(--accent)", icon: Building2 },
-    Operating: { bg: "var(--success-soft)", text: "var(--success)", icon: MapPin },
-    "New Market": { bg: "var(--bg-subtle)", text: "var(--text-muted)", icon: MapPin },
-  };
-  const s = map[tier];
-  const Icon = s.icon;
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: s.bg, color: s.text }}
-      title={`JSAN footprint: ${label}`}
-    >
-      <Icon size={11} />
-      {label}
-    </span>
-  );
 }
 
 /** JSAN capability-fit badge — green ≥85, amber ≥70, neutral below. */

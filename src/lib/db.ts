@@ -8,9 +8,8 @@
 // ------------------------------------------------------------------
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { Project } from "@/lib/types";
-import { presenceFor } from "@/lib/presence";
 import { money } from "@/lib/format";
-import { TARGET_SERVICE_LINES } from "@/lib/domain";
+import { TARGET_SERVICE_LINES, TARGET_MIN_BUDGET_USD } from "@/lib/domain";
 import type { NormalizedOpportunity } from "@/lib/ingest/normalize";
 
 let _sql: NeonQueryFunction<false, false> | null = null;
@@ -128,7 +127,7 @@ export async function upsertOpportunities(rows: NormalizedOpportunity[]): Promis
  */
 export async function purgeExpired(
   maxAgeDaysNoDeadline = 180,
-  minBudgetUsd = 1_000_000,
+  minBudgetUsd = TARGET_MIN_BUDGET_USD,
 ): Promise<number> {
   const sql = getSql();
   if (!sql) return 0;
@@ -234,12 +233,11 @@ function statusFor(deadlineIso: string): Project["status"] {
 }
 
 function toProject(r: Row): Project {
-  const presence = presenceFor(r.country);
   const deadlineIso = toIsoDate(r.deadline);
   // Neon returns BIGINT as a string (64-bit safety) — coerce to a real number.
   // Undisclosed budgets default to $1M so every opportunity carries a value
   // (disclosed budgets are already filtered to ≥ $1M at ingest).
-  const budget = r.budget_usd == null ? 1_000_000 : Number(r.budget_usd);
+  const budget = r.budget_usd == null ? TARGET_MIN_BUDGET_USD : Number(r.budget_usd);
   const contact =
     r.contact_name || r.contact_email || r.contact_phone
       ? { name: r.contact_name ?? undefined, email: r.contact_email ?? undefined, phone: r.contact_phone ?? undefined }
@@ -263,9 +261,6 @@ function toProject(r: Row): Project {
     category: r.category as Project["category"],
     serviceLine: r.service_line as Project["serviceLine"],
     fitScore: r.fit_score,
-    presenceTier: presence.tier,
-    presenceLabel: presence.label,
-    presenceRank: presence.rank,
     projectType: r.project_type as Project["projectType"],
     status: statusFor(deadlineIso),
     technologies: r.technologies ?? [],

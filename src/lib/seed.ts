@@ -1,5 +1,4 @@
 import type { Project, APIConnector, ConnectorLog, ProjectCategory, ProjectType, SourceType } from "./types";
-import { presenceFor } from "./presence";
 
 // ------------------------------------------------------------------
 // Deterministic seed data. In production the SchedulerService writes
@@ -833,7 +832,7 @@ const SPECS: Spec[] = [
   },
 
   // ==================================================================
-  //  GIS & Telecom opportunities across JSAN's operating footprint
+  //  GIS & Telecom opportunities from around the world
   // ==================================================================
   {
     title: "5G & Fibre GIS Network Planning for the Klang Valley",
@@ -1136,6 +1135,7 @@ const CATEGORIES: ProjectCategory[] = [
 const SERVICE_LINE_BY_CATEGORY: Record<ProjectCategory, import("./types").ServiceLine> = {
   GIS: "Geospatial Intelligence",
   "Telecom / Network": "Telecom & Network Engineering",
+  "Geospatial / Telecom Adjacent": "Geospatial & Telecom Adjacent",
   "Workforce Solutions": "Strategic Workforce Solutions",
   "Program Management": "Structured Program Management",
   "AI/ML": "Digital Engineering",
@@ -1167,6 +1167,7 @@ function fitScoreFor(category: ProjectCategory, technologies: string[]): number 
   const base: Record<import("./types").ServiceLine, number> = {
     "Geospatial Intelligence": 92,
     "Telecom & Network Engineering": 90,
+    "Geospatial & Telecom Adjacent": 84,
     "Strategic Workforce Solutions": 82,
     "Structured Program Management": 78,
     "Digital Engineering": 74,
@@ -1239,7 +1240,6 @@ const AWARDED_INDICES = new Set([3, 9, 16, 22, 29, 35, 41, 48]);
 
 export const PROJECTS: Project[] = SPECS.map((s, i) => {
   const budgetUsd = usd(s.budget, s.currency);
-  const presence = presenceFor(s.country);
   const status: Project["status"] = AWARDED_INDICES.has(i) ? "Awarded" : statusOf(s.deadlineIn);
   return {
     id: `PRJ-${String(1001 + i)}`,
@@ -1263,9 +1263,6 @@ export const PROJECTS: Project[] = SPECS.map((s, i) => {
     category: s.category,
     serviceLine: serviceLineFor(s.category),
     fitScore: fitScoreFor(s.category, s.technologies),
-    presenceTier: presence.tier,
-    presenceLabel: presence.label,
-    presenceRank: presence.rank,
     projectType: s.projectType,
     status,
     technologies: s.technologies,

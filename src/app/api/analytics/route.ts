@@ -10,10 +10,6 @@ export async function GET() {
   const { projects, live } = await liveDataset();
   const stats = dashboardStats(projects);
 
-  // Pipeline metrics derived from the live dataset.
-  const awarded = projects.filter((p) => p.status === "Awarded").length;
-  const pursued = Math.max(awarded, projects.filter((p) => p.fitScore >= 70).length);
-
   const orgTally = new Map<string, number>();
   for (const p of projects) orgTally.set(p.organization, (orgTally.get(p.organization) ?? 0) + 1);
 
@@ -22,17 +18,19 @@ export async function GET() {
     byCountry: stats.byCountry,
     byTechnology: stats.byTechnology,
     byCategory: stats.byCategory,
-    trendingTech: stats.byTechnology.slice(0, 6).map((t, i) => ({
-      ...t,
-      delta: [18, 12, 9, -4, 6, 3][i] ?? 0,
-    })),
+    // Straight counts, ordered by demand. No period-over-period delta: nothing
+    // in the store records what last month's technology mix was.
+    trendingTech: stats.byTechnology.slice(0, 6),
     topOrganizations: [...orgTally.entries()]
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6),
-    won: awarded,
-    pursued,
-    successRate: pursued > 0 ? Math.round((awarded / pursued) * 100) : 0,
+    // There is deliberately no won/pursued/successRate here. Those were derived
+    // from `pursued = max(awarded, fitScore>=70 count)` — an invented
+    // denominator, since nothing in the store records which opportunities were
+    // actually bid on. Reporting a win rate needs a bid-tracking table first.
+    countryCount: stats.countryCount,
+    highFitCount: stats.highFitCount,
     live,
   });
 }

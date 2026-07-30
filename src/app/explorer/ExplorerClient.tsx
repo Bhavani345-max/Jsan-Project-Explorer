@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, LayoutGrid, Rows3 } from "lucide-react";
 import type { Project } from "@/lib/types";
+import { TARGET_MAX_BUDGET_USD } from "@/lib/domain";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Breadcrumbs, EmptyState, StatusBadge, FitBadge } from "@/components/ui";
 import { money, deadlineLabel } from "@/lib/format";
@@ -14,7 +15,6 @@ interface Facets {
   states: string[];
   categories: string[];
   serviceLines: string[];
-  presenceTiers: string[];
   projectTypes: string[];
   statuses: string[];
   sources: string[];
@@ -31,36 +31,53 @@ interface Paged {
   totalPages: number;
 }
 
-// Quick filters for the two service lines the portal carries (see lib/domain).
+// Quick filters for the service lines the portal carries (see lib/domain).
 // General software technologies were removed along with the software-development
 // scope; any technology still present in the data stays reachable through the
 // Technology dropdown in the filter panel.
 const TECH_QUICK = [
   "GIS", "5G", "Fiber Optics", "Network Planning", "OSS/BSS", "RF Planning",
+  "Earth Observation", "IoT", "Digital Twin", "SCADA",
 ];
 
+// No location-preference sort: ranking by where JSAN has an office buried every
+// other country on the back pages. Narrow by location with the Country filter,
+// which lists every country present in the data.
 const SORTS = [
-  { value: "priority", label: "JSAN priority (location + fit)" },
   { value: "fitScore", label: "Capability fit (best)" },
   { value: "deadline", label: "Deadline (soonest)" },
   { value: "budget", label: "Budget (highest)" },
   { value: "publicationDate", label: "Newest published" },
 ];
 
+const DEFAULT_SORT = "fitScore";
+
+/** Ignore an unrecognized ?sort= (e.g. an old bookmarked ?sort=priority link). */
+function safeSort(value: string | null): string {
+  return SORTS.some((s) => s.value === value) ? (value as string) : DEFAULT_SORT;
+}
+
 function Select({
   label,
   value,
   options,
   onChange,
+  count,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (v: string) => void;
+  /** Show how many options there are — used on Country to make the worldwide
+   *  coverage visible rather than something you have to scroll to discover. */
+  count?: number;
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">{label}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">
+        {label}
+        {count != null && <span className="ml-1 normal-case text-text-faint/70">({count})</span>}
+      </span>
       <select value={value} onChange={(e) => onChange(e.target.value)} className="input mt-1.5 cursor-pointer">
         <option value="">All</option>
         {options.map((o) => (
@@ -87,7 +104,6 @@ export function ExplorerClient() {
     state: "",
     category: searchParams.get("category") ?? "",
     serviceLine: searchParams.get("serviceLine") ?? "",
-    presenceTier: searchParams.get("presenceTier") ?? "",
     technology: searchParams.get("technology") ?? "",
     projectType: "",
     status: "",
@@ -98,7 +114,7 @@ export function ExplorerClient() {
     minFit: searchParams.get("minFit") ?? "",
     availableOnly: searchParams.get("availableOnly") !== "false", // hide occupied by default
     includeLarge: searchParams.get("includeLarge") === "true", // hide >$10M by default
-    sort: searchParams.get("sort") ?? "priority",
+    sort: safeSort(searchParams.get("sort")),
     page: 1,
   });
 
@@ -121,10 +137,9 @@ export function ExplorerClient() {
     });
     // Default to JSAN's $1–10M target band; the toggle lifts the $10M ceiling
     // to reveal large (World Bank) global leads. A manual max budget still wins.
-    const TARGET_MAX = 10_000_000;
     if (!f.includeLarge) {
       const userMax = f.maxBudget ? Number(f.maxBudget) : Infinity;
-      params.set("maxBudget", String(Math.min(userMax, TARGET_MAX)));
+      params.set("maxBudget", String(Math.min(userMax, TARGET_MAX_BUDGET_USD)));
     }
     params.set("pageSize", "9");
     const t = setTimeout(() => {
@@ -156,7 +171,6 @@ export function ExplorerClient() {
       state: "",
       category: "",
       serviceLine: "",
-      presenceTier: "",
       technology: "",
       projectType: "",
       status: "",
@@ -167,7 +181,7 @@ export function ExplorerClient() {
       minFit: "",
       availableOnly: true,
       includeLarge: false,
-      sort: "priority",
+      sort: DEFAULT_SORT,
       page: 1,
     });
 
@@ -250,8 +264,7 @@ export function ExplorerClient() {
             {facets && (
               <div className="space-y-3">
                 <Select label="JSAN Service Line" value={f.serviceLine} options={facets.serviceLines} onChange={(v) => set({ serviceLine: v })} />
-                <Select label="JSAN Location Priority" value={f.presenceTier} options={facets.presenceTiers} onChange={(v) => set({ presenceTier: v })} />
-                <Select label="Country" value={f.country} options={facets.countries} onChange={(v) => set({ country: v })} />
+                <Select label="Country" value={f.country} options={facets.countries} onChange={(v) => set({ country: v })} count={facets.countries.length} />
                 <Select label="State / Region" value={f.state} options={facets.states} onChange={(v) => set({ state: v })} />
                 <Select label="Category" value={f.category} options={facets.categories} onChange={(v) => set({ category: v })} />
                 <Select label="Technology" value={f.technology} options={facets.technologies} onChange={(v) => set({ technology: v })} />

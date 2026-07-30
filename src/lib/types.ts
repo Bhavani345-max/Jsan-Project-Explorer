@@ -16,12 +16,9 @@ export type ProjectType =
 
 export type ProjectStatus = "Open" | "Closing Soon" | "Closed" | "Awarded";
 
-// JSAN's location footprint priority. Offices rank highest, then operating
-// markets, then everywhere else.
-export type PresenceTier = "Headquarters" | "Office" | "Operating" | "New Market";
-
 export type ProjectCategory =
   | "GIS"
+  | "Geospatial / Telecom Adjacent"
   | "AI/ML"
   | "Cloud Migration"
   | "Web Development"
@@ -37,9 +34,16 @@ export type ProjectCategory =
 // JSAN Consulting's service pillars. GIS and Telecom are the core business;
 // every opportunity is mapped to the pillar it best fits so the BD team can
 // filter for on-strategy work.
+//
+// "Geospatial & Telecom Adjacent" is the third line the portal carries: work in
+// the same field that isn't a pure GIS or telecom contract — earth observation,
+// digital twins, IoT/sensor networks, SCADA, national digital-infrastructure
+// programmes. It is kept as its own line, rather than folded into the two core
+// ones, so capability-fit scores stay meaningful.
 export type ServiceLine =
   | "Geospatial Intelligence"
   | "Telecom & Network Engineering"
+  | "Geospatial & Telecom Adjacent"
   | "Digital Engineering"
   | "Strategic Workforce Solutions"
   | "Structured Program Management";
@@ -73,9 +77,6 @@ export interface Project {
   category: ProjectCategory;
   serviceLine: ServiceLine; // JSAN pillar this opportunity maps to
   fitScore: number; // 0–100 relevance to JSAN's capabilities
-  presenceTier: PresenceTier; // JSAN footprint priority for this location
-  presenceLabel: string; // e.g. "UK HQ · Brentford"
-  presenceRank: number; // higher = higher location priority
   projectType: ProjectType;
   status: ProjectStatus;
   technologies: string[]; // AI-extracted
@@ -132,10 +133,11 @@ export interface DashboardStats {
   bySource: { label: string; value: number }[];
   byCategory: { label: string; value: number }[];
   byServiceLine: { label: string; value: number }[];
-  byPresence: { label: string; value: number }[];
+  // Real monthly counts from publication dates — rolling window ending at the
+  // current month (see perMonthTrend in lib/repository).
   perMonth: { label: string; value: number }[];
-  highFitCount: number; // opportunities with fitScore >= 70
-  inFootprintCount: number; // opportunities in a JSAN office or operating market
+  highFitCount: number; // opportunities with fitScore >= 85
+  countryCount: number; // distinct countries represented — the portal is worldwide
 }
 
 export interface ProjectQuery {
@@ -144,7 +146,6 @@ export interface ProjectQuery {
   state?: string;
   category?: string;
   serviceLine?: string;
-  presenceTier?: string;
   technology?: string;
   projectType?: string;
   status?: string;
@@ -157,5 +158,10 @@ export interface ProjectQuery {
   availableOnly?: boolean;
   page?: number;
   pageSize?: number;
-  sort?: "priority" | "deadline" | "budget" | "publicationDate" | "fitScore";
+  // Ranking is capability- and time-based only. There is deliberately no
+  // location-preference sort: where JSAN happens to have an office is not a
+  // property of the opportunity, and ranking by it buried every other country
+  // on the back pages. Filter by country instead — every country in the data is
+  // available in the Country filter.
+  sort?: "fitScore" | "deadline" | "budget" | "publicationDate";
 }

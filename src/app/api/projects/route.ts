@@ -20,7 +20,6 @@ export async function GET(request: Request) {
     state: str("state"),
     category: str("category"),
     serviceLine: str("serviceLine"),
-    presenceTier: str("presenceTier"),
     technology: str("technology"),
     projectType: str("projectType"),
     status: str("status"),

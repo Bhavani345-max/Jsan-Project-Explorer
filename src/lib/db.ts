@@ -73,26 +73,51 @@ export async function ensureSchema(): Promise<void> {
   for (const stmt of SCHEMA_STATEMENTS) await sql.query(stmt);
 }
 
+const UPSERT_COLUMNS = 26;
+// Rows per INSERT. Neon's HTTP driver costs a full round-trip per statement, so
+// writing one row at a time made ingest scale linearly in network latency —
+// fine at 100 rows, too slow at 1,000 against the cron's 300s budget. At 40 rows
+// this is 40x fewer round-trips and still only ~1,040 bind parameters, far under
+// Postgres's 65,535 limit.
+const UPSERT_BATCH = 40;
+
 /**
- * Idempotent upsert keyed on the deterministic id. Re-ingesting the same
- * notice refreshes its mutable fields (status via deadline, budget, summary)
- * without creating duplicates. Returns the number of rows written.
+ * Idempotent upsert keyed on the deterministic id, in batches. Re-ingesting the
+ * same notice refreshes its mutable fields (status via deadline, budget,
+ * summary) without creating duplicates. Returns the number of rows written.
  */
 export async function upsertOpportunities(rows: NormalizedOpportunity[]): Promise<number> {
   const sql = getSql();
   if (!sql || rows.length === 0) return 0;
 
+  // A duplicate id inside a single multi-row INSERT is a hard Postgres error
+  // ("ON CONFLICT DO UPDATE command cannot affect row a second time"), which
+  // would abort the whole batch. The pipeline already dedupes upstream; this is
+  // insurance so one repeated notice can never fail an entire ingest run.
+  const unique = [...new Map(rows.map((r) => [r.id, r])).values()];
+
   let written = 0;
-  for (const r of rows) {
+  for (let start = 0; start < unique.length; start += UPSERT_BATCH) {
+    const batch = unique.slice(start, start + UPSERT_BATCH);
+    const params: unknown[] = [];
+    const tuples = batch.map((r, n) => {
+      params.push(
+        r.id, r.referenceNumber, r.title, r.description, r.summary, r.organization, r.country, r.state,
+        r.budgetUsd, r.currency, r.deadline, r.publicationDate, r.source, r.sourceType, r.category,
+        r.serviceLine, r.fitScore, r.projectType, r.technologies, r.tags, r.eligibility, r.officialLink,
+        r.contactName, r.contactEmail, r.contactPhone, r.industry,
+      );
+      const base = n * UPSERT_COLUMNS;
+      return `(${Array.from({ length: UPSERT_COLUMNS }, (_, k) => `$${base + k + 1}`).join(",")})`;
+    });
+
     await sql.query(
       `INSERT INTO opportunities (
          id, reference_number, title, description, summary, organization, country, state,
          budget_usd, currency, deadline, publication_date, source, source_type, category,
          service_line, fit_score, project_type, technologies, tags, eligibility, official_link,
          contact_name, contact_email, contact_phone, industry
-       ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
-       )
+       ) VALUES ${tuples.join(",")}
        ON CONFLICT (id) DO UPDATE SET
          title = EXCLUDED.title,
          description = EXCLUDED.description,
@@ -107,14 +132,9 @@ export async function upsertOpportunities(rows: NormalizedOpportunity[]): Promis
          tags = EXCLUDED.tags,
          official_link = EXCLUDED.official_link,
          updated_at = now()`,
-      [
-        r.id, r.referenceNumber, r.title, r.description, r.summary, r.organization, r.country, r.state,
-        r.budgetUsd, r.currency, r.deadline, r.publicationDate, r.source, r.sourceType, r.category,
-        r.serviceLine, r.fitScore, r.projectType, r.technologies, r.tags, r.eligibility, r.officialLink,
-        r.contactName, r.contactEmail, r.contactPhone, r.industry,
-      ],
+      params,
     );
-    written++;
+    written += batch.length;
   }
   return written;
 }

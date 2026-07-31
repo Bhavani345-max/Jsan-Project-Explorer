@@ -22,6 +22,12 @@ __pycache__/
 captures/
 *.log
 
+# --- Local archives ------------------------------------------------------
+# backend.zip is ~283 MB. Vercel has no .vercelignore here, so it falls back
+# to this file when choosing what to upload — leaving the archive out of it
+# failed the deploy on the 100 MB upload limit.
+/backend.zip
+
 # --- OS / editor ---------------------------------------------------------
 .DS_Store
 Thumbs.db

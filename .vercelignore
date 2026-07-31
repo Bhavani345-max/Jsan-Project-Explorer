@@ -1,0 +1,39 @@
+# What `vercel deploy` must not upload.
+#
+# .gitignore is NOT consulted for deploy uploads — backend.zip is listed there
+# and was still sent, failing the deploy on Vercel's 100 MB limit. Because a
+# .vercelignore is used *instead of* .gitignore, this file has to repeat
+# everything .gitignore excluded rather than only adding to it. In particular
+# .env* must stay listed: those files hold DATABASE_URL and the OpenRouter key,
+# and dropping the line would start shipping them into the deployment source.
+
+# --- Local archive (~283 MB — the reason this file exists) ---------------
+/backend.zip
+
+# --- Node / Next.js ------------------------------------------------------
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# --- Python (reference backend — not built or served by Vercel) ----------
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# --- Secrets & local env -------------------------------------------------
+.env*
+!.env.example
+*.pem
+
+# --- Runtime artifacts ---------------------------------------------------
+captures/
+*.log
+
+# --- OS / editor ---------------------------------------------------------
+.DS_Store
+Thumbs.db

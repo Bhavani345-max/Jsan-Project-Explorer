@@ -72,7 +72,11 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Segoe UI throughout. It is a system font, so nothing is downloaded — the
+     previous Inter webfont was fetched on every cold load. The fallbacks only
+     matter off Windows, where Segoe UI is not installed. */
+  --font-sans: "Segoe UI", "Segoe UI Variable Text", system-ui, -apple-system,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 * {

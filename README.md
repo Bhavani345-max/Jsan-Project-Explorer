@@ -310,7 +310,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 
 ## Tech stack
 
-**Frontend** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Recharts · lucide-react
+**Frontend** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Recharts · lucide-react · **Segoe UI** (system font — nothing is downloaded; it replaced an Inter webfont that was fetched on every cold load)
 **Deployed backend** Next.js route handlers · Vercel Cron · Neon serverless Postgres (`@neondatabase/serverless`) · OpenRouter (optional AI enrichment)
 **Reference backend** Python 3.13+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · PyJWT + bcrypt (JWT + RBAC) · APScheduler · psycopg 3
 **Data** PostgreSQL 16 (partitioned, `tsvector` full-text, `pg_trgm`) · Redis · OpenSearch

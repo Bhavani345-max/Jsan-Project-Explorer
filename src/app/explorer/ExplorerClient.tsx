@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, LayoutGrid, Rows3 } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { TARGET_MAX_BUDGET_USD } from "@/lib/domain";
 import { ProjectCard } from "@/components/ProjectCard";
+import { Pagination, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/components/Pagination";
 import { Breadcrumbs, EmptyState, StatusBadge, FitBadge } from "@/components/ui";
 import { money, deadlineLabel } from "@/lib/format";
 import Link from "next/link";
@@ -52,9 +53,66 @@ const SORTS = [
 
 const DEFAULT_SORT = "fitScore";
 
+// The full Explorer state, and the value each key omits from the address bar.
+// Reading and writing both go through this map, so a filter can never be
+// written into a shareable URL without being read back out of one.
+const URL_DEFAULTS = {
+  q: "",
+  country: "",
+  state: "",
+  category: "",
+  serviceLine: "",
+  technology: "",
+  projectType: "",
+  status: "",
+  organization: "",
+  source: "",
+  minBudget: "",
+  maxBudget: "",
+  minFit: "",
+  availableOnly: true, // hide occupied by default
+  includeLarge: false, // hide >$10M by default
+  sort: DEFAULT_SORT,
+  page: 1,
+  pageSize: DEFAULT_PAGE_SIZE,
+};
+
+type Filters = typeof URL_DEFAULTS;
+
 /** Ignore an unrecognized ?sort= (e.g. an old bookmarked ?sort=priority link). */
 function safeSort(value: string | null): string {
   return SORTS.some((s) => s.value === value) ? (value as string) : DEFAULT_SORT;
+}
+
+/** ?page=2 → 2; anything else (0, -1, "abc", absent) → 1. A page past the end
+ *  is left alone: the API clamps it to the last page that exists and the
+ *  reconciliation effect below adopts whatever came back. */
+function safePage(value: string | null): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 1 ? Math.trunc(n) : 1;
+}
+
+/** Only the sizes the control offers, so ?pageSize=5000 cannot be linked in. */
+function safePageSize(value: string | null): number {
+  const n = Number(value);
+  return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE;
+}
+
+/** Rebuild the Explorer state from a shared or bookmarked URL. */
+function readFilters(sp: URLSearchParams | ReturnType<typeof useSearchParams>): Filters {
+  const out = { ...URL_DEFAULTS };
+  for (const key of Object.keys(URL_DEFAULTS) as (keyof Filters)[]) {
+    const raw = sp.get(key);
+    if (raw == null) continue;
+    const fallback = URL_DEFAULTS[key];
+    if (typeof fallback === "string") (out as Record<string, unknown>)[key] = raw;
+    else if (typeof fallback === "boolean") (out as Record<string, unknown>)[key] = raw === "true";
+  }
+  // The three that need validating rather than accepting verbatim.
+  out.sort = safeSort(sp.get("sort"));
+  out.page = safePage(sp.get("page"));
+  out.pageSize = safePageSize(sp.get("pageSize"));
+  return out;
 }
 
 function Select({
@@ -98,35 +156,54 @@ export function ExplorerClient() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(true);
 
-  const [f, setF] = useState({
-    q: searchParams.get("q") ?? "",
-    country: "",
-    state: "",
-    category: searchParams.get("category") ?? "",
-    serviceLine: searchParams.get("serviceLine") ?? "",
-    technology: searchParams.get("technology") ?? "",
-    projectType: "",
-    status: "",
-    organization: "",
-    source: "",
-    minBudget: "",
-    maxBudget: "",
-    minFit: searchParams.get("minFit") ?? "",
-    availableOnly: searchParams.get("availableOnly") !== "false", // hide occupied by default
-    includeLarge: searchParams.get("includeLarge") === "true", // hide >$10M by default
-    sort: safeSort(searchParams.get("sort")),
-    page: 1,
-  });
+  const [f, setF] = useState<Filters>(() => readFilters(searchParams));
 
-  const set = useCallback((patch: Partial<typeof f>) => {
+  // Every change except an explicit page move returns to page 1 — the record at
+  // position 300 of the old result set has nothing to do with the new one.
+  const set = useCallback((patch: Partial<Filters>) => {
     setF((prev) => ({ ...prev, page: 1, ...patch }));
   }, []);
+
+  const resultsRef = useRef<HTMLDivElement>(null);
+  // Only a page move scrolls; a filter change must not yank the page around
+  // while you are still working in the sidebar.
+  const scrollOnNextData = useRef(false);
+
+  const goToPage = useCallback((page: number) => {
+    setF((prev) => {
+      if (prev.page === page) return prev; // no move, no refetch, no scroll
+      scrollOnNextData.current = true;
+      return { ...prev, page };
+    });
+  }, []);
+
+  // Paging is fast enough to click through faster than the responses arrive.
+  // Only the newest request may write to state, so page 2's slower response
+  // can never overwrite page 3's.
+  const requestId = useRef(0);
 
   useEffect(() => {
     fetch("/api/facets")
       .then((r) => r.json())
       .then(setFacets);
   }, []);
+
+  // Mirror the state into the address bar so a filtered page can be shared or
+  // bookmarked and survives a reload. replaceState, not push: paging is not a
+  // navigation, and stacking a history entry per page click would make Back
+  // useless for leaving the Explorer.
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    Object.entries(f).forEach(([k, v]) => {
+      const s = String(v);
+      if (s !== String(URL_DEFAULTS[k as keyof Filters])) qs.set(k, s);
+    });
+    const query = qs.toString();
+    const next = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    if (next !== window.location.pathname + window.location.search) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [f]);
 
   useEffect(() => {
     setLoading(true);
@@ -141,13 +218,28 @@ export function ExplorerClient() {
       const userMax = f.maxBudget ? Number(f.maxBudget) : Infinity;
       params.set("maxBudget", String(Math.min(userMax, TARGET_MAX_BUDGET_USD)));
     }
-    params.set("pageSize", "9");
     const t = setTimeout(() => {
+      const id = ++requestId.current;
       fetch(`/api/projects?${params.toString()}`)
         .then((r) => r.json())
-        .then((d) => {
+        .then((d: Paged) => {
+          if (id !== requestId.current) return; // superseded by a later page
           setData(d);
           setLoading(false);
+          // The API clamps a page past the end to the last real one — adopt it,
+          // otherwise the controls would keep claiming a page that isn't shown.
+          if (typeof d.page === "number" && d.page !== f.page) {
+            setF((prev) => ({ ...prev, page: d.page }));
+          }
+          if (scrollOnNextData.current) {
+            scrollOnNextData.current = false;
+            resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        })
+        .catch(() => {
+          // Leave the last good page on screen, but stop dimming it — a stuck
+          // "busy" paginator reads as a hang rather than a failed request.
+          if (id === requestId.current) setLoading(false);
         });
     }, 150);
     return () => clearTimeout(t);
@@ -164,26 +256,8 @@ export function ExplorerClient() {
     [f],
   );
 
-  const clearAll = () =>
-    setF({
-      q: "",
-      country: "",
-      state: "",
-      category: "",
-      serviceLine: "",
-      technology: "",
-      projectType: "",
-      status: "",
-      organization: "",
-      source: "",
-      minBudget: "",
-      maxBudget: "",
-      minFit: "",
-      availableOnly: true,
-      includeLarge: false,
-      sort: DEFAULT_SORT,
-      page: 1,
-    });
+  // Keep the reading pace the user chose; only the filters reset.
+  const clearAll = () => setF((prev) => ({ ...URL_DEFAULTS, pageSize: prev.pageSize }));
 
   return (
     <div className="space-y-5">
@@ -300,8 +374,8 @@ export function ExplorerClient() {
           </div>
         </aside>
 
-        {/* Results */}
-        <div className="min-w-0">
+        {/* Results — scroll-mt clears the sticky topbar when paging jumps here */}
+        <div ref={resultsRef} className="min-w-0 scroll-mt-24">
           <div className="flex items-center justify-between mb-3">
             <div className="flex flex-wrap gap-1.5">
               {activeFilters.map(([k, v]) => (
@@ -437,40 +511,17 @@ export function ExplorerClient() {
                 </div>
               )}
 
-              {/* Pagination */}
-              {data && data.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-5">
-                  <span className="text-[13px] text-text-faint">
-                    Page {data.page} of {data.totalPages} · {data.total} results
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      disabled={data.page <= 1}
-                      onClick={() => setF((p) => ({ ...p, page: p.page - 1 }))}
-                      className="btn btn-ghost disabled:opacity-40"
-                    >
-                      Previous
-                    </button>
-                    {Array.from({ length: data.totalPages }).map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setF((p) => ({ ...p, page: i + 1 }))}
-                        className={`w-9 h-9 rounded-lg text-sm font-semibold ${
-                          data.page === i + 1 ? "bg-primary text-white" : "text-text-muted hover:bg-bg-subtle"
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                    <button
-                      disabled={data.page >= data.totalPages}
-                      onClick={() => setF((p) => ({ ...p, page: p.page + 1 }))}
-                      className="btn btn-ghost disabled:opacity-40"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
+              {data && (
+                <Pagination
+                  page={data.page}
+                  pageSize={data.pageSize}
+                  total={data.total}
+                  totalPages={data.totalPages}
+                  onPageChange={goToPage}
+                  onPageSizeChange={(pageSize) => set({ pageSize })}
+                  itemLabel="opportunities"
+                  busy={loading}
+                />
               )}
             </>
           )}

@@ -54,9 +54,23 @@ function matches(p: Project, q: ProjectQuery): boolean {
 export interface PagedProjects {
   items: Project[];
   total: number;
+  /** The page actually served — clamped into range, so it can differ from the
+   *  one asked for (see the clamp in queryProjects). */
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+/** Page size when a caller does not ask for one. */
+export const DEFAULT_PAGE_SIZE = 9;
+/** Ceiling for a page size arriving from the query string — see the API route.
+ *  Internal callers pass their own size and are not capped by this. */
+export const MAX_PAGE_SIZE = 100;
+
+/** `Number("abc")` from a query string is NaN, and NaN paging maths silently
+ *  yields an empty slice with a NaN page number — fall back instead. */
+function numberOr(value: number | undefined | null, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 export function queryProjects(q: ProjectQuery, projects: Project[] = PROJECTS): PagedProjects {
@@ -79,15 +93,23 @@ export function queryProjects(q: ProjectQuery, projects: Project[] = PROJECTS): 
   });
 
   const total = items.length;
-  const page = Math.max(1, q.page ?? 1);
-  const pageSize = q.pageSize ?? 8;
+  const pageSize = Math.max(1, Math.trunc(numberOr(q.pageSize, DEFAULT_PAGE_SIZE)));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // Clamp into range rather than serving an empty slice. A bookmarked
+  // ?page=40 whose filters now match three pages, or a page you were sitting
+  // on when a filter narrowed the results, would otherwise come back with zero
+  // items and read as "no opportunities found" — the last page is the honest
+  // answer. Callers see the page they actually got, and correct themselves.
+  const page = Math.min(Math.max(1, Math.trunc(numberOr(q.page, 1))), totalPages);
+
   const start = (page - 1) * pageSize;
   return {
     items: items.slice(start, start + pageSize),
     total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    totalPages,
   };
 }
 

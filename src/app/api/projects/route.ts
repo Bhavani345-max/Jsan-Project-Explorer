@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { queryProjects } from "@/lib/repository";
+import { queryProjects, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import type { ProjectQuery } from "@/lib/types";
 
@@ -11,8 +11,20 @@ export const dynamic = "force-dynamic";
 // in-memory sample dataset when the DB is empty or unreachable.
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
-  const num = (k: string) => (p.get(k) ? Number(p.get(k)) : undefined);
+  const num = (k: string) => {
+    const raw = p.get(k);
+    if (!raw) return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined; // ignore ?minBudget=abc
+  };
   const str = (k: string) => p.get(k) ?? undefined;
+
+  // Paging comes off the query string, so it is bounded here rather than in the
+  // repository: a hand-typed ?pageSize=100000 would otherwise serialise the
+  // whole store into one response. The high page is left to the repository,
+  // which clamps it to the last page that actually exists.
+  const pageSize = Math.min(Math.max(1, Math.trunc(num("pageSize") ?? DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE);
+  const page = Math.max(1, Math.trunc(num("page") ?? 1));
 
   const query: ProjectQuery = {
     q: str("q"),
@@ -29,8 +41,8 @@ export async function GET(request: Request) {
     maxBudget: num("maxBudget"),
     minFit: num("minFit"),
     availableOnly: p.get("availableOnly") === "true",
-    page: num("page"),
-    pageSize: num("pageSize"),
+    page,
+    pageSize,
     sort: (str("sort") as ProjectQuery["sort"]) ?? undefined,
   };
 

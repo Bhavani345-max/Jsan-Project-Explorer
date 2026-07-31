@@ -68,6 +68,34 @@ Nothing is ever deleted to achieve this. Out-of-domain records already
 collected are retained in the database and simply not selected — reads filter
 in SQL, so paging and limits stay correct.
 
+### Paging the result set
+
+The store currently answers the Explorer's default view with **467 in-domain
+opportunities — 52 pages** at nine per page. The earlier control rendered one
+button per page, so all 52 were laid out inline and wrapped over several rows;
+the numbers also shifted under the cursor on every click as the row re-flowed.
+
+[`src/components/Pagination.tsx`](src/components/Pagination.tsx) renders a fixed
+seven slots instead — first page, last page, a window around the current one,
+and `…` for the runs between — so the control keeps its width and **Next** stays
+where you last clicked it. An ellipsis is never used to hide a *single* page,
+since `…` is no narrower than `7`. Page size is selectable (9 / 18 / 36 / 60),
+and past ten pages a "go to page" box appears, because stepping to page 40 with
+**Next** is not a real option.
+
+Paging state lives in the address bar alongside the filters, so a view can be
+shared, bookmarked, and survives a reload. It is written with `replaceState`
+rather than `pushState`: paging is not a navigation, and one history entry per
+page click would make **Back** useless for leaving the Explorer.
+
+Two failure modes are handled in the data layer rather than the UI. A page past
+the end — a stale bookmark, or the page you were on when a filter narrowed the
+results — is **clamped to the last page that exists** by `queryProjects`, which
+reports the page it actually served so the control corrects itself; serving an
+empty slice would have read as "no opportunities found". And `pageSize` is
+bounded in the API route, so a hand-typed `?pageSize=100000` cannot serialise
+the whole store into one response.
+
 > **The app runs right now with zero infrastructure** — a production-quality
 > Next.js + TypeScript + Tailwind app with a repository-pattern data layer, so
 > every module is demonstrable out of the box on a bundled sample dataset. Add a
@@ -269,7 +297,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 ## Modules (all implemented in the UI)
 
 - **Dashboard** — totals, countries covered, best-fit count, closing soon, pipeline value; per-service-line shortcuts whose counts are derived from the same filter as the link they open; real monthly discovery trend from publication dates; charts by country, technology, budget, source, category; recent + closing-soon lists. No invented period-over-period deltas — the store keeps no historical snapshots, so there is nothing real to compare against.
-- **Project Explorer** — advanced filters (country, state, category, service line, technology, project type, status, organization, source, budget range), keyword search, quick tech chips, grid/table views, sorting, pagination, breadcrumbs.
+- **Project Explorer** — advanced filters (country, state, category, service line, technology, project type, status, organization, source, budget range), keyword search, quick tech chips, grid/table views, sorting, breadcrumbs, and windowed pagination with a selectable page size, shareable URL state and clamping on out-of-range pages (see [Paging the result set](#paging-the-result-set)).
 - **Project Details** — full record: description, org, country, budget, deadlines, source, reference number, technologies, eligibility, contact, official link, **AI summary + tags**, and technology/category-matched recommendations.
 - **API Connectors** — connector cards (auth, schedule, rate limit, pagination, retry, status), add-connector form, scheduler cadences, and live connector logs.
 - **Smart Search** — global autocomplete over technologies, organizations, countries and projects.
@@ -305,6 +333,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │  │  │  └─ cron/ingest/             # Vercel Cron entry point — the ingest run
 │  │  ├─ layout.tsx · globals.css    # Shell, theme tokens
 │  ├─ components/                    # Shell, charts, cards, UI primitives
+│  │  └─ Pagination.tsx              # windowed page control + page-size select
 │  └─ lib/
 │     ├─ db.ts                       # Neon data access (schema, upsert, purge, reads)
 │     ├─ live.ts                     # live-vs-seed dataset seam

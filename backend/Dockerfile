@@ -16,4 +16,7 @@ USER discovery
 ENV CONNECTOR_CAPTURE_DIR=/tmp/captures
 
 EXPOSE 8080
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Shell form so ${PORT} expands: Railway (and most PaaS) assign the port at
+# runtime and route to it, while docker-compose sets no PORT and keeps 8080 —
+# the port the frontend's API_BASE and the compose port mapping both expect.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

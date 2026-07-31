@@ -177,11 +177,10 @@ Once any row lands, `/api/status` flips the sidebar to **"Live data connected"**
 Polish, Lithuanian, French, Croatian, Spanish, German and 20-odd others.
 
 Translation runs **server-side at ingest** and is stored, because the portal's job
-is discovery: the Explorer's keyword search, the facets, the assistant's grounding
-context and the PDF/PPTX exports all read the stored title. A client-side page
-widget (GTranslate and similar) translates what is painted on screen and leaves
-every one of those monolingual — searching "cadastral survey" would still never
-match `kadastrinių matavimų`.
+is discovery: the Explorer's keyword search and the facets both read the stored
+title. A client-side page widget (GTranslate and similar) translates what is
+painted on screen and leaves both of those monolingual — searching "cadastral
+survey" would still never match `kadastrinių matavimų`.
 
 The original is never overwritten. It stays in `title`, the translation lands in
 `title_en`, and the read layer prefers the translation while keeping the original
@@ -215,7 +214,7 @@ direction** to the ingest translation above, and the two are complementary:
 
 | | Direction | Where | Persisted |
 |---|---|---|---|
-| `lib/ingest/translate.ts` | foreign notice data → **English** | server, at ingest | yes — search, facets, exports and the assistant all read it |
+| `lib/ingest/translate.ts` | foreign notice data → **English** | server, at ingest | yes — search and facets both read it |
 | `components/GTranslate.tsx` | English page → **visitor's language** | browser, on demand | no |
 
 Only the widget is client-side, and deliberately so: it cannot do the ingest

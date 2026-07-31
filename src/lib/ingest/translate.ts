@@ -6,11 +6,10 @@
 // in Polish, Lithuanian, French, Croatian, Spanish, German and 20-odd others.
 //
 // Translation happens HERE, server-side at ingest, rather than in the browser,
-// because the portal's job is discovery: the Explorer's keyword search, the
-// facets, the assistant's grounding context and the PDF/PPTX exports all read
-// the stored title. A client-side page widget would translate what is painted on
-// screen and leave every one of those monolingual — searching "cadastral survey"
-// would still never match "kadastrinių matavimų".
+// because the portal's job is discovery: the Explorer's keyword search and the
+// facets all read the stored title. A client-side page widget would translate
+// what is painted on screen and leave both of those monolingual — searching
+// "cadastral survey" would still never match "kadastrinių matavimų".
 //
 // The original is never overwritten. It stays in `title`; the translation lands
 // in `title_en`, and the read layer prefers the translation while keeping the
@@ -34,8 +33,7 @@ const DEFAULT_MODELS = [
 ];
 
 /**
- * Free models, then the model already configured for the assistant as a last
- * resort.
+ * Free models, then whatever OPENROUTER_MODEL names, as a last resort.
  *
  * OpenRouter's free tier is capped per ACCOUNT PER DAY (50 requests), not per
  * model — so once it is spent every `:free` model returns 429 together and a
@@ -43,10 +41,11 @@ const DEFAULT_MODELS = [
  * exactly what happened on the first backfill attempt: 0 translated, three
  * models, one shared quota.
  *
- * The fallback is billable, so it is only ever the configured OPENROUTER_MODEL —
- * a model the operator has already chosen and is already paying for on the chat
- * feature — never something picked here. Set OPENROUTER_TRANSLATE_MODEL to take
- * full control, including pinning it back to free-only.
+ * The fallback is billable, so it is only ever the model the operator named in
+ * OPENROUTER_MODEL — never something picked here. That variable was originally
+ * the chat assistant's; the assistant has since been removed, but this chain
+ * still reads it, so it must stay configured. Set OPENROUTER_TRANSLATE_MODEL to
+ * take full control, including pinning it back to free-only.
  */
 function modelChain(): string[] {
   const explicit = process.env.OPENROUTER_TRANSLATE_MODEL?.split(",")

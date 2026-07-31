@@ -8,7 +8,6 @@ import {
   Compass,
   PlugZap,
   BarChart3,
-  Sparkles,
   Bell,
   Search,
   Sun,
@@ -24,7 +23,6 @@ const NAV = [
   { href: "/explorer", label: "Project Explorer", icon: Compass },
   { href: "/connectors", label: "API Connectors", icon: PlugZap },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/assistant", label: "AI Assistant", icon: Sparkles },
 ];
 
 const ROLES = ["Administrator", "Business Development", "Sales Team", "Manager", "Read Only"];

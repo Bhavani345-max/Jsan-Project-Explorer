@@ -13,7 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="", case_sensitive=False)
 
-    app_name: str = "project-discovery-portal"
+    app_name: str = "JSAN_NexusAI_Enterprise_Growth_Platform"
 
     # Accepts either a JDBC-style URL (jdbc:postgresql://host:5432/db — what
     # docker-compose passes) or a plain SQLAlchemy URL.

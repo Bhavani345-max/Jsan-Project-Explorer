@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------ */
-/*  Design tokens — Project Discovery Portal enterprise theme          */
+/*  Design tokens — JSAN_NexusAI_Enterprise_Growth_Platform theme      */
 /* ------------------------------------------------------------------ */
 :root {
   --bg: #f6f7f9;

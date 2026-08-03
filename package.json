@@ -1,8 +1,8 @@
 {
-  "name": "project-discovery-portal",
+  "name": "jsan-nexusai-enterprise-growth-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "Enterprise portal to discover software development opportunities from public sources",
+  "description": "JSAN_NexusAI_Enterprise_Growth_Platform — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -6,7 +6,7 @@ import { Shell } from "@/components/Shell";
 export const metadata: Metadata = {
   title: "JSAN_NexusAI_Enterprise_Growth_Platform",
   description:
-    "JSAN Consulting's opportunity intelligence portal — discover GIS, telecom, and adjacent technology opportunities from public sources.",
+    "JSAN_NexusAI_Enterprise_Growth_Platform — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

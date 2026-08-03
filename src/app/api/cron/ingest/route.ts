@@ -8,14 +8,14 @@ import {
   dbConfigured,
 } from "@/lib/db";
 import { runConnectors } from "@/lib/ingest/connectors";
-import { enrichPending } from "@/lib/ingest/ai-enrich";
 import { translatePending } from "@/lib/ingest/translate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// GET /api/cron/ingest — fetch every source, upsert into Neon, AI-enrich.
+// GET /api/cron/ingest — fetch every source, normalize, deduplicate,
+// categorize, score and upsert into Neon.
 // Triggered daily by Vercel Cron (which sends Authorization: Bearer CRON_SECRET)
 // and can be run manually with the same bearer token.
 async function handle(request: Request): Promise<Response> {
@@ -40,8 +40,7 @@ async function handle(request: Request): Promise<Response> {
     // Steady-state upkeep only — enough to keep pace with a day's new notices.
     // A large backlog is cleared by calling /api/cron/translate directly, so a
     // one-off backfill can never threaten this run's 300s budget.
-    const translation = await translatePending(48);
-    const enrichment = await enrichPending();
+    const englishTitles = await translatePending(48);
     const total = await countOpportunities();
     const inDomain = await countInDomain();
 
@@ -53,8 +52,7 @@ async function handle(request: Request): Promise<Response> {
       openFetched: rows.length,
       written,
       purgedExpired: purged,
-      translation,
-      enrichment,
+      englishTitles,
       // inDomain is what the portal shows; totalInDb includes older
       // out-of-domain rows, which are retained but never surfaced.
       inDomain,

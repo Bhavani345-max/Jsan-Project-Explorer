@@ -55,7 +55,6 @@ const SCHEMA_STATEMENTS = [
   contact_email     TEXT,
   contact_phone     TEXT,
   industry          TEXT NOT NULL DEFAULT 'Public Sector',
-  ai_enriched       BOOLEAN NOT NULL DEFAULT FALSE,
   ingested_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 )`,
@@ -63,9 +62,10 @@ const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_opp_service_line ON opportunities (service_line)`,
   `CREATE INDEX IF NOT EXISTS idx_opp_publication  ON opportunities (publication_date DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_opp_source       ON opportunities (source)`,
-  // English translation of the notice title. 93% of stored notices are
-  // non-English (TED renders titles as "Country - English CPV label - native
-  // title"), so this is what the portal actually displays and searches on. The
+  // English rendering of the notice title, derived from the English CPV label
+  // TED already publishes ("Country - English CPV label - native title"). 93% of
+  // stored notices are non-English, so this is what the portal displays and
+  // searches on. The
   // original is never overwritten — it stays in `title` for provenance, since
   // these are official notices that must remain citable.
   //
@@ -75,6 +75,10 @@ const SCHEMA_STATEMENTS = [
   `ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS title_en TEXT`,
   `ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS translated BOOLEAN NOT NULL DEFAULT FALSE`,
   `CREATE INDEX IF NOT EXISTS idx_opp_translated   ON opportunities (translated)`,
+  // Dropped with the AI enrichment layer: it marked rows whose summary had been
+  // rewritten by a model so re-ingest would not clobber it. Every summary now
+  // comes from the notice itself, so there is nothing to protect.
+  `ALTER TABLE opportunities DROP COLUMN IF EXISTS ai_enriched`,
 ];
 
 /** Create the table + indexes if they don't exist. Safe to call repeatedly. */
@@ -133,7 +137,7 @@ export async function upsertOpportunities(rows: NormalizedOpportunity[]): Promis
        ON CONFLICT (id) DO UPDATE SET
          title = EXCLUDED.title,
          description = EXCLUDED.description,
-         summary = CASE WHEN opportunities.ai_enriched THEN opportunities.summary ELSE EXCLUDED.summary END,
+         summary = EXCLUDED.summary,
          budget_usd = EXCLUDED.budget_usd,
          deadline = EXCLUDED.deadline,
          organization = EXCLUDED.organization,

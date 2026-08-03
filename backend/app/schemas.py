@@ -49,9 +49,9 @@ class ProjectOut(ApiModel):
     reference_number: str
     title: str
     description: str | None = None
-    ai_summary: str | None = None
-    ai_fit_score: int | None = None
-    ai_service_line: str | None = None
+    summary: str | None = None
+    fit_score: int | None = None
+    service_line: str | None = None
     organization: OrganizationOut | None = None
     category: CategoryOut | None = None
     source: SourceOut | None = None

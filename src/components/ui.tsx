@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ProjectStatus } from "@/lib/types";
+import { HIGH_FIT_THRESHOLD } from "@/lib/domain";
 
 export function StatusBadge({ status }: { status: ProjectStatus }) {
   const map: Record<ProjectStatus, { bg: string; text: string; label: string }> = {
@@ -24,12 +25,13 @@ export function TechChip({ label }: { label: string }) {
   return <span className="chip">{label}</span>;
 }
 
-/** Capability-fit badge — green ≥85, amber ≥70, neutral below. */
+/** Capability-fit badge — green at or above the high-fit threshold, amber
+ *  within 15 points of it, neutral below. */
 export function FitBadge({ score, showLabel = false }: { score: number; showLabel?: boolean }) {
   const tone =
-    score >= 85
+    score >= HIGH_FIT_THRESHOLD
       ? { bg: "var(--success-soft)", text: "var(--success)" }
-      : score >= 70
+      : score >= HIGH_FIT_THRESHOLD - 15
         ? { bg: "var(--warning-soft)", text: "var(--warning)" }
         : { bg: "var(--bg-subtle)", text: "var(--text-muted)" };
   return (

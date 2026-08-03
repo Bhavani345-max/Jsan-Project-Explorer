@@ -40,6 +40,7 @@ export async function GET(request: Request) {
     minBudget: num("minBudget"),
     maxBudget: num("maxBudget"),
     minFit: num("minFit"),
+    maxDeadlineDays: num("maxDeadlineDays"),
     availableOnly: p.get("availableOnly") === "true",
     page,
     pageSize,

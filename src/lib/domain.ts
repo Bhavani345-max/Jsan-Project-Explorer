@@ -50,6 +50,55 @@ export const CORE_SERVICE_LINES: ServiceLine[] = [
 export const TARGET_MIN_BUDGET_USD = 1_000_000;
 export const TARGET_MAX_BUDGET_USD = 10_000_000;
 
+// ---- fit-score inputs ----------------------------------------------
+// The two business judgements the rule-based score depends on. They live here,
+// beside the other scope constants, because they are the only parts of the
+// score that are a commercial decision rather than a property of the notice —
+// everything else in lib/scoring.ts is keyword matching over the notice text.
+//
+// PRIORITY_COUNTRIES is seeded with the markets the connectors actually cover
+// directly (UK Contracts Finder, SAM.gov) plus the EU, whose TED feed supplies
+// most of the volume. Edit this list to match where the BD team actually wants
+// to bid — it is read by exactly one rule and changes nothing else.
+export const PRIORITY_COUNTRIES: string[] = [
+  "United Kingdom",
+  "United States",
+  "Ireland",
+  "Germany",
+  "France",
+  "Netherlands",
+  "Spain",
+  "Italy",
+  "Poland",
+];
+
+/** A deadline this close still scores; further out it does not. */
+export const DEADLINE_SOON_DAYS = 30;
+
+/**
+ * The score at or above which an opportunity counts as "high fit".
+ *
+ * Read by the dashboard KPI, the seed's "Best Fit" tag, the Explorer's fit
+ * filter and the badge colours, so none of them can disagree about what high
+ * fit means.
+ *
+ * Set from the measured distribution, not by taste. Across 790 stored rows the
+ * rule table in lib/scoring.ts produces:
+ *
+ *     0–9  162 | 10–19 143 | 20–29  69 | 30–39 213
+ *   40–49  195 | 50–59   3 | 60–69   3 | 70+     2
+ *
+ * The ceiling is low because most TED notices disclose no budget (−15) and sit
+ * outside PRIORITY_COUNTRIES (−10), so even a strong record rarely clears 50.
+ * 40 is the top quartile of the real board and means the notice matched at
+ * least two substantive capability rules. Raising it to 70 would leave the KPI
+ * showing 2 of 790, which tells a reader nothing.
+ *
+ * Re-measure after any change to the rule table:
+ *   curl "<host>/api/cron/reclassify?dryRun=1&key=$CRON_SECRET" | jq .scoreHistogram
+ */
+export const HIGH_FIT_THRESHOLD = 40;
+
 export function isTargetServiceLine(serviceLine: string): boolean {
   return (TARGET_SERVICE_LINES as string[]).includes(serviceLine);
 }

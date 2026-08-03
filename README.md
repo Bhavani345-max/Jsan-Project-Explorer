@@ -1,4 +1,4 @@
-# Project Discovery Portal
+# JSAN Opportunity Finder
 
 An enterprise web application that helps a business-development team **discover
 geospatial and telecom engineering opportunities** — RFPs, RFQs, government
@@ -131,7 +131,7 @@ Vercel Cron (daily 02:00)
          ├─ src/lib/ingest/connectors/*   fetch every public source concurrently
          ├─ src/lib/ingest/normalize.ts   FX→USD · categorize · tech extraction · fit score
          ├─ src/lib/db.ts                 idempotent upsert into Neon Postgres + purge expired
-         └─ src/lib/ingest/ai-enrich.ts   optional summary polish (free OpenRouter models)
+         └─ src/lib/ingest/translate.ts   derive English titles from the published CPV label
 
 Page / API read path
    └─→ src/lib/live.ts → DB rows if any exist, else the bundled seed
@@ -156,9 +156,6 @@ record carries its official notice URL for provenance.
 |---|---|---|
 | `DATABASE_URL` | for live data | Neon Postgres connection string (`POSTGRES_URL` also accepted) |
 | `CRON_SECRET` | recommended | Gates `/api/cron/ingest`; Vercel Cron sends it as a bearer token |
-| `OPENROUTER_API_KEY` | optional | Enables AI summary enrichment — free models by default |
-| `OPENROUTER_ENRICH_MODEL` | optional | Comma-separated model fallback chain |
-| `OPENROUTER_TRANSLATE_MODEL` | optional | Comma-separated chain for title translation. Unset → free models, then `OPENROUTER_MODEL` as last resort |
 | `SAM_GOV_API_KEY` | optional | Enables the US SAM.gov connector |
 
 Schema is created on demand (`ensureSchema()`), so a fresh Neon database needs no
@@ -192,18 +189,14 @@ remain citable. Search therefore works in **both** languages: `cadastral` and
 curl -H "Authorization: Bearer $CRON_SECRET" "https://<your-app>/api/cron/translate?limit=150"
 ```
 
-Ingest translates a small batch each run for upkeep; the endpoint above clears a
-backlog and is safe to call repeatedly. Only in-domain rows are translated —
-retained out-of-domain records are never shown, so translating them would be
-paying to render text nobody sees.
+Ingest processes a small batch each run for upkeep; the endpoint above clears a
+backlog and is safe to call repeatedly. Only in-domain rows are processed —
+retained out-of-domain records are never shown.
 
-> **Model quota.** OpenRouter's free tier is capped **per account per day** (50
-> requests), not per model, so once spent every `:free` model returns 429 together
-> and a free-only chain silently translates nothing. The chain therefore falls back
-> to whatever `OPENROUTER_MODEL` is set to — a model you have already chosen and
-> are already paying for. Backfilling 425 titles on a Haiku-class model costs
-> roughly **$0.15**. Set `OPENROUTER_TRANSLATE_MODEL` to control this explicitly,
-> including pinning it back to free-only.
+English titles are **derived, not translated**: TED publishes every title as
+`Country – English CPV label – native title`, so the English wording is already
+in the source record and is simply extracted. No model is involved, and the
+original title is never overwritten.
 
 ### Language switcher (GTranslate)
 
@@ -297,10 +290,10 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 
 - **Dashboard** — totals, countries covered, best-fit count, closing soon, pipeline value; per-service-line shortcuts whose counts are derived from the same filter as the link they open; real monthly discovery trend from publication dates; charts by country, technology, budget, source, category; recent + closing-soon lists. No invented period-over-period deltas — the store keeps no historical snapshots, so there is nothing real to compare against.
 - **Project Explorer** — advanced filters (country, state, category, service line, technology, project type, status, organization, source, budget range), keyword search, quick tech chips, grid/table views, sorting, breadcrumbs, and windowed pagination with a selectable page size, shareable URL state and clamping on out-of-range pages (see [Paging the result set](#paging-the-result-set)).
-- **Project Details** — full record: description, org, country, budget, deadlines, source, reference number, technologies, eligibility, contact, official link, **AI summary + tags**, and technology/category-matched recommendations.
+- **Project Details** — full record: description, org, country, budget, deadlines, source, reference number, technologies, eligibility, contact, official link, **source summary + tags**, and technology/category-matched related opportunities.
 - **API Connectors** — connector cards (auth, schedule, rate limit, pagination, retry, status), add-connector form, scheduler cadences, and live connector logs.
 - **Smart Search** — global autocomplete over technologies, organizations, countries and projects.
-- **AI Features** — summaries, technology/budget/deadline/org extraction, auto-categorization, tags, recommendations (surfaced on the details page; pipeline hooks in the backend).
+- **Rule-Based Scoring** — keyword, budget, country and deadline rules produce a 0–100 fit score, shown on the details page as the exact arithmetic that produced it (`src/lib/scoring.ts`).
 - **Analytics** — projects per month, by country, by technology, top technologies in demand, top organizations.
 - **User Roles** — Administrator, Business Development, Sales, Manager, Read Only (role switcher + backend RBAC).
 - **Theme** — polished light **and** dark mode.
@@ -310,7 +303,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 ## Tech stack
 
 **Frontend** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Recharts · lucide-react · **Segoe UI** (system font — nothing is downloaded; it replaced an Inter webfont that was fetched on every cold load)
-**Deployed backend** Next.js route handlers · Vercel Cron · Neon serverless Postgres (`@neondatabase/serverless`) · OpenRouter (optional AI enrichment)
+**Deployed backend** Next.js route handlers · Vercel Cron · Neon serverless Postgres (`@neondatabase/serverless`)
 **Reference backend** Python 3.13+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · PyJWT + bcrypt (JWT + RBAC) · APScheduler · psycopg 3
 **Data** PostgreSQL 16 (partitioned, `tsvector` full-text, `pg_trgm`) · Redis · OpenSearch
 **Ops** Vercel · Docker · Nginx · Prometheus/Grafana · ELK · pytest
@@ -340,7 +333,6 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │     ├─ ingest/
 │     │  ├─ connectors/              # UK · EU TED · World Bank · SAM.gov
 │     │  ├─ normalize.ts             # FX · categorize · tech · fit score · gates
-│     │  └─ ai-enrich.ts             # optional OpenRouter summary polish
 │     └─ domain.ts · types · seed · format
 │
 ├─ vercel.json                       # cron schedule + function maxDuration

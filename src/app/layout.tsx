@@ -4,7 +4,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
-  title: "JSAN Consulting — Project Discovery Portal",
+  title: "JSAN Opportunity Finder",
   description:
     "JSAN Consulting's opportunity intelligence portal — discover GIS, telecom, and adjacent technology opportunities from public sources.",
 };

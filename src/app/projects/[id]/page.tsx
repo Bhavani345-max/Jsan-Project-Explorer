@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Building2, MapPin, Wallet, CalendarClock, CalendarDays, ExternalLink, Hash,
-  FileText, Users, Mail, Phone, Sparkles, Bookmark, BellPlus, Tag, Target, Languages,
+  FileText, Users, Mail, Phone, Bookmark, BellPlus, Tag, Target, Languages, Layers,
 } from "lucide-react";
 import { getProject, relatedProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import { Breadcrumbs, StatusBadge, SectionCard, TechChip, FitBadge } from "@/components/ui";
 import { ProjectCard } from "@/components/ProjectCard";
 import { money, fmtDate, deadlineLabel, daysLeft } from "@/lib/format";
+import { FitBreakdown } from "@/components/FitBreakdown";
+import { scoreFit } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,15 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
   if (!project) notFound();
   const related = relatedProjects(project, 4, projects);
   const dl = daysLeft(project.deadline);
+  // Recomputed here rather than read off the record: the panel has to show the
+  // rules that produce the number, and a stored integer carries no reasons.
+  const fit = scoreFit({
+    title: project.title,
+    description: project.description,
+    budgetUsd: project.budget,
+    country: project.country,
+    deadline: project.deadline,
+  });
 
   const facts: [React.ComponentType<{ size?: number; className?: string }>, string, string][] = [
     [Building2, "Organization", project.organization],
@@ -94,12 +105,12 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          {/* AI summary */}
+          {/* Source summary — the notice's own wording, trimmed. Never rewritten. */}
           <div className="card p-6 border-l-4" style={{ borderLeftColor: "var(--primary)" }}>
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={16} className="text-primary" />
-              <h2 className="font-semibold">AI Summary</h2>
-              <span className="chip !text-[10px]">auto-generated</span>
+              <FileText size={16} className="text-primary" />
+              <h2 className="font-semibold">Source Summary</h2>
+              <span className="chip !text-[10px]">from the published notice</span>
             </div>
             <p className="text-[15px] leading-relaxed text-text">{project.summary}</p>
             <div className="flex flex-wrap gap-1.5 mt-4">
@@ -115,8 +126,15 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
             <p className="text-[15px] leading-relaxed text-text-muted whitespace-pre-line">{project.description}</p>
           </SectionCard>
 
+          <SectionCard
+            title="Rule-Based Fit Score"
+            subtitle="Every point traced to the rule that awarded it — no model, no inference"
+          >
+            <FitBreakdown breakdown={fit} />
+          </SectionCard>
+
           <div className="grid sm:grid-cols-2 gap-6">
-            <SectionCard title="Technologies Required" subtitle="AI-extracted from the notice">
+            <SectionCard title="Technologies Required" subtitle="Matched from the notice text">
               <div className="flex flex-wrap gap-2">
                 {project.technologies.map((t) => (
                   <span key={t} className="chip !bg-primary-soft !text-primary !border-transparent">
@@ -193,9 +211,9 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
       {related.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles size={16} className="text-primary" />
-            <h2 className="font-semibold text-lg">Recommended Opportunities</h2>
-            <span className="text-[13px] text-text-faint">based on technology & category match</span>
+            <Layers size={16} className="text-primary" />
+            <h2 className="font-semibold text-lg">Related Opportunities</h2>
+            <span className="text-[13px] text-text-faint">shared technologies, category or country</span>
           </div>
           <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {related.map((p) => (

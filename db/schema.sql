@@ -1,5 +1,5 @@
 -- =====================================================================
---  Project Discovery Portal — PostgreSQL schema (v2)
+--  JSAN Opportunity Finder — PostgreSQL schema (v2)
 --  Requirements met:
 --   • 3NF normalized            • UUID primary keys everywhere
 --   • FK relationships          • Indexes for fast search
@@ -105,9 +105,9 @@ CREATE TABLE projects (
     reference_number  VARCHAR(120) NOT NULL,
     title             VARCHAR(400) NOT NULL,
     description       TEXT,
-    ai_summary        TEXT,
-    ai_fit_score      SMALLINT,             -- 0-100 AI relevance to company profile
-    ai_service_line   VARCHAR(60),          -- AI-assigned service line
+    summary           TEXT,                 -- trimmed wording from the notice itself
+    fit_score         SMALLINT,             -- 0-100, rule-based (see lib/scoring.ts)
+    service_line      VARCHAR(60),          -- mapped from category by fixed rules
     organization_id   UUID REFERENCES organizations(id),
     category_id       UUID REFERENCES project_categories(id),
     source_id         UUID REFERENCES project_sources(id),
@@ -271,7 +271,7 @@ CREATE INDEX idx_projects_category ON projects (category_id);
 CREATE INDEX idx_projects_deadline ON projects (deadline) WHERE deleted_at IS NULL;
 CREATE INDEX idx_projects_budget   ON projects (budget_usd);
 CREATE INDEX idx_projects_pub_brin ON projects USING brin (publication_date);     -- cheap on huge tables
-CREATE INDEX idx_projects_ai_fit  ON projects (ai_fit_score DESC) WHERE deleted_at IS NULL;
+CREATE INDEX idx_projects_fit     ON projects (fit_score DESC) WHERE deleted_at IS NULL;
 CREATE INDEX idx_projects_ref      ON projects (reference_number);
 
 CREATE INDEX idx_users_email       ON users (email) WHERE deleted_at IS NULL;

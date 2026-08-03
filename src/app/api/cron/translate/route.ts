@@ -6,16 +6,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// GET|POST /api/cron/translate — translate stored notice titles into English.
+// GET|POST /api/cron/translate — derive English titles for stored notices.
 //
 // Separate from /api/cron/ingest on purpose. Ingest wires in a small batch for
 // steady-state upkeep of newly-collected rows; clearing a large backlog (the
-// first run faces ~425 untranslated titles) needs several passes, and doing that
+// first run faces ~425 unprocessed titles) needs several passes, and doing that
 // inside ingest would put its 300s budget at risk.
 //
 // Safe to call repeatedly: it only ever touches rows with translated = FALSE, it
 // writes to title_en and never overwrites the original title, and a row whose
-// translation fails or cannot be parsed is simply left for the next run.
+// write fails is simply left for the next run.
 //
 // ?limit=N  titles to attempt this pass (default 120, capped at 400).
 async function handle(request: Request): Promise<Response> {
@@ -41,10 +41,7 @@ async function handle(request: Request): Promise<Response> {
       ok: true,
       startedAt,
       finishedAt: new Date().toISOString(),
-      // false when no OPENROUTER_API_KEY is set: rows stay untranslated and the
-      // portal shows original titles.
-      modelEnabled: result.enabled,
-      translated: result.translated,
+      derived: result.derived,
       alreadyEnglish: result.alreadyEnglish,
       remaining: result.remaining,
     });

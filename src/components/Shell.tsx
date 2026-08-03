@@ -90,8 +90,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <img src="/jsan-mark.png" alt="JSAN Consulting logo" className="w-6 h-6 object-contain" />
           </div>
           <div className="leading-tight">
-            <div className="font-bold text-[15px] tracking-tight text-white">JSAN Consulting</div>
-            <div className="text-[11px] text-white/70">Project Discovery Portal</div>
+            <div className="font-bold text-[15px] tracking-tight text-white">JSAN</div>
+            <div className="text-[11px] text-white/70">Opportunity Finder</div>
           </div>
         </div>
 

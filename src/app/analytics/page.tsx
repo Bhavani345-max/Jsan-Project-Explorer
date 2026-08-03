@@ -3,7 +3,8 @@ import { dashboardStats } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
 import { Breadcrumbs, SectionCard } from "@/components/ui";
-import { TrendArea, VBarChart, HBarChart } from "@/components/charts";
+import { TrendArea, VBarChart, HBarChart, DonutChart } from "@/components/charts";
+import { HIGH_FIT_THRESHOLD } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -11,14 +12,8 @@ export default async function AnalyticsPage() {
   const { projects } = await liveDataset();
   const stats = dashboardStats(projects);
 
-  const orgTally = new Map<string, number>();
-  for (const p of projects) orgTally.set(p.organization, (orgTally.get(p.organization) ?? 0) + 1);
-  const topOrgs = [...orgTally.entries()]
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
-
-  const highFit = projects.filter((p) => p.fitScore >= 70).length;
+  const topOrgs = stats.byOrganization.slice(0, 6);
+  const highFit = stats.highFitCount;
   const topTech = stats.byTechnology.slice(0, 6);
 
   return (
@@ -30,12 +25,19 @@ export default async function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <StatCard label="High-Fit Opportunities" value={String(highFit)} icon={Target} hint="Capability fit ≥ 70%" />
+        <StatCard label="High-Fit Opportunities" value={String(highFit)} icon={Target} hint={`Rule-based fit ≥ ${HIGH_FIT_THRESHOLD}`} />
         <StatCard label="Technologies Tracked" value={String(stats.byTechnology.length)} icon={TrendingUp} accent="var(--warning)" hint="Distinct technologies across open opportunities" />
       </div>
 
       <SectionCard title="Projects per Month" subtitle="Ingestion & discovery trend">
         <TrendArea data={stats.perMonth} height={280} />
+      </SectionCard>
+
+      <SectionCard
+        title="High-Fit Trend"
+        subtitle={`Opportunities scoring ≥ ${HIGH_FIT_THRESHOLD}, same window as above`}
+      >
+        <TrendArea data={stats.highFitPerMonth} height={220} />
       </SectionCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -46,6 +48,22 @@ export default async function AnalyticsPage() {
           <HBarChart data={stats.byTechnology} height={300} />
         </SectionCard>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <SectionCard title="Projects by Category" subtitle="Delivery mix">
+          <DonutChart data={stats.byCategory} />
+        </SectionCard>
+        <SectionCard title="Projects by Service Line" subtitle="Share of the board by line">
+          <DonutChart data={stats.byServiceLine} />
+        </SectionCard>
+        <SectionCard title="Projects by Budget Band" subtitle="Disclosed values only">
+          <VBarChart data={stats.byBudget} color="#10b981" />
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Projects by Source" subtitle="Where opportunities originate">
+        <HBarChart data={stats.bySource} height={260} />
+      </SectionCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SectionCard title="Top Technologies in Demand" subtitle="Most requested across open opportunities">

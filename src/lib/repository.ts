@@ -1,5 +1,5 @@
 import { PROJECTS, CONNECTORS, CONNECTOR_LOGS } from "./seed";
-import { TARGET_MIN_BUDGET_USD, TARGET_MAX_BUDGET_USD } from "./domain";
+import { TARGET_MIN_BUDGET_USD, TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD } from "./domain";
 import { daysLeft } from "./format";
 import type { Project, ProjectQuery, DashboardStats, APIConnector, ConnectorLog } from "./types";
 
@@ -45,6 +45,12 @@ function matches(p: Project, q: ProjectQuery): boolean {
   if (q.minBudget != null && (p.budget == null || p.budget < q.minBudget)) return false;
   if (q.maxBudget != null && (p.budget == null || p.budget > q.maxBudget)) return false;
   if (q.minFit != null && p.fitScore < q.minFit) return false;
+  if (q.maxDeadlineDays != null) {
+    // An unparseable or missing deadline cannot satisfy a deadline window —
+    // including it would put rows in the results that the filter cannot vouch for.
+    const d = daysLeft(p.deadline);
+    if (Number.isNaN(d) || d < 0 || d > q.maxDeadlineDays) return false;
+  }
   // "Occupied" = the opportunity is already taken (Awarded) or the window has
   // closed — filter these out when the caller only wants pursuable work.
   if (q.availableOnly && (p.status === "Closed" || p.status === "Awarded")) return false;
@@ -229,9 +235,15 @@ export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
     bySource: tally(projects, (p) => p.source).slice(0, 8),
     byCategory: tally(projects, (p) => p.category),
     byServiceLine: tally(projects, (p) => p.serviceLine),
-    highFitCount: projects.filter((p) => p.fitScore >= 85).length,
+    highFitCount: projects.filter((p) => p.fitScore >= HIGH_FIT_THRESHOLD).length,
     countryCount: new Set(projects.map((p) => p.country)).size,
+    organizationCount: new Set(projects.map((p) => p.organization)).size,
+    byOrganization: tally(projects, (p) => p.organization).slice(0, 10),
     perMonth: perMonthTrend(projects),
+    // Same window as perMonth so the two series line up on the x-axis.
+    highFitPerMonth: perMonthTrend(
+      projects.filter((p) => p.fitScore >= HIGH_FIT_THRESHOLD),
+    ),
   };
 }
 

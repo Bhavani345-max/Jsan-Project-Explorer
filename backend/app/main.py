@@ -1,5 +1,5 @@
 """
-Project Discovery Portal — FastAPI entrypoint.
+JSAN Opportunity Finder — FastAPI entrypoint.
 
 Endpoint paths, JSON shapes, env vars and port 8080 are identical to the
 previous Spring Boot service, so the frontend, docker-compose and monitoring
@@ -19,7 +19,7 @@ from fastapi.responses import RedirectResponse
 from app import scheduler
 from app.config import get_settings
 from app.errors import register_exception_handlers
-from app.routers import ai, auth, projects
+from app.routers import auth, projects
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Project Discovery Portal API",
-    description="Discover and inspect software opportunities from public sources",
+    title="JSAN Opportunity Finder API",
+    description="Discover and inspect opportunities from public procurement sources",
     version="1.0.0",
     openapi_url="/v3/api-docs",
     docs_url="/docs",
@@ -54,7 +54,6 @@ register_exception_handlers(app)
 
 app.include_router(auth.router)
 app.include_router(projects.router)
-app.include_router(ai.router)
 
 
 @app.get("/swagger-ui.html", include_in_schema=False)

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, LayoutGrid, Rows3 } from "lucide-react";
 import type { Project } from "@/lib/types";
-import { TARGET_MAX_BUDGET_USD } from "@/lib/domain";
+import { TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD } from "@/lib/domain";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Pagination, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/components/Pagination";
 import { Breadcrumbs, EmptyState, StatusBadge, FitBadge } from "@/components/ui";
@@ -53,6 +53,22 @@ const SORTS = [
 
 const DEFAULT_SORT = "fitScore";
 
+// Deadline windows and fit bands offered in the filter panel. Both write a
+// plain number into the query string, which the API and repository already
+// understand (maxDeadlineDays / minFit).
+const DEADLINE_WINDOWS = [
+  { value: "7", label: "Within 7 days" },
+  { value: "14", label: "Within 14 days" },
+  { value: "30", label: "Within 30 days" },
+  { value: "90", label: "Within 90 days" },
+];
+
+const FIT_BANDS = [
+  { value: "50", label: "50 and above" },
+  { value: String(HIGH_FIT_THRESHOLD), label: `${HIGH_FIT_THRESHOLD} and above (high fit)` },
+  { value: "85", label: "85 and above" },
+];
+
 // The full Explorer state, and the value each key omits from the address bar.
 // Reading and writing both go through this map, so a filter can never be
 // written into a shareable URL without being read back out of one.
@@ -70,6 +86,7 @@ const URL_DEFAULTS = {
   minBudget: "",
   maxBudget: "",
   minFit: "",
+  maxDeadlineDays: "",
   availableOnly: true, // hide occupied by default
   includeLarge: false, // hide >$10M by default
   sort: DEFAULT_SORT,
@@ -113,6 +130,38 @@ function readFilters(sp: URLSearchParams | ReturnType<typeof useSearchParams>): 
   out.page = safePage(sp.get("page"));
   out.pageSize = safePageSize(sp.get("pageSize"));
   return out;
+}
+
+/** Select over fixed value/label pairs — for the numeric filters, where the
+ *  stored value ("30") is not what should appear in the dropdown. */
+function ChoiceSelect({
+  label,
+  value,
+  choices,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  choices: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="input mt-1.5 cursor-pointer"
+      >
+        <option value="">Any</option>
+        {choices.map((c) => (
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function Select({
@@ -212,7 +261,7 @@ export function ExplorerClient() {
       if (k === "includeLarge") return; // not an API param — drives the soft cap below
       if (v !== "" && v != null) params.set(k, String(v));
     });
-    // Default to JSAN's $1–10M target band; the toggle lifts the $10M ceiling
+    // Default to the $1–10M target band; the toggle lifts the $10M ceiling
     // to reveal large (World Bank) global leads. A manual max budget still wins.
     if (!f.includeLarge) {
       const userMax = f.maxBudget ? Number(f.maxBudget) : Infinity;
@@ -251,7 +300,7 @@ export function ExplorerClient() {
         ([k, v]) =>
           v !== "" &&
           typeof v === "string" &&
-          !["q", "sort", "page", "minFit"].includes(k),
+          !["q", "sort", "page", "minFit", "maxDeadlineDays"].includes(k),
       ) as [string, string][],
     [f],
   );
@@ -346,6 +395,8 @@ export function ExplorerClient() {
                 <Select label="Status" value={f.status} options={facets.statuses} onChange={(v) => set({ status: v })} />
                 <Select label="Organization" value={f.organization} options={facets.organizations} onChange={(v) => set({ organization: v })} />
                 <Select label="Source" value={f.source} options={facets.sources} onChange={(v) => set({ source: v })} />
+                <ChoiceSelect label="Deadline" value={f.maxDeadlineDays} choices={DEADLINE_WINDOWS} onChange={(v) => set({ maxDeadlineDays: v })} />
+                <ChoiceSelect label="Fit Score" value={f.minFit} choices={FIT_BANDS} onChange={(v) => set({ minFit: v })} />
 
                 <div>
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">

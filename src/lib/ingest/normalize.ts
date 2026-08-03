@@ -197,20 +197,11 @@ export function extractTechnologies(text: string): string[] {
   return out.slice(0, 8);
 }
 
-// Transparent capability-fit heuristic (0–100). Core service lines score
-// highest; adjacent work sits below them but above generic digital work, so a
-// national digital-infrastructure programme never outranks a real fibre build.
-// Budget size and a recognized category nudge it up.
-export function fitScoreFor(serviceLine: ServiceLine, budgetUsd: number | null, hasCategory: boolean): number {
-  let score = 40;
-  if (serviceLine === "Geospatial Intelligence" || serviceLine === "Telecom & Network Engineering") score += 30;
-  else if (serviceLine === "Geospatial & Telecom Adjacent") score += 20;
-  else if (serviceLine === "Digital Engineering") score += 15;
-  if ((budgetUsd ?? 0) >= 1_000_000) score += 15;
-  else if ((budgetUsd ?? 0) >= 100_000) score += 8;
-  if (hasCategory) score += 7;
-  return Math.min(97, score);
-}
+// The fit score now lives in lib/scoring.ts, which scores from the notice text
+// itself and returns the rule-by-rule breakdown the detail page renders.
+// Re-exported here so the ingest pipeline keeps its single import surface.
+import { fitScoreFor } from "@/lib/scoring";
+export { fitScoreFor, scoreFit } from "@/lib/scoring";
 
 const PROJECT_TYPE_BY_SOURCE: Record<string, ProjectType> = {
   "Government Procurement API": "Government Tender",
@@ -314,7 +305,13 @@ export function normalize(raw: RawOpportunity): NormalizedOpportunity {
     sourceType: raw.sourceType,
     category,
     serviceLine,
-    fitScore: fitScoreFor(serviceLine, budgetUsd, true),
+    fitScore: fitScoreFor({
+      title: raw.title,
+      description: raw.description,
+      budgetUsd,
+      country: raw.country,
+      deadline: raw.deadline,
+    }),
     projectType: PROJECT_TYPE_BY_SOURCE[raw.sourceType] ?? "Open Opportunity",
     technologies,
     tags,

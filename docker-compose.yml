@@ -48,9 +48,6 @@ services:
       DB_PASSWORD: discovery
       REDIS_HOST: redis
       JWT_SECRET: change-me-in-production-please-32-bytes-minimum!
-      # AI enrichment (optional) — set in host env or a .env file next to this compose file
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-anthropic/claude-haiku-4.5}
     ports: ["8080:8080"]
 
   frontend:

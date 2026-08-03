@@ -37,8 +37,8 @@
                                           └──────────────────────────────────────┘
 
         Cross-cutting: RabbitMQ (async notifications) · ELK (logs) ·
-                       Prometheus + Grafana (metrics) · AI service (summaries,
-                       extraction, categorization, recommendations)
+                       Prometheus + Grafana (metrics) · rule-based scoring
+                       (keyword extraction, categorization, fit score)
 ```
 
 ## 2. Design principles
@@ -71,6 +71,6 @@ via `NEXT_PUBLIC_API_BASE`.
 | API Connectors | `src/app/connectors` | `connector/*`, `api_connectors` table |
 | Scheduler | (status UI) | `scheduler/CollectionScheduler` |
 | Smart Search | topbar autocomplete | `GET /api/v1/suggest`, `fullTextSearch` |
-| AI Features | AI summary + tags on details | `ai_summary`, `tags`, extraction pipeline |
+| Rule-based scoring | Fit score + breakdown on details | `fit_score`, `tags`, `src/lib/scoring.ts` |
 | Analytics | `src/app/analytics` | aggregate queries |
 | Auth / RBAC | role switcher + guards | `config/SecurityConfig`, JWT |

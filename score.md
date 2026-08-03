@@ -1,6 +1,6 @@
 # Platform Quality Score — Rubric Testing
 
-Iterative deep review of the Project Discovery Portal. Each round: find issues →
+Iterative deep review of the JSAN Opportunity Finder. Each round: find issues →
 fix → re-score. Scores are 1–5 per category (5 = production-grade, verified).
 
 **Scoring rounds:** R1 = baseline audit · R2 = real data connector · R3 = deep

@@ -143,9 +143,12 @@ class Project(AuditMixin, Base):
     reference_number: Mapped[str] = mapped_column(String(120))
     title: Mapped[str] = mapped_column(String(400))
     description: Mapped[str | None] = mapped_column(Text)
-    ai_summary: Mapped[str | None] = mapped_column(Text)
-    ai_fit_score: Mapped[int | None] = mapped_column(SmallInteger)
-    ai_service_line: Mapped[str | None] = mapped_column(String(60))
+    # Derived at ingest by deterministic rules (see app.services.scoring):
+    # summary is the trimmed source description, fit_score the rule-based
+    # 0-100 relevance, service_line the category-to-pillar mapping.
+    summary: Mapped[str | None] = mapped_column(Text)
+    fit_score: Mapped[int | None] = mapped_column(SmallInteger)
+    service_line: Mapped[str | None] = mapped_column(String(60))
 
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organizations.id")

@@ -1,4 +1,6 @@
 import type { Project, APIConnector, ConnectorLog, ProjectCategory, ProjectType, SourceType } from "./types";
+import { fitScoreFor } from "./scoring";
+import { HIGH_FIT_THRESHOLD } from "./domain";
 
 // ------------------------------------------------------------------
 // Deterministic seed data. In production the SchedulerService writes
@@ -1148,34 +1150,21 @@ const SERVICE_LINE_BY_CATEGORY: Record<ProjectCategory, import("./types").Servic
   DevOps: "Digital Engineering",
 };
 
-// Technologies at the core of JSAN's delivery capability — GIS and telecom
-// network engineering lead, alongside the digital-engineering stack.
-const JSAN_CORE_TECH = new Set([
-  "GIS", "5G", "Fiber Optics", "OSS/BSS", "Network Planning", "RF Planning", "LTE",
-  "Python", "Java", "Spring Boot", "React", "Angular", "Node.js",
-  "AWS", "Azure", "GCP", "AI", "Machine Learning", "DevOps", "SQL", "Data Engineering",
-]);
-
 function serviceLineFor(category: ProjectCategory): import("./types").ServiceLine {
   return SERVICE_LINE_BY_CATEGORY[category];
 }
 
-// Deterministic 0–100 relevance score. GIS (geospatial) and telecom network
-// engineering are JSAN's core business, so they carry the highest base scores;
-// depth of core-tech overlap adds the rest.
-function fitScoreFor(category: ProjectCategory, technologies: string[]): number {
-  const base: Record<import("./types").ServiceLine, number> = {
-    "Geospatial Intelligence": 92,
-    "Telecom & Network Engineering": 90,
-    "Geospatial & Telecom Adjacent": 84,
-    "Strategic Workforce Solutions": 82,
-    "Structured Program Management": 78,
-    "Digital Engineering": 74,
-  };
-  const line = serviceLineFor(category);
-  const overlap = technologies.filter((t) => JSAN_CORE_TECH.has(t)).length;
-  const score = base[line] + Math.min(overlap * 2, 12);
-  return Math.max(60, Math.min(99, score));
+// The sample set scores through exactly the same rule table as ingested data
+// (lib/scoring.ts), so a demo record and a live tender are never ranked by
+// different maths.
+function fitScoreForSpec(s: Spec): number {
+  return fitScoreFor({
+    title: s.title,
+    description: s.description,
+    budgetUsd: usd(s.budget, s.currency),
+    country: s.country,
+    deadline: iso(s.deadlineIn),
+  });
 }
 
 const rate: Record<string, number> = { USD: 1, GBP: 1.27, EUR: 1.08, CAD: 0.73, AUD: 0.66 };
@@ -1225,7 +1214,7 @@ function tagsFor(s: Spec): string[] {
   tags.add(serviceLineFor(s.category));
   tags.add(s.category);
   tags.add(s.industry);
-  if (fitScoreFor(s.category, s.technologies) >= 85) tags.add("Best Fit");
+  if (fitScoreForSpec(s) >= HIGH_FIT_THRESHOLD) tags.add("Best Fit");
   if (s.budget && usd(s.budget, s.currency)! > 5_000_000) tags.add("High Value");
   if (s.deadlineIn <= 7) tags.add("Urgent");
   s.technologies.slice(0, 2).forEach((t) => tags.add(t));
@@ -1263,7 +1252,7 @@ export const PROJECTS: Project[] = SPECS.map((s, i) => {
     sourceType: s.sourceType,
     category: s.category,
     serviceLine: serviceLineFor(s.category),
-    fitScore: fitScoreFor(s.category, s.technologies),
+    fitScore: fitScoreForSpec(s),
     projectType: s.projectType,
     status,
     technologies: s.technologies,

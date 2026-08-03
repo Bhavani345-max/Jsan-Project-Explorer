@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FolderKanban, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower, Layers, Globe } from "lucide-react";
+import { FolderKanban, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower, Layers, Globe, Building2 } from "lucide-react";
 import { dashboardStats, queryProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
@@ -7,6 +7,7 @@ import { SectionCard, Breadcrumbs, StatusBadge, FitBadge } from "@/components/ui
 import { VBarChart, DonutChart, HBarChart, TrendArea } from "@/components/charts";
 import { money, deadlineLabel, relTime, fmtDate } from "@/lib/format";
 import type { ProjectQuery, ServiceLine } from "@/lib/types";
+import { HIGH_FIT_THRESHOLD } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -143,13 +144,14 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* No period-over-period deltas: the portal holds only currently-open
             notices and keeps no historical snapshots, so there is nothing real to
             compare against. Every figure below is a straight count of the data. */}
         <StatCard label="Total Opportunities" value={String(stats.totalProjects)} icon={FolderKanban} hint={`Open, across ${sourceCount} public ${sourceCount === 1 ? "source" : "sources"}`} />
         <StatCard label="Countries Covered" value={String(stats.countryCount)} icon={Globe} accent="var(--accent)" hint="Every country the sources report" />
-        <StatCard label="High-Fit Opportunities" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" hint="Capability fit ≥ 85%" />
+        <StatCard label="High-Fit Opportunities" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" hint={`Rule-based fit ≥ ${HIGH_FIT_THRESHOLD}`} />
+        <StatCard label="Organizations" value={String(stats.organizationCount)} icon={Building2} accent="var(--accent)" hint="Distinct publishing buyers" />
         <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" hint="Deadline within 7 days" />
         <StatCard label="Target Pipeline ($1–10M)" value={money(stats.targetPipeline)} icon={Wallet} hint={`${stats.targetCount} opportunities in the target band`} />
       </div>

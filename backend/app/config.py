@@ -33,10 +33,6 @@ class Settings(BaseSettings):
 
     allowed_origins: str = "http://localhost:3000"
 
-    # AI enrichment via OpenRouter — empty key disables the AI layer cleanly
-    openrouter_api_key: str = ""
-    openrouter_model: str = "anthropic/claude-haiku-4.5"
-
     @property
     def sqlalchemy_url(self) -> str:
         """Normalize the configured URL into a SQLAlchemy/psycopg URL."""

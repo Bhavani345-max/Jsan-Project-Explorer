@@ -14,6 +14,23 @@ interface Row {
   category: string;
   service_line: string;
   budget_usd: string | number | null;
+  fit_score: number | null;
+  // The rule-based score reads these two as well as the text, so they have to
+  // travel with the row or every rescored record loses its country and
+  // deadline points.
+  country: string | null;
+  deadline: string | null;
+}
+
+/** One place that turns a stored row into the rule-based score. */
+function scoreOf(r: Row): number {
+  return fitScoreFor({
+    title: r.title,
+    description: r.description,
+    budgetUsd: r.budget_usd == null ? null : Number(r.budget_usd),
+    country: r.country,
+    deadline: r.deadline,
+  });
 }
 
 interface Change {
@@ -64,12 +81,27 @@ async function handle(request: Request): Promise<Response> {
     const before = { inDomain: await countInDomain(), total: await countOpportunities() };
 
     const rows = (await sql.query(
-      `SELECT id, title, description, category, service_line, budget_usd FROM opportunities`,
+      `SELECT id, title, description, category, service_line, budget_usd, country, deadline, fit_score
+         FROM opportunities`,
     )) as Row[];
 
     const promote: (Change & { fitScore: number })[] = [];
     const disagreements: (Change & { fitScore: number })[] = [];
     let unchanged = 0;
+
+    // Every stored fit_score predates the current rule table, so a promotion
+    // pass alone would leave the rest of the board ranked by the old maths.
+    // Collect a rescore for every row whose stored score no longer matches;
+    // still UPDATE-only, and still nothing is deleted.
+    const rescore: { id: string; fitScore: number }[] = [];
+    const histogram = new Map<string, number>();
+
+    for (const r of rows) {
+      const fresh = scoreOf(r);
+      const bucket = `${Math.floor(fresh / 10) * 10}-${Math.floor(fresh / 10) * 10 + 9}`;
+      histogram.set(bucket, (histogram.get(bucket) ?? 0) + 1);
+      if (Number(r.fit_score) !== fresh) rescore.push({ id: r.id, fitScore: fresh });
+    }
 
     for (const r of rows) {
       // Classify on the TITLE ONLY, deliberately stricter than ingest.
@@ -87,27 +119,25 @@ async function handle(request: Request): Promise<Response> {
       const nowInDomain = isTargetServiceLine(serviceLine);
 
       if (!wasInDomain && nowInDomain) {
-        const budget = r.budget_usd == null ? null : Number(r.budget_usd);
         promote.push({
           id: r.id,
           title: r.title.slice(0, 110),
           from: r.service_line,
           to: serviceLine,
           category,
-          fitScore: fitScoreFor(serviceLine, budget, true),
+          fitScore: scoreOf(r),
         });
       } else {
         // Already in-domain but the current rules read it differently — surfaced
         // for review only. Never applied, so nothing visible is taken away.
         if (wasInDomain && !nowInDomain) {
-          const budget = r.budget_usd == null ? null : Number(r.budget_usd);
           disagreements.push({
             id: r.id,
             title: r.title.slice(0, 110),
             from: r.service_line,
             to: serviceLine,
             category,
-            fitScore: fitScoreFor(serviceLine, budget, true),
+            fitScore: scoreOf(r),
           });
         }
         unchanged++;
@@ -115,7 +145,9 @@ async function handle(request: Request): Promise<Response> {
     }
 
     const toWrite = demote ? [...promote, ...disagreements] : promote;
+    const reclassified = new Set(toWrite.map((p) => p.id));
     let written = 0;
+    let rescored = 0;
     if (!dryRun) {
       for (const p of toWrite) {
         await sql.query(
@@ -125,6 +157,16 @@ async function handle(request: Request): Promise<Response> {
           [p.category, p.to, p.fitScore, p.id],
         );
         written++;
+      }
+      // Rows the reclassifier left alone still need the new score. Skip the
+      // ones just written above so a record is never updated twice.
+      for (const r of rescore) {
+        if (reclassified.has(r.id)) continue;
+        await sql.query(
+          `UPDATE opportunities SET fit_score = $1, updated_at = now() WHERE id = $2`,
+          [r.fitScore, r.id],
+        );
+        rescored++;
       }
     }
 
@@ -140,7 +182,11 @@ async function handle(request: Request): Promise<Response> {
       scanned: rows.length,
       promoted: promote.length,
       written,
+      rescored: dryRun ? rescore.length : rescored,
       unchanged,
+      // Distribution of the rule-based score across every scanned row — the
+      // evidence for where the high-fit threshold should sit.
+      scoreHistogram: Object.fromEntries([...histogram.entries()].sort()),
       byCategory: promote.reduce<Record<string, number>>((acc, p) => {
         acc[p.category] = (acc[p.category] ?? 0) + 1;
         return acc;

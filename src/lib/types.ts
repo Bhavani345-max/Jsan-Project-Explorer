@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------
-// Domain model for the Project Discovery Portal
+// Domain model for the JSAN Opportunity Finder
 // Mirrors the relational schema (see db/schema.sql) — the repository
 // layer can be swapped from in-memory to PostgreSQL without touching
 // the API or UI, following the Repository pattern.
@@ -67,7 +67,7 @@ export interface Project {
    *  the details page: these are official notices and must stay citable. */
   originalTitle: string;
   description: string;
-  summary: string; // AI-generated
+  summary: string; // the notice's own wording, trimmed at ingest
   organization: string;
   country: string;
   state: string;
@@ -80,11 +80,11 @@ export interface Project {
   sourceType: SourceType;
   category: ProjectCategory;
   serviceLine: ServiceLine; // JSAN pillar this opportunity maps to
-  fitScore: number; // 0–100 relevance to JSAN's capabilities
+  fitScore: number; // 0–100, rule-based (see lib/scoring.ts)
   projectType: ProjectType;
   status: ProjectStatus;
-  technologies: string[]; // AI-extracted
-  tags: string[]; // AI-generated
+  technologies: string[]; // matched from the notice text by keyword rules
+  tags: string[]; // derived from category, country and the rule-based score
   eligibility: string;
   officialLink: string;
   contact: {
@@ -140,8 +140,13 @@ export interface DashboardStats {
   // Real monthly counts from publication dates — rolling window ending at the
   // current month (see perMonthTrend in lib/repository).
   perMonth: { label: string; value: number }[];
-  highFitCount: number; // opportunities with fitScore >= 85
+  highFitCount: number; // opportunities at or above HIGH_FIT_THRESHOLD
   countryCount: number; // distinct countries represented — the portal is worldwide
+  organizationCount: number; // distinct publishing buyers
+  byOrganization: { label: string; value: number }[];
+  // High-fit count per month, on the same rolling window as perMonth, so the
+  // two trend lines can be read against each other.
+  highFitPerMonth: { label: string; value: number }[];
 }
 
 export interface ProjectQuery {
@@ -158,6 +163,9 @@ export interface ProjectQuery {
   minBudget?: number;
   maxBudget?: number;
   minFit?: number;
+  /** Only opportunities whose deadline falls within this many days from today.
+   *  Records with no parseable deadline are excluded when this is set. */
+  maxDeadlineDays?: number;
   // When true, hide opportunities that are no longer pursuable (Awarded/Closed).
   availableOnly?: boolean;
   page?: number;

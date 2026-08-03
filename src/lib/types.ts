@@ -29,7 +29,12 @@ export type ProjectCategory =
   | "DevOps"
   | "Telecom / Network"
   | "Workforce Solutions"
-  | "Program Management";
+  | "Program Management"
+  // Nothing in the notice matched any focus-area rule. Deliberately NOT a
+  // target category: it is the bucket that keeps agriculture, health and
+  // construction tenders out of the portal now that the catch-all no longer
+  // falls through into Digital Engineering.
+  | "Unclassified";
 
 // JSAN Consulting's service pillars. GIS and Telecom are the core business;
 // every opportunity is mapped to the pillar it best fits so the BD team can
@@ -46,7 +51,9 @@ export type ServiceLine =
   | "Geospatial & Telecom Adjacent"
   | "Digital Engineering"
   | "Strategic Workforce Solutions"
-  | "Structured Program Management";
+  | "Structured Program Management"
+  /** Retained but never surfaced — see "Unclassified" above. */
+  | "Out of Scope";
 
 export type SourceType =
   | "Government Procurement API"

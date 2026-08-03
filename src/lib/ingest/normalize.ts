@@ -103,7 +103,7 @@ const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
   // native half of the title is often the only place the work is described —
   // German "Breitbandausbau" (broadband rollout) and French "boucle optique
   // locale" (local optical loop) were both being missed.
-  [/telecom|fibre|fiber|\b5g\b|\b4g\b|\blte\b|\bgsm\b|broadband|network engineering|network cabling|structured cabling|network equipment|network infrastructure|network technolog|data network|oss\/bss|\bfttx\b|\bfttp\b|\bftth\b|mobile network|mobile-telephone|base station|antenna|microwave link|satellite communication|\bvsat\b|sd-wan|backhaul|broadcast transmission|radio frequency|communication lines|communications? and connectivity|communications? (?:products|services|systems|equipment|infrastructure|networks?)|digital infrastructure|telephone|data transmission|breitband|boucle optique|optical loop|local loop|leased line|dark fib|\bpstn\b|\bvoip\b|(?<!road |rail |railway |transport |heating |water |sewer |power |energy |social |distribution |pipeline )\bnetworks\b/i, "Telecom / Network"],
+  [/telecom|fibre|fiber|\b5g\b|\b4g\b|\blte\b|\bgsm\b|broadband|network engineering|network cabling|structured cabling|network equipment|network infrastructure|network technolog|data network|oss\/bss|\bfttx\b|\bfttp\b|\bftth\b|mobile network|mobile-telephone|base station|antenna|microwave link|satellite communication|\bvsat\b|sd-wan|backhaul|broadcast transmission|radio frequency|communication lines|communications? and connectivity|communications? (?:products|services|systems|equipment|infrastructure|networks?)|digital infrastructure|telephone|data transmission|breitband|boucle optique|optical loop|local loop|leased line|dark fib|\bpstn\b|\bvoip\b|telecom gis|fielding|as-?built|make-?ready|pole attachment|outside plant|\bosp\b|permit acquisition|permitting|close-?out|(?<!road |rail |railway |transport |heating |water |sewer |power |energy |social |distribution |pipeline )\bnetworks\b/i, "Telecom / Network"],
   // Geospatial- and telecom-ADJACENT work: same field, not a pure GIS or
   // telecom contract. Ordered after both core rules so a fibre or surveying
   // notice always lands in its core line first, and before the generic
@@ -122,17 +122,28 @@ const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
   [/devops|ci\/cd|kubernetes|\bk8s\b|docker|site reliability|\bsre\b/i, "DevOps"],
   [/mobile app|\bios\b|android|react native|flutter/i, "Mobile Development"],
   [/website|web application|web development|\bportal\b|web platform|frontend|front-end/i, "Web Development"],
-  [/staff|workforce|recruitment|resourcing|managed service|contingent labour|labor supply/i, "Workforce Solutions"],
-  [/programme management|program management|\bpmo\b|project management office|delivery assurance/i, "Program Management"],
+  [/staff(?:ing|s)?\b|workforce|recruitment|resourcing|managed service|contingent labour|labor supply|staff augmentation|capacity augmentation|specialist delivery|delivery capacity|secondment|interim (?:staff|resource|management)|temporary (?:staff|personnel|labour|worker)|master vendor|agency worker|\bworkers\b|employment support|employment service|personnel (?:supply|service)|talent (?:acquisition|supply)|neutral vendor|\brpo\b/i, "Workforce Solutions"],
+  [/programme management|program management|\bpmo\b|\bp3o\b|prince2|project management office|programme office|delivery assurance|portfolio management|(?:programme|project|delivery) governance|multi-?country (?:delivery|execution|programme|program)/i, "Program Management"],
   [/\berp\b|\bcrm\b|\bsap\b|oracle|enterprise software|business system|line of business/i, "Enterprise Software"],
 ];
 
+/**
+ * Classify a notice into a delivery category, or "Unclassified".
+ *
+ * The fallback used to be "Enterprise Software", which maps to Digital
+ * Engineering. That was harmless while only the three geospatial/telecom lines
+ * were surfaced — the mis-filed rows were hidden anyway. Now that all six focus
+ * areas are surfaced, that same fallback would push every unmatched notice
+ * (agriculture, health, education, construction) straight onto the board, so
+ * a category has to be EARNED by matching a rule.
+ */
 export function categorize(text: string): ProjectCategory {
   for (const [re, cat] of CATEGORY_RULES) if (re.test(text)) return cat;
-  return "Enterprise Software";
+  return "Unclassified";
 }
 
-// Delivery category → JSAN service pillar. GIS and Telecom are the core lines.
+// Delivery category → JSAN capability focus area. GIS and Telecom are the core
+// lines; the six mapped-to values are exactly the six areas the portal carries.
 const CATEGORY_TO_SERVICE_LINE: Record<ProjectCategory, ServiceLine> = {
   GIS: "Geospatial Intelligence",
   "Telecom / Network": "Telecom & Network Engineering",
@@ -147,6 +158,8 @@ const CATEGORY_TO_SERVICE_LINE: Record<ProjectCategory, ServiceLine> = {
   "Enterprise Software": "Digital Engineering",
   "Cyber Security": "Digital Engineering",
   DevOps: "Digital Engineering",
+  // Matched nothing — kept out of every focus area, and out of the portal.
+  Unclassified: "Out of Scope",
 };
 
 export function serviceLineFor(category: ProjectCategory): ServiceLine {

@@ -22,11 +22,25 @@
 // ------------------------------------------------------------------
 import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
 
-/** The only service lines the portal surfaces. Widen here to re-include work. */
+/**
+ * The service lines the portal surfaces — JSAN's six capability focus areas.
+ *
+ * All six are carried. The portal previously surfaced only the three
+ * geospatial/telecom lines and hid the rest, which meant staffing, PMO and
+ * digital-engineering opportunities were ingested and then never shown.
+ *
+ * Widening this list is only safe because `categorize()` no longer falls
+ * through into a target line: an unmatched notice becomes "Unclassified" →
+ * "Out of Scope" and stays hidden. Without that change every agriculture and
+ * health tender in the feed would appear here as Digital Engineering.
+ */
 export const TARGET_SERVICE_LINES: ServiceLine[] = [
   "Geospatial Intelligence",
   "Telecom & Network Engineering",
   "Geospatial & Telecom Adjacent",
+  "Digital Engineering",
+  "Strategic Workforce Solutions",
+  "Structured Program Management",
 ];
 
 /** Delivery categories that map into the target service lines. */
@@ -34,6 +48,16 @@ export const TARGET_CATEGORIES: ProjectCategory[] = [
   "GIS",
   "Telecom / Network",
   "Geospatial / Telecom Adjacent",
+  "Cloud Migration",
+  "Data Engineering",
+  "Web Development",
+  "Mobile Development",
+  "Enterprise Software",
+  "Cyber Security",
+  "DevOps",
+  "AI/ML",
+  "Workforce Solutions",
+  "Program Management",
 ];
 
 /** The two lines that are JSAN's core business, as opposed to adjacent work. */

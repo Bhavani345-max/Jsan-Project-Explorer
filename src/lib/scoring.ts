@@ -52,6 +52,13 @@ export interface FitInput {
 // Ordered by weight, which is also the order they read in the UI. Patterns are
 // deliberately explicit rather than clever: this table IS the specification, so
 // it has to stay readable by whoever is asked to defend a score.
+//
+// The first five weights (GIS 30, telecom 25, utilities 20, smart city 20,
+// cloud 15) are the ones handed down with the requirements. Workforce and
+// programme management were added when the portal began surfacing all six
+// capability focus areas: without a rule of their own, a staffing or PMO notice
+// scores near zero and sinks to the bottom of the default fit ranking, so those
+// two lines would have been visible in the filters and invisible in practice.
 interface KeywordRule {
   id: string;
   label: string;
@@ -65,14 +72,14 @@ const KEYWORD_RULES: KeywordRule[] = [
     label: "GIS / geospatial",
     points: 30,
     pattern:
-      /\bgis\b|geospatial|geographic information|geodetic|geodesy|cartograph\w*|cadastr\w*|topograph\w*|land registry|land administration|\bmapping\b|\bmaps?\b|survey(?:ing|s)?\b|orthophoto|spatial data|arcgis|\bqgis\b|lidar|remote sensing|earth observation|satellite imagery|photogrammetr\w*/gi,
+      /\bgis\b|geospatial|geographic information|geodetic|geodesy|cartograph\w*|cadastr\w*|topograph\w*|land registry|land administration|\bmapping\b|\bmaps?\b|survey(?:ing|s)?\b|orthophoto|spatial data|arcgis|\bqgis\b|lidar|remote sensing|earth observation|satellite imagery|photogrammetr\w*|\bgnss\b|hydrographic/gi,
   },
   {
     id: "telecom",
     label: "Telecom / network engineering",
     points: 25,
     pattern:
-      /telecom\w*|telephon\w*|\bnetworks?\b|\b5g\b|\b4g\b|\blte\b|fibre|fiber optic\w*|\bfttx\b|\bfttp\b|broadband|oss\/bss|\brf planning\b|radio (?:access|equipment|network)|base station|backhaul|transceiver|antenna\w*|\bducting\b|cabling|transmission (?:services|network|equipment)|broadcast\w*/gi,
+      /telecom\w*|telephon\w*|\bnetworks?\b|\b5g\b|\b4g\b|\blte\b|fibre|fiber optic\w*|\bfttx\b|\bfttp\b|\bftth\b|broadband|oss\/bss|\brf planning\b|radio (?:access|equipment|network)|base station|backhaul|transceiver|antenna\w*|\bducting\b|cabling|transmission (?:services|network|equipment)|broadcast\w*|fielding|as-?built|make-?ready|outside plant|pole attachment|permit acquisition|close-?out/gi,
   },
   {
     id: "utilities",
@@ -87,6 +94,20 @@ const KEYWORD_RULES: KeywordRule[] = [
     points: 20,
     pattern:
       /smart cit(?:y|ies)|intelligent transport|urban mobility|urban platform|digital twin|traffic management|street lighting|\bsmart grid\b/gi,
+  },
+  {
+    id: "workforce",
+    label: "Workforce / resourcing",
+    points: 15,
+    pattern:
+      /staff(?:ing|s)?|workforce|resourcing|recruitment|managed service|staff augmentation|specialist delivery|delivery capacity|secondment|contingent labour/gi,
+  },
+  {
+    id: "programme",
+    label: "Programme management / PMO",
+    points: 15,
+    pattern:
+      /programme management|program management|pmo|p3o|prince2|project management office|programme office|delivery assurance|portfolio management|(?:programme|project|delivery) governance|multi-?country (?:delivery|execution|programme|program)/gi,
   },
   {
     id: "cloud",

@@ -118,29 +118,28 @@ async function handle(request: Request): Promise<Response> {
       const wasInDomain = isTargetServiceLine(r.service_line);
       const nowInDomain = isTargetServiceLine(serviceLine);
 
-      if (!wasInDomain && nowInDomain) {
-        promote.push({
-          id: r.id,
-          title: r.title.slice(0, 110),
-          from: r.service_line,
-          to: serviceLine,
-          category,
-          fitScore: scoreOf(r),
-        });
-      } else {
-        // Already in-domain but the current rules read it differently — surfaced
-        // for review only. Never applied, so nothing visible is taken away.
-        if (wasInDomain && !nowInDomain) {
-          disagreements.push({
-            id: r.id,
-            title: r.title.slice(0, 110),
-            from: r.service_line,
-            to: serviceLine,
-            category,
-            fitScore: scoreOf(r),
-          });
-        }
+      const change = {
+        id: r.id,
+        title: r.title.slice(0, 110),
+        from: r.service_line,
+        to: serviceLine,
+        category,
+        fitScore: scoreOf(r),
+      };
+
+      if (r.service_line === serviceLine) {
         unchanged++;
+      } else if (wasInDomain && !nowInDomain) {
+        // Moves OUT of view. Opt-in only (?demote=1), because it takes a row
+        // off the board.
+        disagreements.push(change);
+      } else {
+        // Everything else is safe to apply: a promotion into the domain, or a
+        // lateral move between two focus areas. The lateral case used to be
+        // counted as "unchanged" and never written, which left rows filed under
+        // whichever line an older rule set happened to pick — a staffing
+        // framework stuck under Digital Engineering, for instance.
+        promote.push(change);
       }
     }
 

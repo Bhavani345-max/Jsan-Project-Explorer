@@ -1148,6 +1148,7 @@ const SERVICE_LINE_BY_CATEGORY: Record<ProjectCategory, import("./types").Servic
   "Enterprise Software": "Digital Engineering",
   "Cyber Security": "Digital Engineering",
   DevOps: "Digital Engineering",
+  Unclassified: "Out of Scope",
 };
 
 function serviceLineFor(category: ProjectCategory): import("./types").ServiceLine {

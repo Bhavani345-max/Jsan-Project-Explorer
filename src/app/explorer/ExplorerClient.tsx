@@ -53,6 +53,43 @@ const SORTS = [
 
 const DEFAULT_SORT = "fitScore";
 
+// JSAN's six capability focus areas, in priority order, with the signals each
+// one captures. These are the ServiceLine values themselves, so selecting one
+// filters on exactly what the classifier assigned — no second vocabulary to
+// drift out of step with lib/ingest/normalize.ts.
+const FOCUS_AREAS: { line: string; short: string; signals: string }[] = [
+  {
+    line: "Geospatial Intelligence",
+    short: "Geospatial Intelligence",
+    signals: "GIS, geospatial, mapping, LiDAR, photogrammetry, remote sensing, cadastral, land registry, spatial data",
+  },
+  {
+    line: "Telecom & Network Engineering",
+    short: "Telecom & Network",
+    signals: "FTTx, fiber, broadband, 5G, network engineering, telecom GIS, fielding, survey, permits, closeout",
+  },
+  {
+    line: "Geospatial & Telecom Adjacent",
+    short: "Geospatial / Telecom Adjacent",
+    signals: "Digital twin, IoT, SCADA, drone, satellite imagery, smart city, national digital infrastructure, sensor networks",
+  },
+  {
+    line: "Digital Engineering",
+    short: "Digital Engineering",
+    signals: "Cloud migration, data engineering, web/mobile platforms, enterprise software and security linked to JSAN delivery capability",
+  },
+  {
+    line: "Strategic Workforce Solutions",
+    short: "Strategic Workforce",
+    signals: "Staffing, resourcing, managed service, specialist delivery capacity",
+  },
+  {
+    line: "Structured Program Management",
+    short: "Structured Programme Mgmt",
+    signals: "PMO, governance, delivery assurance, quality controls, multi-country execution management",
+  },
+];
+
 // Deadline windows and fit bands offered in the filter panel. Both write a
 // plain number into the query string, which the API and repository already
 // understand (maxDeadlineDays / minFit).
@@ -354,6 +391,30 @@ export function ExplorerClient() {
             className="input pl-9"
           />
         </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-text-faint mb-1.5">
+            Capability focus areas
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {FOCUS_AREAS.map((a) => {
+              const active = f.serviceLine === a.line;
+              return (
+                <button
+                  key={a.line}
+                  onClick={() => set({ serviceLine: active ? "" : a.line })}
+                  title={a.signals}
+                  aria-pressed={active}
+                  className={`chip transition-colors ${
+                    active ? "!bg-primary !text-white !border-transparent" : "hover:!border-primary"
+                  }`}
+                >
+                  {a.short}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-1.5">
           {TECH_QUICK.map((t) => (
             <button

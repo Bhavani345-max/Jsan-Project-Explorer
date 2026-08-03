@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { FolderKanban, AlarmClock, Wallet, ArrowRight, CircleDollarSign, Globe2, RadioTower, Layers, Globe } from "lucide-react";
+import { FolderKanban, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower, Layers, Globe } from "lucide-react";
 import { dashboardStats, queryProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
-import { SectionCard, Breadcrumbs, StatusBadge } from "@/components/ui";
+import { SectionCard, Breadcrumbs, StatusBadge, FitBadge } from "@/components/ui";
 import { VBarChart, DonutChart, HBarChart, TrendArea } from "@/components/charts";
 import { money, deadlineLabel, relTime, fmtDate } from "@/lib/format";
 import type { ProjectQuery, ServiceLine } from "@/lib/types";
@@ -37,10 +37,7 @@ export default async function DashboardPage() {
   const stats = dashboardStats(projects);
   const recent = queryProjects({ sort: "publicationDate", pageSize: 6 }, projects).items;
   const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }, projects).items;
-  // Largest disclosed budgets that are still pursuable. `includeLarge=true` on the
-  // "View all" link below lifts the Explorer's $10M soft cap — without it the page
-  // it opens would hide the very opportunities this list is ranking.
-  const topValue = queryProjects({ sort: "budget", availableOnly: true, pageSize: 5 }, projects).items;
+  const bestFit = queryProjects({ sort: "fitScore", pageSize: 5 }, projects).items;
 
   const gis = coreServiceLine("Geospatial Intelligence", projects);
   const telecom = coreServiceLine("Telecom & Network Engineering", projects);
@@ -140,39 +137,34 @@ export default async function DashboardPage() {
             compare against. Every figure below is a straight count of the data. */}
         <StatCard label="Total Opportunities" value={String(stats.totalProjects)} icon={FolderKanban} hint={`Open, across ${sourceCount} public ${sourceCount === 1 ? "source" : "sources"}`} />
         <StatCard label="Countries Covered" value={String(stats.countryCount)} icon={Globe} accent="var(--accent)" hint="Every country the sources report" />
+        <StatCard label="High-Fit Opportunities" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" hint="Capability fit ≥ 85%" />
         <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" hint="Deadline within 7 days" />
         <StatCard label="Target Pipeline ($1–10M)" value={money(stats.targetPipeline)} icon={Wallet} hint={`${stats.targetCount} opportunities in the target band`} />
-        <StatCard label="Total Pipeline Value" value={money(stats.totalBudget)} icon={CircleDollarSign} accent="var(--success)" hint="Sum of every disclosed budget" />
       </div>
 
-      {/* Service-line mix + the largest opportunities on the board */}
+      {/* Service-line focus */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <SectionCard title="Opportunities by Service Line" subtitle="Share of the board by line">
           <DonutChart data={stats.byServiceLine} />
         </SectionCard>
         <SectionCard
-          title="Highest-Value Opportunities"
-          subtitle="Largest disclosed budgets still open"
+          title="Best-Fit Opportunities"
+          subtitle="Ranked by capability fit, then nearest deadline"
           className="lg:col-span-2"
           action={
-            <Link href="/explorer?sort=budget&includeLarge=true" className="text-[13px] font-semibold text-primary hover:underline">
+            <Link href="/explorer?sort=fitScore" className="text-[13px] font-semibold text-primary hover:underline">
               View all
             </Link>
           }
         >
           <div className="divide-y divide-border -mx-1">
-            {topValue.map((p, i) => (
+            {bestFit.map((p) => (
               <Link
                 key={p.id}
                 href={`/projects/${p.id}`}
                 className="flex items-center gap-3 px-1 py-2.5 hover:bg-bg-subtle rounded-lg transition-colors"
               >
-                <span
-                  className="grid place-items-center w-7 h-7 rounded-lg text-[12px] font-bold tabular-nums shrink-0"
-                  style={{ background: "var(--primary-soft)", color: "var(--primary)" }}
-                >
-                  {i + 1}
-                </span>
+                <FitBadge score={p.fitScore} />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm truncate">{p.title}</p>
                   <p className="text-[12px] text-text-faint truncate">

@@ -1225,6 +1225,7 @@ function tagsFor(s: Spec): string[] {
   tags.add(serviceLineFor(s.category));
   tags.add(s.category);
   tags.add(s.industry);
+  if (fitScoreFor(s.category, s.technologies) >= 85) tags.add("Best Fit");
   if (s.budget && usd(s.budget, s.currency)! > 5_000_000) tags.add("High Value");
   if (s.deadlineIn <= 7) tags.add("Urgent");
   s.technologies.slice(0, 2).forEach((t) => tags.add(t));

@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------
-// Domain model for the JSAN Opportunity Finder
+// Domain model for the JSAN_NexusAI_Enterprise_Growth_Platform
 // Mirrors the relational schema (see db/schema.sql) — the repository
 // layer can be swapped from in-memory to PostgreSQL without touching
 // the API or UI, following the Repository pattern.

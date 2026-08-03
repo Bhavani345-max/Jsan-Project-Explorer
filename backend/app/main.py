@@ -1,5 +1,5 @@
 """
-JSAN Opportunity Finder — FastAPI entrypoint.
+JSAN_NexusAI_Enterprise_Growth_Platform — FastAPI entrypoint.
 
 Endpoint paths, JSON shapes, env vars and port 8080 are identical to the
 previous Spring Boot service, so the frontend, docker-compose and monitoring
@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="JSAN Opportunity Finder API",
+    title="JSAN_NexusAI_Enterprise_Growth_Platform API",
     description="Discover and inspect opportunities from public procurement sources",
     version="1.0.0",
     openapi_url="/v3/api-docs",

@@ -1,5 +1,5 @@
 -- =====================================================================
---  JSAN Opportunity Finder — PostgreSQL schema (v2)
+--  JSAN_NexusAI_Enterprise_Growth_Platform — PostgreSQL schema (v2)
 --  Requirements met:
 --   • 3NF normalized            • UUID primary keys everywhere
 --   • FK relationships          • Indexes for fast search

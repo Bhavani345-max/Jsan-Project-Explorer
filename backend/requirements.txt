@@ -1,4 +1,4 @@
-# ---- JSAN Opportunity Finder — Python backend dependencies -----------
+# ---- JSAN_NexusAI_Enterprise_Growth_Platform — Python backend dependencies -----------
 fastapi>=0.115
 uvicorn[standard]>=0.34
 sqlalchemy>=2.0.36

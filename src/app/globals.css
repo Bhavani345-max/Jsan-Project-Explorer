@@ -97,6 +97,21 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Belt-and-braces on form controls. Tailwind's preflight already sets
+   `font: inherit` on button/input/select/optgroup/textarea, so those follow
+   Segoe UI from body. It does NOT cover bare <option>, which some browsers
+   still paint in the OS dropdown font — visible in the Explorer's nine filter
+   selects. Restated here so the guarantee survives a preflight change or a
+   future `@layer base` reset. */
+button,
+input,
+select,
+textarea,
+optgroup,
+option {
+  font-family: inherit;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

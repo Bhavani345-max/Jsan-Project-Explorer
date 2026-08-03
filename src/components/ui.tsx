@@ -24,7 +24,7 @@ export function TechChip({ label }: { label: string }) {
   return <span className="chip">{label}</span>;
 }
 
-/** JSAN capability-fit badge — green ≥85, amber ≥70, neutral below. */
+/** Capability-fit badge — green ≥85, amber ≥70, neutral below. */
 export function FitBadge({ score, showLabel = false }: { score: number; showLabel?: boolean }) {
   const tone =
     score >= 85
@@ -36,7 +36,7 @@ export function FitBadge({ score, showLabel = false }: { score: number; showLabe
     <span
       className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full"
       style={{ background: tone.bg, color: tone.text }}
-      title={`JSAN capability fit: ${score}%`}
+      title={`Capability fit: ${score}%`}
     >
       {score}%{showLabel ? " fit" : ""}
     </span>

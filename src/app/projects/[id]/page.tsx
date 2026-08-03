@@ -31,7 +31,7 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
     [Hash, "Reference No.", project.referenceNumber],
     [FileText, "Source", `${project.source} (${project.sourceType})`],
     [Tag, "Category", project.category],
-    [Target, "JSAN Service Line", project.serviceLine],
+    [Target, "Service Line", project.serviceLine],
   ];
 
   return (

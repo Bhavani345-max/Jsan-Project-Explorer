@@ -337,7 +337,7 @@ export function ExplorerClient() {
 
             {facets && (
               <div className="space-y-3">
-                <Select label="JSAN Service Line" value={f.serviceLine} options={facets.serviceLines} onChange={(v) => set({ serviceLine: v })} />
+                <Select label="Service Line" value={f.serviceLine} options={facets.serviceLines} onChange={(v) => set({ serviceLine: v })} />
                 <Select label="Country" value={f.country} options={facets.countries} onChange={(v) => set({ country: v })} count={facets.countries.length} />
                 <Select label="State / Region" value={f.state} options={facets.states} onChange={(v) => set({ state: v })} />
                 <Select label="Category" value={f.category} options={facets.categories} onChange={(v) => set({ category: v })} />
@@ -415,7 +415,7 @@ export function ExplorerClient() {
                 aria-checked={f.includeLarge}
                 onClick={() => set({ includeLarge: !f.includeLarge })}
                 className="flex items-center gap-2 text-[13px]"
-                title="By default only $1–10M opportunities (JSAN's target range) are shown. Turn on to also include large >$10M global leads (e.g. World Bank programs)."
+                title="By default only $1–10M opportunities (the target range) are shown. Turn on to also include large >$10M global leads (e.g. World Bank programs)."
               >
                 <span
                   className={`relative w-9 h-5 rounded-full transition-colors ${
@@ -480,7 +480,7 @@ export function ExplorerClient() {
                           <th className="px-4 py-3 font-semibold">Country</th>
                           <th className="px-4 py-3 font-semibold">Budget</th>
                           <th className="px-4 py-3 font-semibold">Deadline</th>
-                          <th className="px-4 py-3 font-semibold">JSAN Fit</th>
+                          <th className="px-4 py-3 font-semibold">Fit Score</th>
                           <th className="px-4 py-3 font-semibold">Status</th>
                         </tr>
                       </thead>

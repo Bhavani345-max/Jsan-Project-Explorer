@@ -37,7 +37,19 @@ export default async function DashboardPage() {
   const stats = dashboardStats(projects);
   const recent = queryProjects({ sort: "publicationDate", pageSize: 6 }, projects).items;
   const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }, projects).items;
-  const bestFit = queryProjects({ sort: "fitScore", pageSize: 5 }, projects).items;
+  // The panel and its "View all" link are built from ONE filter object, so the
+  // Explorer can never hide a row the dashboard just listed. `availableOnly`
+  // drops the awarded and closed notices the panel used to rank alongside
+  // pursuable work; `includeLarge` lifts the Explorer's $10M soft cap, which
+  // queryProjects does not apply here.
+  const bestFitSort = "fitScore" as const;
+  const bestFitQuery: ProjectQuery = { sort: bestFitSort, availableOnly: true };
+  const bestFit = queryProjects({ ...bestFitQuery, pageSize: 5 }, projects).items;
+  const bestFitHref = `/explorer?${new URLSearchParams({
+    sort: bestFitSort,
+    availableOnly: String(bestFitQuery.availableOnly),
+    includeLarge: "true",
+  }).toString()}`;
 
   const gis = coreServiceLine("Geospatial Intelligence", projects);
   const telecom = coreServiceLine("Telecom & Network Engineering", projects);
@@ -152,7 +164,7 @@ export default async function DashboardPage() {
           subtitle="Ranked by capability fit, then nearest deadline"
           className="lg:col-span-2"
           action={
-            <Link href="/explorer?sort=fitScore" className="text-[13px] font-semibold text-primary hover:underline">
+            <Link href={bestFitHref} className="text-[13px] font-semibold text-primary hover:underline">
               View all
             </Link>
           }

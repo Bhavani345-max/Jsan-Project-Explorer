@@ -264,7 +264,22 @@ export function facets(projects: Project[] = PROJECTS) {
     organizations: uniq(projects.map((p) => p.organization)),
     technologies: uniq(projects.flatMap((p) => p.technologies)),
     industries: uniq(projects.map((p) => p.industry)),
+    // Counts, so the Explorer can offer every country and every focus area
+    // while still showing which of them currently hold anything. Without this
+    // a filter list padded out to full coverage would be indistinguishable
+    // from one full of dead ends.
+    countryCounts: countBy(projects, (p) => p.country),
+    serviceLineCounts: countBy(projects, (p) => p.serviceLine),
   };
+}
+
+function countBy(items: Project[], key: (p: Project) => string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of items) {
+    const k = key(p);
+    if (k) out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
 }
 
 // -------- smart search: autocomplete suggestions --------

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, LayoutGrid, Rows3 } from "lucide-react";
 import type { Project } from "@/lib/types";
-import { TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD } from "@/lib/domain";
+import { TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD, TARGET_SERVICE_LINES } from "@/lib/domain";
+import { allCountryOptions } from "@/lib/countries";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Pagination, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/components/Pagination";
 import { Breadcrumbs, EmptyState, StatusBadge, FitBadge } from "@/components/ui";
@@ -22,6 +23,8 @@ interface Facets {
   organizations: string[];
   technologies: string[];
   industries: string[];
+  countryCounts: Record<string, number>;
+  serviceLineCounts: Record<string, number>;
 }
 
 interface Paged {
@@ -196,6 +199,64 @@ function ChoiceSelect({
             {c.label}
           </option>
         ))}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Select over a fixed catalogue, annotated with how many opportunities each
+ * option currently holds.
+ *
+ * Used where the list should show the FULL set rather than only what the data
+ * happens to contain — every country in the world, all six focus areas — so
+ * coverage is visible even when a given entry is empty today. An option with
+ * no rows stays selectable (it will simply return nothing, which is the honest
+ * answer) but is marked so nobody picks it expecting results.
+ */
+function CatalogueSelect({
+  label,
+  value,
+  options,
+  counts,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  counts: Record<string, number>;
+  onChange: (v: string) => void;
+}) {
+  const withData = options.filter((o) => (counts[o] ?? 0) > 0);
+  const empty = options.filter((o) => (counts[o] ?? 0) === 0);
+  return (
+    <label className="block">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">
+        {label}
+        <span className="ml-1 normal-case text-text-faint/70">
+          ({withData.length} of {options.length} with results)
+        </span>
+      </span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="input mt-1.5 cursor-pointer">
+        <option value="">All</option>
+        {withData.length > 0 && (
+          <optgroup label="With opportunities">
+            {withData.map((o) => (
+              <option key={o} value={o}>
+                {o} ({counts[o]})
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {empty.length > 0 && (
+          <optgroup label="No opportunities yet">
+            {empty.map((o) => (
+              <option key={o} value={o}>
+                {o} (0)
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
     </label>
   );
@@ -447,8 +508,20 @@ export function ExplorerClient() {
 
             {facets && (
               <div className="space-y-3">
-                <Select label="Service Line" value={f.serviceLine} options={facets.serviceLines} onChange={(v) => set({ serviceLine: v })} />
-                <Select label="Country" value={f.country} options={facets.countries} onChange={(v) => set({ country: v })} count={facets.countries.length} />
+                <CatalogueSelect
+                  label="Service Line"
+                  value={f.serviceLine}
+                  options={[...TARGET_SERVICE_LINES]}
+                  counts={facets.serviceLineCounts}
+                  onChange={(v) => set({ serviceLine: v })}
+                />
+                <CatalogueSelect
+                  label="Country"
+                  value={f.country}
+                  options={allCountryOptions(facets.countries)}
+                  counts={facets.countryCounts}
+                  onChange={(v) => set({ country: v })}
+                />
                 <Select label="State / Region" value={f.state} options={facets.states} onChange={(v) => set({ state: v })} />
                 <Select label="Category" value={f.category} options={facets.categories} onChange={(v) => set({ category: v })} />
                 <Select label="Technology" value={f.technology} options={facets.technologies} onChange={(v) => set({ technology: v })} />

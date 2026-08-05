@@ -2,11 +2,18 @@
 
 ## Current state
 
+**Live: https://jsan-nexusai.vercel.app**
+
 | Component | Where it runs today |
 |---|---|
-| Next.js portal + its API routes + Cron | **Vercel** |
+| Next.js portal + its API routes + Cron | **Vercel** — project `jsan-nexusai` |
 | PostgreSQL | **Neon** (Vercel Marketplace integration) |
 | FastAPI `/api/v1` service | **Local only** — `docker compose up --build` |
+
+The older `project-discovery-portal-nu.vercel.app` alias still points at the
+same deployment, so existing links keep working. Note that the bare
+`project-discovery-portal.vercel.app` is an unrelated project owned by someone
+else — it was never this portal.
 
 The FastAPI service is *configured* for Railway (section 2 below) but is not
 provisioned. Nothing depends on it being deployed: the portal queries Postgres

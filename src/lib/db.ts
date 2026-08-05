@@ -20,6 +20,8 @@ import type { Project } from "@/lib/types";
 import { money } from "@/lib/format";
 import { TARGET_SERVICE_LINES, TARGET_MIN_BUDGET_USD } from "@/lib/domain";
 import type { NormalizedOpportunity } from "@/lib/ingest/normalize";
+import { isGoodsProcurement } from "@/lib/ingest/goods";
+import { fitScoreFor } from "@/lib/scoring";
 
 /**
  * The only surface callers use. Deliberately narrow: `sql.query(text, params)`
@@ -417,7 +419,23 @@ function toProject(r: Row): Project {
     sourceType: r.source_type as Project["sourceType"],
     category: r.category as Project["category"],
     serviceLine: r.service_line as Project["serviceLine"],
-    fitScore: r.fit_score,
+    // Scored from the rules here rather than served from the stored column.
+    //
+    // fit_score is a denormalization written at ingest and refreshed by
+    // /api/cron/reclassify, so after any change to the rule table it is stale
+    // for every row until that job runs — which would have shipped a
+    // "Recommended 70+" filter that returned nothing until someone remembered
+    // to trigger a backfill. Deriving it on read makes lib/scoring.ts the only
+    // source of truth and removes that failure mode; the column stays, and the
+    // two agree once the job has run.
+    fitScore: fitScoreFor({
+      title: englishTitle,
+      description: r.description,
+      budgetUsd: r.budget_usd == null ? null : Number(r.budget_usd),
+      country: r.country,
+      deadline: deadlineIso || null,
+      serviceLine: r.service_line,
+    }),
     projectType: r.project_type as Project["projectType"],
     status: statusFor(deadlineIso),
     technologies: r.technologies ?? [],
@@ -451,7 +469,14 @@ export async function loadLiveProjects(limit = 4000): Promise<Project[] | null> 
       [TARGET_SERVICE_LINES, limit],
     )) as Row[];
     if (!rows.length) return null;
-    return rows.map(toProject);
+    // Read-side scope gate. Rows stored before the goods rule existed — about a
+    // quarter of the table — are hidden here rather than deleted, exactly as
+    // the out-of-domain filter works. They come back into view by widening the
+    // rule, and /api/cron/reclassify rescores them to 0 so they also sink out
+    // of every ranking. Applied after mapping because it reads the English
+    // title, which is where the procurement category appears.
+    const visible = rows.map(toProject).filter((p) => !isGoodsProcurement(p.title));
+    return visible.length ? visible : null;
   } catch {
     return null;
   }

@@ -215,6 +215,9 @@ export function extractTechnologies(text: string): string[] {
 // Re-exported here so the ingest pipeline keeps its single import surface.
 import { fitScoreFor } from "@/lib/scoring";
 export { fitScoreFor, scoreFit } from "@/lib/scoring";
+// Scope gate for goods/supply notices — re-exported so the ingest pipeline
+// keeps its single import surface (see lib/ingest/goods.ts).
+export { isGoodsProcurement, goodsReason } from "@/lib/ingest/goods";
 
 const PROJECT_TYPE_BY_SOURCE: Record<string, ProjectType> = {
   "Government Procurement API": "Government Tender",
@@ -324,6 +327,9 @@ export function normalize(raw: RawOpportunity): NormalizedOpportunity {
       budgetUsd,
       country: raw.country,
       deadline: raw.deadline,
+      // The classifier's verdict sets the capability base, so the score can
+      // never disagree with the focus area the notice is filed under.
+      serviceLine,
     }),
     projectType: PROJECT_TYPE_BY_SOURCE[raw.sourceType] ?? "Open Opportunity",
     technologies,

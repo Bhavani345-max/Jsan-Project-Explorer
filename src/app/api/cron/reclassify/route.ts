@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSql, dbConfigured, countInDomain, countOpportunities } from "@/lib/db";
-import { categorize, serviceLineFor, fitScoreFor } from "@/lib/ingest/normalize";
+import { categorize, serviceLineFor, fitScoreFor, isGoodsProcurement } from "@/lib/ingest/normalize";
 import { isTargetServiceLine } from "@/lib/domain";
 
 export const runtime = "nodejs";
@@ -10,6 +10,8 @@ export const maxDuration = 300;
 interface Row {
   id: string;
   title: string;
+  /** English rendering, which is where the procurement category appears. */
+  title_en: string | null;
   description: string;
   category: string;
   service_line: string;
@@ -22,14 +24,22 @@ interface Row {
   deadline: string | null;
 }
 
+/** The title the scope and scoring rules read — English where one exists. */
+function displayTitle(r: Row): string {
+  return r.title_en?.trim() || r.title;
+}
+
 /** One place that turns a stored row into the rule-based score. */
 function scoreOf(r: Row): number {
   return fitScoreFor({
-    title: r.title,
+    title: displayTitle(r),
     description: r.description,
     budgetUsd: r.budget_usd == null ? null : Number(r.budget_usd),
     country: r.country,
     deadline: r.deadline,
+    // The line the row is filed under sets the capability base, so a rescore
+    // can never disagree with the classification.
+    serviceLine: r.service_line,
   });
 }
 
@@ -81,9 +91,13 @@ async function handle(request: Request): Promise<Response> {
     const before = { inDomain: await countInDomain(), total: await countOpportunities() };
 
     const rows = (await sql.query(
-      `SELECT id, title, description, category, service_line, budget_usd, country, deadline, fit_score
+      `SELECT id, title, title_en, description, category, service_line, budget_usd, country, deadline, fit_score
          FROM opportunities`,
     )) as Row[];
+
+    // How much of the stored table is a goods/supply purchase. These rows are
+    // hidden by the read gate and score 0 after this pass; nothing is deleted.
+    const goodsRows = rows.filter((r) => isGoodsProcurement(displayTitle(r)));
 
     const promote: (Change & { fitScore: number })[] = [];
     const disagreements: (Change & { fitScore: number })[] = [];
@@ -113,14 +127,18 @@ async function handle(request: Request): Promise<Response> {
       // disaster-relief programmes. A domain term in the title is a far more
       // reliable signal — and TED titles carry the CPV label, so real telecom
       // and surveying work still matches.
-      const category = categorize(r.title);
+      //
+      // Read the English rendering where one exists: it carries the CPV label
+      // AND an English native title, so a notice published in Lithuanian is
+      // classified on words the rule table can actually match.
+      const category = categorize(displayTitle(r));
       const serviceLine = serviceLineFor(category);
       const wasInDomain = isTargetServiceLine(r.service_line);
       const nowInDomain = isTargetServiceLine(serviceLine);
 
       const change = {
         id: r.id,
-        title: r.title.slice(0, 110),
+        title: displayTitle(r).slice(0, 110),
         from: r.service_line,
         to: serviceLine,
         category,
@@ -186,6 +204,11 @@ async function handle(request: Request): Promise<Response> {
       // Distribution of the rule-based score across every scanned row — the
       // evidence for where the high-fit threshold should sit.
       scoreHistogram: Object.fromEntries([...histogram.entries()].sort()),
+      // Goods/supply purchases: hidden by the read gate and scored 0 by this
+      // pass. Reported so the size of the exclusion is visible rather than
+      // silently applied — the rows themselves are retained.
+      goodsExcluded: goodsRows.length,
+      sampleGoodsExcluded: goodsRows.slice(0, 25).map((r) => displayTitle(r).slice(0, 110)),
       byCategory: promote.reduce<Record<string, number>>((acc, p) => {
         acc[p.category] = (acc[p.category] ?? 0) + 1;
         return acc;

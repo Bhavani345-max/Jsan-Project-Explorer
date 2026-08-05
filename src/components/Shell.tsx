@@ -89,12 +89,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {/* Real JSAN brand mark */}
             <img src="/jsan-mark.png" alt="JSAN Consulting logo" className="w-6 h-6 object-contain" />
           </div>
-          {/* Split across two lines: the full name is 39 characters and the
-              sidebar gives the wordmark ~180px. The title attribute carries it
-              unbroken for anyone who needs to read or copy it whole. */}
-          <div className="leading-tight min-w-0" title="JSAN_NexusAI_Enterprise_Growth_Platform">
-            <div className="font-bold text-[15px] tracking-tight text-white truncate">JSAN_NexusAI</div>
-            <div className="text-[11px] text-white/70 truncate">Enterprise_Growth_Platform</div>
+          {/* The product name, then what it does. The name is short enough to
+              sit on one line now, so the second line carries the descriptor
+              instead of the rest of a wrapped identifier. */}
+          <div className="leading-tight min-w-0" title="JSAN NexusAI">
+            <div className="font-bold text-[15px] tracking-tight text-white truncate">JSAN NexusAI</div>
+            <div className="text-[11px] text-white/70 truncate">Opportunity Intelligence</div>
           </div>
         </div>
 

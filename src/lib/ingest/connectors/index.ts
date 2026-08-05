@@ -5,6 +5,7 @@ import {
   normalize,
   isOpenOpportunity,
   meetsMinBudget,
+  isGoodsProcurement,
   type NormalizedOpportunity,
   type RawOpportunity,
 } from "@/lib/ingest/normalize";
@@ -19,6 +20,7 @@ export interface SourceStat {
   fetched: number; // raw records returned by the source
   kept: number; // in-domain, open, above the budget floor
   offDomain: number; // dropped as neither geospatial nor telecom
+  goods: number; // dropped as a purchase of product rather than services
   ok: boolean;
   error?: string;
 }
@@ -53,12 +55,21 @@ export async function runConnectors(): Promise<IngestResult> {
       const raws = result.value;
       let kept = 0;
       let offDomain = 0;
+      let goods = 0;
       for (const raw of raws) {
         const row = normalize(raw);
         // Domain gate: the portal only carries geospatial and telecom work.
         // Applied here so out-of-scope notices are never persisted.
         if (!isTargetServiceLine(row.serviceLine)) {
           offDomain++;
+          continue;
+        }
+        // Scope gate: JSAN delivers services, it does not trade goods. A
+        // notice that is a purchase of product is dropped even when its
+        // subject matter is telecom or geospatial — "Supply of network
+        // switches" is a hardware order, not network engineering.
+        if (isGoodsProcurement(row.title)) {
+          goods++;
           continue;
         }
         if (!isOpenOpportunity(row)) continue; // drop closed / stale
@@ -68,13 +79,14 @@ export async function runConnectors(): Promise<IngestResult> {
         rows.push(row);
         kept++;
       }
-      stats.push({ source, fetched: raws.length, kept, offDomain, ok: true });
+      stats.push({ source, fetched: raws.length, kept, offDomain, goods, ok: true });
     } else {
       stats.push({
         source,
         fetched: 0,
         kept: 0,
         offDomain: 0,
+        goods: 0,
         ok: false,
         error: String(result.reason?.message ?? result.reason).slice(0, 200),
       });

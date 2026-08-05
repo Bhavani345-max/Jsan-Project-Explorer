@@ -8,19 +8,46 @@ open-data portals). No scraping of sites that prohibit automated access.
 
 ## Scope: geospatial, telecom, and closely related work
 
-The portal carries three service lines — **Geospatial Intelligence**, **Telecom
-& Network Engineering**, and **Geospatial & Telecom Adjacent**. Generic software
-development, health, education, finance, agriculture, energy and construction
-notices are filtered out. [`src/lib/domain.ts`](src/lib/domain.ts) is the single
-source of truth; widening the portal is a one-line change there.
+The portal carries JSAN's six capability focus areas:
+
+| Focus area | What it captures | Capability base |
+|---|---|---|
+| **Geospatial Intelligence** | GIS, geospatial, mapping, LiDAR, photogrammetry, remote sensing, cadastral, land registry, spatial data | 52 |
+| **Telecom & Network Engineering** | FTTx, fiber, broadband, 5G, network engineering, telecom GIS, fielding, survey, permits, closeout | 50 |
+| **Geospatial & Telecom Adjacent** | Digital twin, IoT, SCADA, drone, satellite imagery, smart city, national digital infrastructure, sensor networks | 42 |
+| **Strategic Workforce Solutions** | Staffing, resourcing, managed service, specialist delivery capacity | 40 |
+| **Structured Program Management** | PMO, governance, delivery assurance, quality controls, multi-country execution | 40 |
+| **Digital Engineering** | Cloud migration, data engineering, web/mobile platforms, enterprise software and security **where linked to JSAN delivery capability** | 28 |
+
+Generic software development, health, education, finance, agriculture, energy
+and construction notices are filtered out.
+[`src/lib/domain.ts`](src/lib/domain.ts) is the single source of truth; widening
+the portal is a one-line change there.
 
 The adjacent line is work in the same field that isn't a pure GIS or telecom
-contract — earth observation, digital twins, BIM, IoT and sensor networks,
-SCADA/telemetry, spectrum and emergency communications, and national
-digital-infrastructure programmes. It is a **separate** line rather than being
-folded into the two core ones so capability-fit scores stay meaningful: adjacent
-work scores +20, against +30 for core, so a national digital programme never
-outranks a real fibre build.
+contract. It is a **separate** line rather than being folded into the two core
+ones so capability-fit scores stay meaningful — and Digital Engineering sits far
+below the rest because the brief qualifies it as supporting work, so it cannot
+reach the recommended threshold on capability alone.
+
+### Goods and supply notices are excluded
+
+JSAN delivers services and engineering. It does not trade goods — no selling,
+importing or exporting of hardware, cable, servers or components. Procurement
+feeds are full of notices that are purely a purchase of product ("Supply of
+network switches", "Purchase of Cisco network equipment"), and they were the
+largest single source of noise: **about a quarter of stored in-domain rows.**
+
+[`src/lib/ingest/goods.ts`](src/lib/ingest/goods.ts) is the gate. Its strongest
+signal is the notice's own procurement category — TED renders every title as
+`Country – <CPV label> – <native title>`, and the buyer picks that label, so
+"Network equipment" and "Optical-fibre cables" are product categories while
+"Topographical services" is a service one. That beats scanning free text.
+Delivery wording still rescues a service contract that happens to mention a
+product ("Maintenance and renewal service of the data network" is kept).
+
+Like the domain filter it **never deletes**: goods notices are not persisted at
+ingest, and rows stored before the gate existed simply stop surfacing.
 
 ### Worldwide by design — no location preference
 
@@ -140,6 +167,7 @@ Vercel Cron (daily 02:00)
    └─→ GET /api/cron/ingest
          ├─ src/lib/ingest/connectors/*   fetch every public source concurrently
          ├─ src/lib/ingest/normalize.ts   FX→USD · categorize · tech extraction · fit score
+         ├─ src/lib/ingest/goods.ts       drop goods/supply purchases (not JSAN work)
          ├─ src/lib/db.ts                 idempotent upsert into Postgres + purge expired
          └─ src/lib/ingest/translate.ts   derive English titles from the published CPV label
 
@@ -312,7 +340,8 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 - **Project Details** — full record: description, org, country, budget, deadlines, source, reference number, technologies, eligibility, contact, official link, **source summary + tags**, and technology/category-matched related opportunities.
 - **API Connectors** — connector cards (auth, schedule, rate limit, pagination, retry, status), add-connector form, scheduler cadences, and live connector logs.
 - **Smart Search** — global autocomplete over technologies, organizations, countries and projects.
-- **Rule-Based Scoring** — keyword, budget, country and deadline rules produce a 0–100 fit score, shown on the details page as the exact arithmetic that produced it (`src/lib/scoring.ts`).
+- **Rule-Based Scoring** — the assigned focus area sets a capability base, then depth and breadth of capability evidence, the buyer's own procurement category, budget, country and deadline produce a 0–100 fit score, shown on the details page as the exact arithmetic that produced it (`src/lib/scoring.ts`). **70+ is recommended** — a strong capability match; measured at ~37% of the live board.
+- **Recommended filter & publication window** — one click for 70+ only, and a date-wise Published filter (7/30/90/365-day presets plus an explicit range) that writes absolute dates into the URL so a shared link keeps showing the same set.
 - **Analytics** — projects per month, by country, by technology, top technologies in demand, top organizations.
 - **User Roles** — Administrator, Business Development, Sales, Manager, Read Only (role switcher + backend RBAC).
 - **Theme** — polished light **and** dark mode.
@@ -352,6 +381,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │     ├─ ingest/
 │     │  ├─ connectors/              # UK · EU TED · World Bank · SAM.gov
 │     │  ├─ normalize.ts             # FX · categorize · tech · fit score · gates
+│     │  ├─ goods.ts                 # goods/supply exclusion (CPV-label aware)
 │     └─ domain.ts · types · seed · format
 │
 ├─ vercel.json                       # cron schedule + function maxDuration

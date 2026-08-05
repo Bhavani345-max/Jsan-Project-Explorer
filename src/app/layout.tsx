@@ -4,9 +4,22 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
-  title: "JSAN_NexusAI_Enterprise_Growth_Platform",
+  // One name everywhere — browser tab, sidebar, deployment URL — so nothing has
+  // to be reconciled against a longer internal title.
+  title: {
+    default: "JSAN NexusAI",
+    template: "%s · JSAN NexusAI",
+  },
+  applicationName: "JSAN NexusAI",
   description:
-    "JSAN_NexusAI_Enterprise_Growth_Platform — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources.",
+    "JSAN NexusAI — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources.",
+  openGraph: {
+    title: "JSAN NexusAI",
+    description:
+      "Discover geospatial, telecom and adjacent engineering opportunities from public procurement sources.",
+    siteName: "JSAN NexusAI",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

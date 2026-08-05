@@ -1,8 +1,8 @@
 {
-  "name": "jsan-nexusai-enterprise-growth-platform",
+  "name": "jsan-nexusai",
   "version": "1.0.0",
   "private": true,
-  "description": "JSAN_NexusAI_Enterprise_Growth_Platform — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources",
+  "description": "JSAN NexusAI — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

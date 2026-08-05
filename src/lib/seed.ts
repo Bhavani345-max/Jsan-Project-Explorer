@@ -1165,6 +1165,9 @@ function fitScoreForSpec(s: Spec): number {
     budgetUsd: usd(s.budget, s.currency),
     country: s.country,
     deadline: iso(s.deadlineIn),
+    // Same capability base the live path uses, so a demo record and a real
+    // tender in the same focus area start from the same number.
+    serviceLine: serviceLineFor(s.category),
   });
 }
 

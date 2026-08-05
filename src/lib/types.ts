@@ -173,6 +173,11 @@ export interface ProjectQuery {
   /** Only opportunities whose deadline falls within this many days from today.
    *  Records with no parseable deadline are excluded when this is set. */
   maxDeadlineDays?: number;
+  /** Publication-date window, inclusive, as ISO `YYYY-MM-DD`. Either bound may
+   *  be given on its own. A record with no parseable publication date is
+   *  excluded when either bound is set — the filter cannot vouch for it. */
+  publishedFrom?: string;
+  publishedTo?: string;
   // When true, hide opportunities that are no longer pursuable (Awarded/Closed).
   availableOnly?: boolean;
   page?: number;

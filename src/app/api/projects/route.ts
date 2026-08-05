@@ -18,6 +18,13 @@ export async function GET(request: Request) {
     return Number.isFinite(n) ? n : undefined; // ignore ?minBudget=abc
   };
   const str = (k: string) => p.get(k) ?? undefined;
+  // Only a well-formed calendar date is accepted. Anything else is dropped
+  // rather than passed through: a malformed bound would silently exclude every
+  // record, which reads as "no results" instead of "bad filter".
+  const isoDate = (k: string) => {
+    const raw = p.get(k);
+    return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : undefined;
+  };
 
   // Paging comes off the query string, so it is bounded here rather than in the
   // repository: a hand-typed ?pageSize=100000 would otherwise serialise the
@@ -41,6 +48,8 @@ export async function GET(request: Request) {
     maxBudget: num("maxBudget"),
     minFit: num("minFit"),
     maxDeadlineDays: num("maxDeadlineDays"),
+    publishedFrom: isoDate("publishedFrom"),
+    publishedTo: isoDate("publishedTo"),
     availableOnly: p.get("availableOnly") === "true",
     page,
     pageSize,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X, LayoutGrid, Rows3 } from "lucide-react";
+import { Search, SlidersHorizontal, X, LayoutGrid, Rows3, Sparkles, CalendarRange } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD, TARGET_SERVICE_LINES } from "@/lib/domain";
 import { allCountryOptions } from "@/lib/countries";
@@ -105,9 +105,33 @@ const DEADLINE_WINDOWS = [
 
 const FIT_BANDS = [
   { value: "50", label: "50 and above" },
-  { value: String(HIGH_FIT_THRESHOLD), label: `${HIGH_FIT_THRESHOLD} and above (high fit)` },
-  { value: "85", label: "85 and above" },
+  { value: "60", label: "60 and above" },
+  { value: String(HIGH_FIT_THRESHOLD), label: `${HIGH_FIT_THRESHOLD} and above — recommended` },
+  { value: "80", label: "80 and above — strongest" },
 ];
+
+// Publication-date windows. Each writes an absolute `publishedFrom` date into
+// the query string rather than a relative token, so a shared or bookmarked link
+// keeps showing the same set of notices instead of silently sliding forward.
+const PUBLISHED_PRESETS = [
+  { days: 7, label: "7 days" },
+  { days: 30, label: "30 days" },
+  { days: 90, label: "90 days" },
+  { days: 365, label: "1 year" },
+];
+
+/** Today minus `days`, as `YYYY-MM-DD` in local calendar terms. */
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function todayIso(): string {
+  return isoDaysAgo(0);
+}
 
 // The full Explorer state, and the value each key omits from the address bar.
 // Reading and writing both go through this map, so a filter can never be
@@ -127,6 +151,8 @@ const URL_DEFAULTS = {
   maxBudget: "",
   minFit: "",
   maxDeadlineDays: "",
+  publishedFrom: "",
+  publishedTo: "",
   availableOnly: true, // hide occupied by default
   includeLarge: false, // hide >$10M by default
   sort: DEFAULT_SORT,
@@ -259,6 +285,97 @@ function CatalogueSelect({
         )}
       </select>
     </label>
+  );
+}
+
+/**
+ * Publication-date window: quick presets over an explicit range.
+ *
+ * Presets cover the common question ("what has come in this month?") in one
+ * click; the two date inputs stay visible underneath so an exact window is
+ * always reachable without hunting for a "custom" mode. Both write ISO dates,
+ * which is what the API validates and the repository compares.
+ */
+function PublishedFilter({
+  from,
+  to,
+  onChange,
+}: {
+  from: string;
+  to: string;
+  onChange: (patch: { publishedFrom?: string; publishedTo?: string }) => void;
+}) {
+  const active = PUBLISHED_PRESETS.find((p) => from === isoDaysAgo(p.days) && !to);
+  const max = todayIso();
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-text-faint">
+          Published
+        </span>
+        {(from || to) && (
+          <button
+            onClick={() => onChange({ publishedFrom: "", publishedTo: "" })}
+            className="text-[11px] text-primary font-semibold hover:underline"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 mt-1.5">
+        {PUBLISHED_PRESETS.map((p) => {
+          const on = active?.days === p.days;
+          return (
+            <button
+              key={p.days}
+              type="button"
+              aria-pressed={on}
+              onClick={() =>
+                onChange(
+                  on
+                    ? { publishedFrom: "", publishedTo: "" }
+                    : { publishedFrom: isoDaysAgo(p.days), publishedTo: "" },
+                )
+              }
+              title={`Published in the last ${p.label}`}
+              className={`chip !px-2 !py-1 text-[11px] transition-colors ${
+                on ? "!bg-primary !text-white !border-transparent" : "hover:!border-primary"
+              }`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-2 mt-2">
+        <label className="flex-1 min-w-0">
+          <span className="sr-only">Published from</span>
+          <input
+            type="date"
+            value={from}
+            max={to || max}
+            onChange={(e) => onChange({ publishedFrom: e.target.value })}
+            className="input !py-1.5 text-[12px]"
+            aria-label="Published from"
+          />
+        </label>
+        <span className="text-text-faint text-xs shrink-0">to</span>
+        <label className="flex-1 min-w-0">
+          <span className="sr-only">Published to</span>
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            max={max}
+            onChange={(e) => onChange({ publishedTo: e.target.value })}
+            className="input !py-1.5 text-[12px]"
+            aria-label="Published to"
+          />
+        </label>
+      </div>
+    </div>
   );
 }
 
@@ -398,10 +515,26 @@ export function ExplorerClient() {
         ([k, v]) =>
           v !== "" &&
           typeof v === "string" &&
-          !["q", "sort", "page", "minFit", "maxDeadlineDays"].includes(k),
+          // These four read as bare numbers or dates out of context, so they
+          // get purpose-built chips below instead of the generic value chip.
+          !["q", "sort", "page", "minFit", "maxDeadlineDays", "publishedFrom", "publishedTo"].includes(k),
       ) as [string, string][],
     [f],
   );
+
+  const recommendedOnly = f.minFit === String(HIGH_FIT_THRESHOLD);
+
+  /** "1 Jul 2026 – today", or one open-ended half of it. */
+  const publishedLabel = useMemo(() => {
+    const fmt = (iso: string) =>
+      new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+        day: "numeric", month: "short", year: "numeric",
+      });
+    if (f.publishedFrom && f.publishedTo) return `${fmt(f.publishedFrom)} – ${fmt(f.publishedTo)}`;
+    if (f.publishedFrom) return `since ${fmt(f.publishedFrom)}`;
+    if (f.publishedTo) return `up to ${fmt(f.publishedTo)}`;
+    return "";
+  }, [f.publishedFrom, f.publishedTo]);
 
   // Keep the reading pace the user chose; only the filters reset.
   const clearAll = () => setF((prev) => ({ ...URL_DEFAULTS, pageSize: prev.pageSize }));
@@ -452,6 +585,30 @@ export function ExplorerClient() {
             className="input pl-9"
           />
         </div>
+        {/* Recommended: the one control most sessions start from, so it sits
+            with the search box rather than inside the filter panel. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={recommendedOnly}
+            onClick={() => set({ minFit: recommendedOnly ? "" : String(HIGH_FIT_THRESHOLD) })}
+            title={`Show only opportunities scoring ${HIGH_FIT_THRESHOLD} or above against JSAN's capability rules`}
+            className={`chip !px-3 !py-1.5 font-semibold transition-colors ${
+              recommendedOnly
+                ? "!bg-success !text-white !border-transparent"
+                : "hover:!border-success"
+            }`}
+          >
+            <Sparkles size={13} className="mr-1" />
+            Recommended only ({HIGH_FIT_THRESHOLD}+)
+          </button>
+          <span className="text-[12px] text-text-muted">
+            {recommendedOnly
+              ? "Strong capability matches only — goods and supply notices are never included."
+              : `Showing every in-scope opportunity. ${HIGH_FIT_THRESHOLD}+ is a strong capability match.`}
+          </span>
+        </div>
+
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-text-faint mb-1.5">
             Capability focus areas
@@ -499,7 +656,7 @@ export function ExplorerClient() {
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <SlidersHorizontal size={15} /> Advanced Filters
               </h3>
-              {activeFilters.length > 0 && (
+              {(activeFilters.length > 0 || f.minFit || f.maxDeadlineDays || publishedLabel) && (
                 <button onClick={clearAll} className="text-[12px] text-primary font-semibold hover:underline">
                   Clear
                 </button>
@@ -530,6 +687,7 @@ export function ExplorerClient() {
                 <Select label="Organization" value={f.organization} options={facets.organizations} onChange={(v) => set({ organization: v })} />
                 <Select label="Source" value={f.source} options={facets.sources} onChange={(v) => set({ source: v })} />
                 <ChoiceSelect label="Deadline" value={f.maxDeadlineDays} choices={DEADLINE_WINDOWS} onChange={(v) => set({ maxDeadlineDays: v })} />
+                <PublishedFilter from={f.publishedFrom} to={f.publishedTo} onChange={set} />
                 <ChoiceSelect label="Fit Score" value={f.minFit} choices={FIT_BANDS} onChange={(v) => set({ minFit: v })} />
 
                 <div>
@@ -563,6 +721,35 @@ export function ExplorerClient() {
         <div ref={resultsRef} className="min-w-0 scroll-mt-24">
           <div className="flex items-center justify-between mb-3">
             <div className="flex flex-wrap gap-1.5">
+              {recommendedOnly && (
+                <span className="chip !bg-success-soft !text-success !border-transparent font-semibold">
+                  <Sparkles size={11} className="mr-1" />
+                  Recommended {HIGH_FIT_THRESHOLD}+
+                  <button onClick={() => set({ minFit: "" })} aria-label="Show all fit scores">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {!recommendedOnly && f.minFit && (
+                <span className="chip !bg-primary-soft !text-primary !border-transparent">
+                  Fit {f.minFit}+
+                  <button onClick={() => set({ minFit: "" })} aria-label="Remove fit filter">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {publishedLabel && (
+                <span className="chip !bg-primary-soft !text-primary !border-transparent">
+                  <CalendarRange size={11} className="mr-1" />
+                  Published {publishedLabel}
+                  <button
+                    onClick={() => set({ publishedFrom: "", publishedTo: "" })}
+                    aria-label="Remove published date filter"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
               {activeFilters.map(([k, v]) => (
                 <span key={k} className="chip !bg-primary-soft !text-primary !border-transparent">
                   {v}

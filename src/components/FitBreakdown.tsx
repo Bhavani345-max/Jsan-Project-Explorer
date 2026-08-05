@@ -10,15 +10,30 @@ import type { FitBreakdown as Breakdown } from "@/lib/scoring";
  * read this panel top to bottom and defend it.
  */
 export function FitBreakdown({ breakdown }: { breakdown: Breakdown }) {
-  const { score, awarded, rules, capped } = breakdown;
+  const { score, awarded, rules, capped, disqualified } = breakdown;
   const matched = rules.filter((r) => r.matched);
+
+  if (disqualified) {
+    return (
+      <div>
+        <div className="flex items-baseline gap-3 mb-3">
+          <span className="text-3xl font-bold tabular-nums text-text-faint">0</span>
+          <span className="text-text-faint text-sm">/ 100 · out of scope</span>
+        </div>
+        <p className="text-[13px] text-text-muted">
+          {rules[0]?.evidence ??
+            "This notice is a purchase of product rather than a contract for services."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex items-baseline gap-3 mb-4">
         <span className="text-3xl font-bold tabular-nums">{score}</span>
         <span className="text-text-faint text-sm">
-          / 100 · {matched.length} of {rules.length} rules matched
+          / 100 · {matched.length} of {rules.length} rules scored
         </span>
       </div>
 
@@ -53,12 +68,18 @@ export function FitBreakdown({ breakdown }: { breakdown: Breakdown }) {
               )}
             </div>
 
+            {/* Rules award a range, not a flat weight — show what this notice
+                earned against what was on offer, so a partial score reads as
+                partial rather than as a miss. */}
             <span
               className={`text-[13px] font-semibold tabular-nums shrink-0 ${
                 r.matched ? "text-success" : "text-text-faint"
               }`}
             >
               {r.matched ? `+${r.points}` : "0"}
+              {r.max > 0 && r.points < r.max && (
+                <span className="font-medium text-text-faint"> / {r.max}</span>
+              )}
             </span>
           </div>
         ))}

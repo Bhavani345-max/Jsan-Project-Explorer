@@ -100,28 +100,32 @@ export const PRIORITY_COUNTRIES: string[] = [
 export const DEADLINE_SOON_DAYS = 30;
 
 /**
- * The score at or above which an opportunity counts as "high fit".
+ * The score at or above which an opportunity is RECOMMENDED — worth a bid team
+ * actually looking at.
  *
  * Read by the dashboard KPI, the seed's "Best Fit" tag, the Explorer's fit
- * filter and the badge colours, so none of them can disagree about what high
- * fit means.
+ * filter and the badge colours, so none of them can disagree about what a
+ * strong fit means.
  *
- * Set from the measured distribution, not by taste. Across 790 stored rows the
- * rule table in lib/scoring.ts produces:
+ * Set from the measured distribution, not by taste. Under the recalibrated rule
+ * table in lib/scoring.ts, 522 stored in-domain rows produce:
  *
- *     0–9  162 | 10–19 143 | 20–29  69 | 30–39 213
- *   40–49  195 | 50–59   3 | 60–69   3 | 70+     2
+ *    20–29   2 | 30–39  15 | 40–49  28 | 50–59  73
+ *    60–69 130 | 70–79 132 | 80–89  13
  *
- * The ceiling is low because most TED notices disclose no budget (−15) and sit
- * outside PRIORITY_COUNTRIES (−10), so even a strong record rarely clears 50.
- * 40 is the top quartile of the real board and means the notice matched at
- * least two substantive capability rules. Raising it to 70 would leave the KPI
- * showing 2 of 790, which tells a reader nothing.
+ * 70 is ~37% of the board: enough to work through, selective enough to mean
+ * something. Reaching it requires a core focus area plus real capability
+ * evidence in the notice — a supporting Digital Engineering match cannot get
+ * there on its own, by design.
+ *
+ * This was 40 under the previous rubric, where the ceiling was so low that only
+ * 2 rows in 790 cleared 70. The rubric changed so the number could mean what a
+ * reader assumes it means; see the header of lib/scoring.ts.
  *
  * Re-measure after any change to the rule table:
  *   curl "<host>/api/cron/reclassify?dryRun=1&key=$CRON_SECRET" | jq .scoreHistogram
  */
-export const HIGH_FIT_THRESHOLD = 40;
+export const HIGH_FIT_THRESHOLD = 70;
 
 export function isTargetServiceLine(serviceLine: string): boolean {
   return (TARGET_SERVICE_LINES as string[]).includes(serviceLine);

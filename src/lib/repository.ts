@@ -45,6 +45,15 @@ function matches(p: Project, q: ProjectQuery): boolean {
   if (q.minBudget != null && (p.budget == null || p.budget < q.minBudget)) return false;
   if (q.maxBudget != null && (p.budget == null || p.budget > q.maxBudget)) return false;
   if (q.minFit != null && p.fitScore < q.minFit) return false;
+  // Publication window. Compared as ISO `YYYY-MM-DD` strings, which sort
+  // lexicographically — no Date parsing, no timezone to shift the boundary a
+  // day either way. A record with no usable date cannot satisfy the window.
+  if (q.publishedFrom || q.publishedTo) {
+    const pub = (p.publicationDate ?? "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pub)) return false;
+    if (q.publishedFrom && pub < q.publishedFrom) return false;
+    if (q.publishedTo && pub > q.publishedTo) return false;
+  }
   if (q.maxDeadlineDays != null) {
     // An unparseable or missing deadline cannot satisfy a deadline window —
     // including it would put rows in the results that the filter cannot vouch for.

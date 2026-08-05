@@ -69,25 +69,50 @@ jobs:
       - name: Install the Vercel CLI
         run: npm install --global vercel@latest
 
-      # Pulls the project's production environment (DATABASE_URL, CRON_SECRET,
-      # SAM_GOV_API_KEY) into .vercel/ so the build below compiles against the
-      # same configuration production runs with.
-      - name: Pull Vercel production environment
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      # ---- diagnostics -------------------------------------------------
+      # Job logs need repository-admin rights to read through the API, but step
+      # NAMES and pass/fail are public. So the token is checked in two separate
+      # named steps: which one goes red says what is wrong, without anyone
+      # having to open the log.
+      #
+      #   secret missing        -> "Token present" fails
+      #   token invalid/expired -> "Token authenticates" fails
+      #   token not scoped to the team that owns the project
+      #                         -> "Token can see the project" fails
+      #   all three green, deploy red -> a real build or deploy error
+      - name: 'Check: secret VERCEL_TOKEN is present'
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN secret is empty or not set on this repository"
+            exit 1
+          fi
+          echo "VERCEL_TOKEN is set (${#VERCEL_TOKEN} characters)"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build
-        run: vercel build --prod --token="$VERCEL_TOKEN"
+      - name: 'Check: token authenticates with Vercel'
+        run: vercel whoami --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      # --prebuilt uploads the artefact built above instead of rebuilding on
-      # Vercel, so what was typechecked and built here is exactly what ships.
+      # The project belongs to a TEAM (VERCEL_ORG_ID above starts with `team_`).
+      # A token scoped to a personal account authenticates fine but cannot see
+      # the project, which is the most likely cause of a failure here.
+      - name: 'Check: token can see the project'
+        run: vercel project ls --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # ---- deploy ------------------------------------------------------
+      # Source upload with a remote build, which is exactly what a plain
+      # `vercel --prod` does — the path already proven to work on this project.
+      # Vercel injects the project's own production environment during that
+      # build, so no `vercel pull` is needed and there is one less token
+      # operation that can fail.
       - name: Deploy to production
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          url=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed: $url"
         env:

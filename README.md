@@ -1,4 +1,6 @@
-# JSAN_NexusAI_Enterprise_Growth_Platform
+# JSAN NexusAI
+
+**Live: https://jsan-nexusai.vercel.app**
 
 An enterprise web application that helps a business-development team **discover
 geospatial and telecom engineering opportunities** — RFPs, RFQs, government

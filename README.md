@@ -1,5 +1,7 @@
 # JSAN NexusAI
 
+[![Deploy to Vercel](https://github.com/Bhavani345-max/Jsan-Project-Explorer/actions/workflows/deploy.yml/badge.svg)](https://github.com/Bhavani345-max/Jsan-Project-Explorer/actions/workflows/deploy.yml)
+
 **Live: https://jsan-nexusai.vercel.app**
 
 An enterprise web application that helps a business-development team **discover

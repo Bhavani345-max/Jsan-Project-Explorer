@@ -117,20 +117,43 @@ export async function translatePending(limit = 60): Promise<TranslateResult> {
 
   let derived = 0;
   let alreadyEnglish = 0;
-  for (const row of pending) {
+
+  // Batched writes. This was one UPDATE per row, and on Neon's HTTP driver a
+  // statement is a full network round trip — 60 rows meant 60 of them, inside
+  // the ingest cron's 300s budget. A single UPDATE ... FROM (VALUES …) applies
+  // the whole batch in one trip.
+  const writes = pending.map((row) => {
     const english = deriveEnglishTitle(row.title);
-    const changed = english !== row.title;
+    return { id: row.id, english, changed: english !== row.title };
+  });
+
+  const BATCH = 200;
+  for (let start = 0; start < writes.length; start += BATCH) {
+    const batch = writes.slice(start, start + BATCH);
+    const params: unknown[] = [];
+    const tuples = batch.map((w, n) => {
+      params.push(w.id, w.english);
+      // Postgres needs the types on the first row of a VALUES list to infer
+      // the rest of the column.
+      return n === 0 ? `($1::text, $2::text)` : `($${n * 2 + 1}, $${n * 2 + 2})`;
+    });
     try {
       await sql.query(
-        `UPDATE opportunities
-            SET title_en = $1, translated = TRUE, updated_at = now()
-          WHERE id = $2`,
-        [english, row.id],
+        `UPDATE opportunities AS o
+            SET title_en = v.title_en, translated = TRUE, updated_at = now()
+           FROM (VALUES ${tuples.join(",")}) AS v(id, title_en)
+          WHERE o.id = v.id`,
+        params,
       );
-      if (changed) derived++;
-      else alreadyEnglish++;
+      // Counted only once the write lands, so the reported figures describe
+      // what is actually in the table.
+      for (const w of batch) {
+        if (w.changed) derived++;
+        else alreadyEnglish++;
+      }
     } catch {
-      /* leave the row for the next pass rather than half-writing it */
+      // Leave this batch for the next pass rather than half-writing it. The
+      // rows keep translated = FALSE, so they are simply picked up again.
     }
   }
 

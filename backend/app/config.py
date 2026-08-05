@@ -45,9 +45,6 @@ class Settings(BaseSettings):
     # plaintext compose network and Railway's TLS-terminating proxy.
     db_sslmode: str = ""
 
-    redis_host: str = "localhost"
-    redis_port: int = 6379
-
     jwt_secret: str = "change-me-in-production-please-32-bytes-minimum!"
     jwt_ttl_minutes: int = 60
 

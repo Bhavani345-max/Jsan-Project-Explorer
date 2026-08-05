@@ -28,26 +28,17 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports: ["${REDIS_PORT:-6379}:6379"]
-    command: ["redis-server", "--save", "60", "1"]
-
-  opensearch:
-    image: opensearchproject/opensearch:2.16.0
-    environment:
-      - discovery.type=single-node
-      - DISABLE_SECURITY_PLUGIN=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports: ["${OPENSEARCH_PORT:-9200}:9200"]
+  # Redis and OpenSearch used to run here. Neither was ever contacted by any
+  # code — no client was constructed, no index was written — so they cost a
+  # 512 MB JVM and a second container on every `docker compose up` to provide
+  # nothing. Removed rather than left as scenery. Re-add them alongside the
+  # code that actually uses them.
 
   backend:
     build: ./backend
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
     environment:
       # Same variable Railway injects, so local and production take the identical
       # code path. Resolves to the same connection as the DB_URL trio below.
@@ -56,7 +47,6 @@ services:
       DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/discovery}
       DB_USER: ${POSTGRES_USER:-discovery}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-discovery}
-      REDIS_HOST: ${REDIS_HOST:-redis}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-minimum!}
       # Browser origin allowed to call the API. In production this is the
       # Vercel domain, set on the Railway service instead.

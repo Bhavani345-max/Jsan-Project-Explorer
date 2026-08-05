@@ -51,6 +51,41 @@ interface Change {
   category: string;
 }
 
+/** Rows per statement. At four columns this is ~800 bind parameters, far under
+ *  Postgres's 65,535 limit, and keeps any single statement small enough to send
+ *  comfortably over the HTTP driver. */
+const WRITE_BATCH = 200;
+
+/**
+ * Apply one UPDATE per batch instead of one per row.
+ *
+ * `template` carries a %ROWS% placeholder for the VALUES list; `types` are the
+ * Postgres casts for the first tuple, which is what lets Postgres infer the
+ * column types for the whole list. Returns the number of rows written.
+ */
+async function applyBatched(
+  sql: NonNullable<ReturnType<typeof getSql>>,
+  rows: readonly (readonly unknown[])[],
+  template: string,
+  types: string[],
+): Promise<number> {
+  let written = 0;
+  for (let start = 0; start < rows.length; start += WRITE_BATCH) {
+    const batch = rows.slice(start, start + WRITE_BATCH);
+    const params: unknown[] = [];
+    const tuples = batch.map((row, n) => {
+      row.forEach((v) => params.push(v));
+      const base = n * types.length;
+      return `(${types
+        .map((t, k) => (n === 0 ? `$${base + k + 1}::${t}` : `$${base + k + 1}`))
+        .join(",")})`;
+    });
+    await sql.query(template.replace("%ROWS%", tuples.join(",")), params);
+    written += batch.length;
+  }
+  return written;
+}
+
 // GET|POST /api/cron/reclassify — re-run the current categorizer across rows
 // that were stored under earlier, weaker rules, and promote the ones that are
 // really geospatial or telecom work so they surface in the portal.
@@ -166,25 +201,33 @@ async function handle(request: Request): Promise<Response> {
     let written = 0;
     let rescored = 0;
     if (!dryRun) {
-      for (const p of toWrite) {
-        await sql.query(
-          `UPDATE opportunities
-              SET category = $1, service_line = $2, fit_score = $3, updated_at = now()
-            WHERE id = $4`,
-          [p.category, p.to, p.fitScore, p.id],
-        );
-        written++;
-      }
+      // Both writes below were one UPDATE per row. On Neon's HTTP driver a
+      // statement costs a full network round trip, so a full pass over this
+      // table made ~730 of them and spent minutes of the 300s budget almost
+      // entirely on latency. Batching into UPDATE ... FROM (VALUES …) turns
+      // that into a handful of trips.
+      written = await applyBatched(
+        sql,
+        toWrite.map((p) => [p.id, p.category, p.to, p.fitScore] as const),
+        `UPDATE opportunities AS o
+            SET category = v.category, service_line = v.service_line,
+                fit_score = v.fit_score, updated_at = now()
+           FROM (VALUES %ROWS%) AS v(id, category, service_line, fit_score)
+          WHERE o.id = v.id`,
+        ["text", "text", "text", "int"],
+      );
+
       // Rows the reclassifier left alone still need the new score. Skip the
       // ones just written above so a record is never updated twice.
-      for (const r of rescore) {
-        if (reclassified.has(r.id)) continue;
-        await sql.query(
-          `UPDATE opportunities SET fit_score = $1, updated_at = now() WHERE id = $2`,
-          [r.fitScore, r.id],
-        );
-        rescored++;
-      }
+      rescored = await applyBatched(
+        sql,
+        rescore.filter((r) => !reclassified.has(r.id)).map((r) => [r.id, r.fitScore] as const),
+        `UPDATE opportunities AS o
+            SET fit_score = v.fit_score, updated_at = now()
+           FROM (VALUES %ROWS%) AS v(id, fit_score)
+          WHERE o.id = v.id`,
+        ["text", "int"],
+      );
     }
 
     const after = dryRun ? before : { inDomain: await countInDomain(), total: await countOpportunities() };

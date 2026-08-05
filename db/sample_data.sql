@@ -33,7 +33,7 @@ INSERT INTO project_sources (id, name, source_type, base_url, country) VALUES
  ('b0000000-0000-0000-0000-000000000003','Tender Board Portal','Public Tender API','https://tenderboard.example.ae/api','United Arab Emirates');
 
 -- ---- Projects (publication_date drives partition routing) ------------
-INSERT INTO projects (id, reference_number, title, description, ai_summary,
+INSERT INTO projects (id, reference_number, title, description, summary,
     organization_id, category_id, source_id, country, state, budget_usd, currency,
     project_type, status, eligibility, official_link, contact_email, tags,
     deadline, publication_date, source_hash, created_by)
@@ -52,7 +52,7 @@ SELECT
     DATE '2026-08-03', DATE '2026-07-19','sha256-abc123',
     '11111111-1111-1111-1111-111111111111';
 
-INSERT INTO projects (id, reference_number, title, description, ai_summary,
+INSERT INTO projects (id, reference_number, title, description, summary,
     organization_id, category_id, source_id, country, state, budget_usd, currency,
     project_type, status, eligibility, official_link, contact_email, tags,
     deadline, publication_date, source_hash, created_by)

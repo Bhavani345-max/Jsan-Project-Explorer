@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers ${WEB_CONCURRENCY:-2} --proxy-headers --forwarded-allow-ips='*'",
+    "_comment": "No startCommand on purpose. Railway does NOT run it through a shell, so `$PORT` arrives at uvicorn as the literal string and the container crash-loops with 'Invalid value for --port'. The Dockerfile's CMD already uses `sh -c`, which expands ${PORT} and ${WEB_CONCURRENCY} correctly on Railway and falls back to 8080/1 under docker-compose — one source of truth for how this service starts.",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",

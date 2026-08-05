@@ -14,18 +14,36 @@ import {
   Moon,
   ChevronDown,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import { GTranslate } from "./GTranslate";
 
+// `adminOnly` mirrors ADMIN_ONLY_PREFIXES in src/middleware.ts. The middleware
+// is what actually enforces it — hiding the link only keeps managers from
+// walking into a redirect. Both must be updated together.
 const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/explorer", label: "Project Explorer", icon: Compass },
-  { href: "/connectors", label: "API Connectors", icon: PlugZap },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { href: "/explorer", label: "Project Explorer", icon: Compass, adminOnly: false },
+  { href: "/connectors", label: "API Connectors", icon: PlugZap, adminOnly: true },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, adminOnly: false },
 ];
 
-const ROLES = ["Administrator", "Business Development", "Sales Team", "Manager", "Read Only"];
+interface Me {
+  email: string;
+  name: string;
+  role: "admin" | "manager";
+}
+
+const ROLE_LABEL: Record<Me["role"], string> = {
+  admin: "Administrator",
+  manager: "Manager",
+};
+
+/** Initials for the avatar chip — first letters of the first two words. */
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+}
 
 interface Suggestion {
   type: string;
@@ -37,7 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggle } = useTheme();
-  const [role, setRole] = useState(ROLES[0]);
+  const [me, setMe] = useState<Me | null>(null);
   const [roleOpen, setRoleOpen] = useState(false);
   const [q, setQ] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -74,11 +92,40 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [q]);
 
+  // Who is signed in. The middleware has already proved the session before any
+  // of this renders; this call is only to put a name and role on screen.
+  useEffect(() => {
+    if (pathname === "/login") return;
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setMe(d.user ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    // Full navigation so every cached server component is discarded along with
+    // the session, rather than lingering until the next hard refresh.
+    window.location.assign("/login");
+  };
+
   const submitSearch = (term: string) => {
     setOpen(false);
     setQ("");
     router.push(`/explorer?q=${encodeURIComponent(term)}`);
   };
+
+  // The sign-in page is the one route rendered without the app chrome — a
+  // sidebar full of links you cannot follow is worse than no sidebar.
+  if (pathname === "/login") return <>{children}</>;
+
+  const nav = NAV.filter((item) => !item.adminOnly || me?.role === "admin");
 
   return (
     <div className="min-h-screen flex">
@@ -102,7 +149,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-faint">
             Workspace
           </p>
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
@@ -211,40 +258,51 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
             </button>
 
-            {/* Role switcher */}
+            {/* Signed-in user. This replaced a decorative role switcher that
+                let anyone pick any role and changed nothing — the role now
+                comes from the session and is enforced by the middleware. */}
             <div className="relative">
               <button
                 onClick={() => setRoleOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={roleOpen}
                 className="flex items-center gap-2 pl-1.5 pr-2 py-1.5 rounded-lg hover:bg-white/15 transition-colors"
               >
                 <span className="grid place-items-center w-8 h-8 rounded-full bg-white text-primary text-xs font-bold ring-2 ring-white/40">
-                  BD
+                  {me ? initials(me.name) : "—"}
                 </span>
-                <div className="hidden sm:block text-left leading-tight">
-                  <div className="text-[13px] font-semibold text-white">Alex Morgan</div>
-                  <div className="text-[10px] text-white/70">{role}</div>
+                <div className="hidden sm:block text-left leading-tight max-w-[9rem]">
+                  <div className="text-[13px] font-semibold text-white truncate">
+                    {me?.name ?? "Signed out"}
+                  </div>
+                  <div className="text-[10px] text-white/70 truncate">
+                    {me ? ROLE_LABEL[me.role] : "—"}
+                  </div>
                 </div>
                 <ChevronDown size={14} className="text-white/70" />
               </button>
               {roleOpen && (
-                <div className="absolute right-0 mt-2 w-56 card p-1.5 z-40 animate-in">
-                  <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-faint">
-                    Switch role (RBAC)
-                  </p>
-                  {ROLES.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => {
-                        setRole(r);
-                        setRoleOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-bg-subtle transition-colors ${
-                        r === role ? "text-primary font-semibold" : "text-text-muted"
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
+                <div className="absolute right-0 mt-2 w-60 card p-1.5 z-40 animate-in">
+                  <div className="px-3 py-2 border-b border-border mb-1">
+                    <div className="text-[13px] font-semibold truncate">{me?.name}</div>
+                    <div className="text-[11px] text-text-muted truncate">{me?.email}</div>
+                    <div className="mt-1.5 inline-flex items-center gap-1 chip !py-0.5 !text-[10px]">
+                      <ShieldCheck size={11} />
+                      {me ? ROLE_LABEL[me.role] : "—"}
+                    </div>
+                  </div>
+                  {me?.role === "manager" && (
+                    <p className="px-3 py-1 text-[11px] text-text-faint">
+                      API Connectors is restricted to administrators.
+                    </p>
+                  )}
+                  <button
+                    onClick={signOut}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-sm text-text-muted hover:bg-bg-subtle transition-colors"
+                  >
+                    <LogOut size={14} />
+                    Sign out
+                  </button>
                 </div>
               )}
             </div>

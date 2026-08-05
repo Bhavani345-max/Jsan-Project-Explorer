@@ -5,7 +5,7 @@ import {
   normalize,
   isOpenOpportunity,
   meetsMinBudget,
-  isGoodsProcurement,
+  isOutOfScope,
   type NormalizedOpportunity,
   type RawOpportunity,
 } from "@/lib/ingest/normalize";
@@ -64,11 +64,13 @@ export async function runConnectors(): Promise<IngestResult> {
           offDomain++;
           continue;
         }
-        // Scope gate: JSAN delivers services, it does not trade goods. A
-        // notice that is a purchase of product is dropped even when its
-        // subject matter is telecom or geospatial — "Supply of network
-        // switches" is a hardware order, not network engineering.
-        if (isGoodsProcurement(row.title)) {
+        // Scope gate: JSAN delivers services in its own industries. Drops a
+        // purchase of product even when the subject is telecom or geospatial
+        // ("Supply of network switches" is a hardware order, not network
+        // engineering), and drops off-sector services such as clinical care —
+        // but never when the notice carries real capability evidence, so
+        // telephony for a hospital survives. See lib/ingest/scope.ts.
+        if (isOutOfScope(row.title)) {
           goods++;
           continue;
         }

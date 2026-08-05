@@ -37,7 +37,7 @@ import {
   PRIORITY_COUNTRIES,
   DEADLINE_SOON_DAYS,
 } from "@/lib/domain";
-import { isGoodsProcurement } from "@/lib/ingest/goods";
+import { isOutOfScope, outOfScopeReason } from "@/lib/ingest/scope";
 import type { ServiceLine } from "@/lib/types";
 
 /** One rule's contribution. `points` is what it awarded, `max` what it could. */
@@ -210,7 +210,7 @@ export function scoreFit(input: FitInput): FitBreakdown {
   // A purchase of product is not a capability match at any score. This mirrors
   // the ingest and read gates so a goods notice that somehow reaches the UI
   // still reads as zero rather than as a mid-table opportunity.
-  if (isGoodsProcurement(title)) {
+  if (isOutOfScope(title)) {
     return {
       score: 0,
       awarded: 0,
@@ -219,12 +219,12 @@ export function scoreFit(input: FitInput): FitBreakdown {
       disqualified: true,
       rules: [
         {
-          id: "goods",
-          label: "Not a goods or supply purchase",
+          id: "scope",
+          label: "Within JSAN's delivery scope",
           points: 0,
           max: 0,
           matched: false,
-          evidence: "this notice is a purchase of product, which JSAN does not bid",
+          evidence: outOfScopeReason(title) ?? "outside JSAN's delivery scope",
         },
       ],
     };

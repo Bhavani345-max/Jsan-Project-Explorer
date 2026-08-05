@@ -20,7 +20,7 @@ import type { Project } from "@/lib/types";
 import { money } from "@/lib/format";
 import { TARGET_SERVICE_LINES, TARGET_MIN_BUDGET_USD } from "@/lib/domain";
 import type { NormalizedOpportunity } from "@/lib/ingest/normalize";
-import { isGoodsProcurement } from "@/lib/ingest/goods";
+import { isOutOfScope } from "@/lib/ingest/scope";
 import { fitScoreFor } from "@/lib/scoring";
 
 /**
@@ -475,7 +475,7 @@ export async function loadLiveProjects(limit = 4000): Promise<Project[] | null> 
     // rule, and /api/cron/reclassify rescores them to 0 so they also sink out
     // of every ranking. Applied after mapping because it reads the English
     // title, which is where the procurement category appears.
-    const visible = rows.map(toProject).filter((p) => !isGoodsProcurement(p.title));
+    const visible = rows.map(toProject).filter((p) => !isOutOfScope(p.title));
     return visible.length ? visible : null;
   } catch {
     return null;

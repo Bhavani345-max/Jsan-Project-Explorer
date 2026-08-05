@@ -218,6 +218,7 @@ export { fitScoreFor, scoreFit } from "@/lib/scoring";
 // Scope gate for goods/supply notices — re-exported so the ingest pipeline
 // keeps its single import surface (see lib/ingest/goods.ts).
 export { isGoodsProcurement, goodsReason } from "@/lib/ingest/goods";
+export { isOutOfScope, isOffSectorService, outOfScopeReason } from "@/lib/ingest/scope";
 
 const PROJECT_TYPE_BY_SOURCE: Record<string, ProjectType> = {
   "Government Procurement API": "Government Tender",

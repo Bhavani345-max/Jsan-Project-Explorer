@@ -72,11 +72,13 @@ export async function POST(request: Request) {
   if (role !== "admin" && role !== "manager") {
     return NextResponse.json({ error: 'Role must be "admin" or "manager"' }, { status: 400 });
   }
-  // Long enough that scrypt is doing the heavy lifting against a real guess,
-  // not covering for a four-character password.
-  if (password.length < 12) {
+  // Floor only — scrypt makes each guess expensive, but it cannot rescue a
+  // password a dictionary attack tries in its first hundred attempts. This was
+  // 12 and was lowered to 8 on request; raise it back when the accounts move
+  // off their initial passwords.
+  if (password.length < 8) {
     return NextResponse.json(
-      { error: "Password must be at least 12 characters" },
+      { error: "Password must be at least 8 characters" },
       { status: 400 },
     );
   }

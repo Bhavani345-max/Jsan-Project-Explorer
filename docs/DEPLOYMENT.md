@@ -1,34 +1,58 @@
 # Deployment Guide
 
-Two supported topologies. Both run the same code — only configuration differs.
+## Current state
 
-```
-DEVELOPMENT (docker compose up --build)      PRODUCTION
-┌──────────────────────────────┐             ┌───────────────────────────┐
-│ frontend  :3000  (Next.js)   │             │ Vercel — Next.js + API    │
-│ backend   :8080  (FastAPI)   │             │   routes + Vercel Cron    │
-│ postgres  :5432              │             └────────────┬──────────────┘
-│ redis     :6379              │                          │ DATABASE_URL
-│ opensearch:9200              │             ┌────────────▼──────────────┐
-└──────────────────────────────┘             │ Railway PostgreSQL        │
-                                             └────────────▲──────────────┘
-                                                          │ DATABASE_URL
-                                             ┌────────────┴──────────────┐
-                                             │ Railway — FastAPI service │
-                                             │   /api/v1 · /docs · /health│
-                                             └───────────────────────────┘
-```
+| Component | Where it runs today |
+|---|---|
+| Next.js portal + its API routes + Cron | **Vercel** |
+| PostgreSQL | **Neon** (Vercel Marketplace integration) |
+| FastAPI `/api/v1` service | **Local only** — `docker compose up --build` |
 
-> **How the two production services relate.** The Next.js app owns its own read
-> and ingest path and queries Postgres directly — it does not call the FastAPI
-> service at runtime. The FastAPI service is deployed alongside it on Railway as
-> the independent `/api/v1` API (its own schema, auth and Swagger UI), sharing
-> the same Railway PostgreSQL instance. Making the frontend consume FastAPI
-> instead of the database is an application change, not a deployment change.
+The FastAPI service is *configured* for Railway (section 2 below) but is not
+provisioned. Nothing depends on it being deployed: the portal queries Postgres
+directly and never calls it. Deploy it when you need a permanent public URL for
+the `/api/v1` contract; until then Compose serves it at
+`http://localhost:8080/docs` for free.
+
+Because the data layer picks its driver from the connection string, moving the
+database from Neon to Railway is an environment-variable change, not a code
+change.
 
 ---
 
-## 1. Deploy the database — Railway PostgreSQL
+Three supported topologies. All run the same code — only configuration differs.
+
+```
+DEVELOPMENT                        PRODUCTION TODAY        BACKEND, IF DEPLOYED
+(docker compose up --build)                                (optional, section 2)
+┌────────────────────────┐    ┌────────────────────┐    ┌────────────────────┐
+│ frontend  :3000        │    │ Vercel — Next.js   │    │ Railway — FastAPI  │
+│ backend   :8080        │    │  + API routes      │    │  /api/v1 · /docs   │
+│ postgres  :5432        │    │  + Vercel Cron     │    │  · /health         │
+│ redis     :6379        │    └─────────┬──────────┘    └─────────┬──────────┘
+│ opensearch:9200        │              │ DATABASE_URL            │
+└────────────────────────┘    ┌─────────▼──────────┐              │
+                              │ Neon PostgreSQL    │◀─────────────┘
+                              │ (or Railway PG)    │   same DATABASE_URL
+                              └────────────────────┘
+```
+
+> **How the two services relate.** The Next.js app owns its own read and ingest
+> path and queries Postgres directly — it does not call the FastAPI service at
+> runtime, deployed or not. That is why the backend is optional: deploying it
+> adds an independent `/api/v1` API (its own schema, auth and Swagger UI) against
+> the same database, and removing it takes nothing away from the portal. Making
+> the frontend consume FastAPI instead of the database is an application change,
+> not a deployment change.
+
+---
+
+## 1. Deploy the database — Railway PostgreSQL *(optional)*
+
+> Production currently uses **Neon**, provisioned through the Vercel Marketplace
+> integration, and needs none of this. Follow this section only to move the
+> database to Railway — typically because you are also deploying the backend and
+> want both on one provider.
 
 1. Create a project at [railway.app](https://railway.app) → **New Project**.
 2. **+ New → Database → Add PostgreSQL**. Railway provisions the instance and
@@ -62,7 +86,14 @@ DEVELOPMENT (docker compose up --build)      PRODUCTION
 
 ---
 
-## 2. Deploy the backend — Railway (FastAPI)
+## 2. Deploy the backend — Railway (FastAPI) *(optional, not provisioned)*
+
+> The service is fully configured for Railway but has not been stood up. The
+> portal does not depend on it. Locally, `docker compose up --build` already
+> serves the same API at `http://localhost:8080` with Swagger UI at `/docs`.
+>
+> Railway bills for an always-on service, so deploy this when you need a
+> permanent public URL — not to develop against.
 
 1. In the same Railway project: **+ New → GitHub Repo** → pick this repository.
 2. **Settings → Root Directory: `backend`**. Railway then reads
@@ -113,10 +144,10 @@ Production *and* Preview):
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | Railway's **`DATABASE_PUBLIC_URL`** |
+| `DATABASE_URL` | Neon connection string (set by the Vercel Marketplace integration). To move to Railway instead, use its **`DATABASE_PUBLIC_URL`** — Vercel is outside Railway's private network |
 | `CRON_SECRET` | `openssl rand -hex 32` — gates `/api/cron/ingest` |
 | `SAM_GOV_API_KEY` | optional; the US SAM.gov connector stays dormant without it |
-| `NEXT_PUBLIC_API_BASE` | optional; `https://<service>.up.railway.app` |
+| `NEXT_PUBLIC_API_BASE` | optional; `https://<service>.up.railway.app`, only if the backend is deployed |
 
 The data layer picks its driver from the URL itself — a `*.neon.tech` host keeps
 using Neon's HTTP driver, anything else (Railway, local Postgres) uses
@@ -140,7 +171,7 @@ production**:
 | Scheduler | Where | Status |
 |---|---|---|
 | Vercel Cron → `GET /api/cron/ingest` | `vercel.json`, daily 02:00 UTC | **active in production** |
-| APScheduler (`backend/app/scheduler.py`) | inside the FastAPI process | **off on Railway**, on under Compose |
+| APScheduler (`backend/app/scheduler.py`) | inside the FastAPI process | on under Compose; **off on Railway** |
 
 The FastAPI scheduler disables itself whenever `RAILWAY_ENVIRONMENT` is present
 (`Settings.scheduler_active`), so the two can never collect the same sources

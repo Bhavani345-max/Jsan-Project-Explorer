@@ -123,14 +123,17 @@ sidebar reads "Sample dataset". Nothing else is required to explore every module
 ## Live data (deployed architecture)
 
 The deployed portal is **Vercel-native**: the Next.js app owns ingestion, storage
-and reads. The FastAPI service deploys separately to Railway and serves its own
-`/api/v1` contract; the portal does not call it at runtime.
+and reads — no separate service to run.
 
 ```
-Vercel (Next.js + API routes + Cron) ─┐
-                                      ├─→ PostgreSQL   (Railway or Neon — the
-Railway (FastAPI /api/v1) ────────────┘                 URL selects the driver)
+Vercel (Next.js + API routes + Cron) ──→ Neon PostgreSQL
 ```
+
+The FastAPI service under `backend/` runs locally via Docker Compose and is
+configured — but not provisioned — for Railway. The portal never calls it, so
+deploying it is optional; it adds a public `/api/v1` API, not portal
+functionality. The data layer picks its driver from the connection string, so
+switching Neon → Railway Postgres is an env-var change, not a code change.
 
 ```
 Vercel Cron (daily 02:00)
@@ -260,12 +263,13 @@ stricter than ingest, since long project abstracts mention "network" or
 ## Enterprise backend (Python)
 
 The repo also ships a complete **FastAPI + PostgreSQL + Redis + OpenSearch**
-implementation under [`backend/`](backend/), wired for `docker compose up --build`
-locally and for **Railway** in production (`backend/railway.json`, Root Directory
-`backend`). It serves the `/api/v1` contract, JWT auth and Swagger UI
-independently of the portal's own read path. Its in-process collection scheduler
-is disabled automatically on Railway so it can never duplicate the Vercel Cron
-ingest. Quality audit: [`score.md`](score.md).
+implementation under [`backend/`](backend/). It runs locally with
+`docker compose up --build` — Swagger UI at http://localhost:8080/docs — and is
+deployment-ready for **Railway** (`backend/railway.json`, Root Directory
+`backend`) whenever a permanent public URL is wanted. It serves the `/api/v1`
+contract, JWT auth and Swagger UI independently of the portal's own read path.
+Its in-process collection scheduler is disabled automatically on Railway so it
+can never duplicate the Vercel Cron ingest. Quality audit: [`score.md`](score.md).
 
 Dev/demo login (rotate before shared deployment): `admin@discovery.io` / `Admin#2026!`
 

@@ -1,0 +1,120 @@
+# =====================================================================
+#  Deploy to Vercel on every push to main.
+#
+#  This exists because Vercel's own Git integration would not attach to this
+#  repository — the GitHub App had access and the project page offered the
+#  connect flow, but no webhook was ever created, so pushes posted no commit
+#  status and triggered no build. Rather than keep debugging that, deployment
+#  runs here, where the whole path is visible and testable.
+#
+#  Setup — ONE repository secret is required:
+#
+#    VERCEL_TOKEN   Create at https://vercel.com/account/settings/tokens
+#                   (scope it to the "bhavani345-max's projects" team),
+#                   then add under
+#                   Settings -> Secrets and variables -> Actions -> New secret.
+#
+#  The org and project IDs below are identifiers, not credentials — they cannot
+#  authorise anything on their own, and every command here is gated by
+#  VERCEL_TOKEN. They are inline so setup stays a single copy-paste. Move them
+#  to secrets if you would rather not have them in a public repo.
+# =====================================================================
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  # Lets you re-run a deploy from the Actions tab without an empty commit.
+  workflow_dispatch:
+
+concurrency:
+  # A newer push supersedes an in-flight deploy of older code. Never cancel a
+  # run mid-flight if it has already started deploying, so production is not
+  # left half-updated — that is what cancel-in-progress:false buys.
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: team_42F0wJDHDakkr9klhFu1qXGw
+  VERCEL_PROJECT_ID: prj_DlxvVTvnqIQgVe4i9blQbpqsnG3C
+
+jobs:
+  deploy:
+    name: Build and deploy to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@v4
+
+      # Match the runtime the Vercel project is configured for (Node 24.x), so
+      # a build that passes here is a build that passes there.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Cheap gate before anything is published. `vercel build` would surface a
+      # type error too, but only after pulling environment and starting a
+      # remote-flavoured build — failing here is faster and reads more clearly
+      # in the Actions log.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Install the Vercel CLI
+        run: npm install --global vercel@latest
+
+      # Pulls the project's production environment (DATABASE_URL, CRON_SECRET,
+      # SAM_GOV_API_KEY) into .vercel/ so the build below compiles against the
+      # same configuration production runs with.
+      - name: Pull Vercel production environment
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # --prebuilt uploads the artefact built above instead of rebuilding on
+      # Vercel, so what was typechecked and built here is exactly what ships.
+      - name: Deploy to production
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $url"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # Fails the run if production is not actually serving, so a broken deploy
+      # shows as a red check rather than a green one with a dead site.
+      - name: Verify production is live
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://jsan-nexusai.vercel.app/ || true)
+            echo "attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::jsan-nexusai.vercel.app did not return 200 after the deploy"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deployment"
+            echo ""
+            echo "- Commit: \`${GITHUB_SHA::7}\`"
+            echo "- Deployment: ${{ steps.deploy.outputs.url }}"
+            echo "- Production: https://jsan-nexusai.vercel.app"
+          } >> "$GITHUB_STEP_SUMMARY"

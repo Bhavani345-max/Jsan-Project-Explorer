@@ -8,6 +8,12 @@ const nextConfig = {
   reactStrictMode: true,
   // Pin the workspace root so the parent-directory lockfile is ignored.
   outputFileTracingRoot: __dirname,
+  // node-postgres resolves its optional native binding (pg-native) and its
+  // connection string parser through runtime require(). Bundling it produces
+  // "Critical dependency" warnings and can break the driver, so leave it as a
+  // real node_module in the server output. Only used when DATABASE_URL points
+  // at a non-Neon host (Railway Postgres, docker-compose Postgres).
+  serverExternalPackages: ["pg"],
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       // pptxgenjs / jspdf reference Node core modules behind environment

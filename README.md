@@ -123,14 +123,21 @@ sidebar reads "Sample dataset". Nothing else is required to explore every module
 ## Live data (deployed architecture)
 
 The deployed portal is **Vercel-native**: the Next.js app owns ingestion, storage
-and reads — no separate service to run.
+and reads. The FastAPI service deploys separately to Railway and serves its own
+`/api/v1` contract; the portal does not call it at runtime.
+
+```
+Vercel (Next.js + API routes + Cron) ─┐
+                                      ├─→ PostgreSQL   (Railway or Neon — the
+Railway (FastAPI /api/v1) ────────────┘                 URL selects the driver)
+```
 
 ```
 Vercel Cron (daily 02:00)
    └─→ GET /api/cron/ingest
          ├─ src/lib/ingest/connectors/*   fetch every public source concurrently
          ├─ src/lib/ingest/normalize.ts   FX→USD · categorize · tech extraction · fit score
-         ├─ src/lib/db.ts                 idempotent upsert into Neon Postgres + purge expired
+         ├─ src/lib/db.ts                 idempotent upsert into Postgres + purge expired
          └─ src/lib/ingest/translate.ts   derive English titles from the published CPV label
 
 Page / API read path
@@ -154,11 +161,16 @@ record carries its official notice URL for provenance.
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | for live data | Neon Postgres connection string (`POSTGRES_URL` also accepted) |
+| `DATABASE_URL` | for live data | Postgres connection string — Railway or Neon (`POSTGRES_URL` also accepted) |
 | `CRON_SECRET` | recommended | Gates `/api/cron/ingest`; Vercel Cron sends it as a bearer token |
 | `SAM_GOV_API_KEY` | optional | Enables the US SAM.gov connector |
+| `DB_DRIVER` | optional | `neon` \| `pg` — override the driver auto-detected from the host |
 
-Schema is created on demand (`ensureSchema()`), so a fresh Neon database needs no
+The connection string alone selects the driver: a `*.neon.tech` host uses Neon's
+HTTP driver, any other host uses node-postgres over TCP. Full variable reference
+and step-by-step deploys: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+Schema is created on demand (`ensureSchema()`), so a fresh database needs no
 migration step. Trigger the first ingest manually with:
 
 ```bash
@@ -245,12 +257,15 @@ stricter than ingest, since long project abstracts mention "network" or
 
 ---
 
-## Reference enterprise backend (Python)
+## Enterprise backend (Python)
 
 The repo also ships a complete **FastAPI + PostgreSQL + Redis + OpenSearch**
-implementation under [`backend/`](backend/), wired for `docker compose up --build`.
-It is the reference/enterprise deployment target — the Vercel path above is what
-runs in production today. Quality audit: [`score.md`](score.md).
+implementation under [`backend/`](backend/), wired for `docker compose up --build`
+locally and for **Railway** in production (`backend/railway.json`, Root Directory
+`backend`). It serves the `/api/v1` contract, JWT auth and Swagger UI
+independently of the portal's own read path. Its in-process collection scheduler
+is disabled automatically on Railway so it can never duplicate the Vercel Cron
+ingest. Quality audit: [`score.md`](score.md).
 
 Dev/demo login (rotate before shared deployment): `admin@discovery.io` / `Admin#2026!`
 
@@ -303,10 +318,10 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 ## Tech stack
 
 **Frontend** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Recharts · lucide-react · **Segoe UI** (system font — nothing is downloaded; it replaced an Inter webfont that was fetched on every cold load)
-**Deployed backend** Next.js route handlers · Vercel Cron · Neon serverless Postgres (`@neondatabase/serverless`)
-**Reference backend** Python 3.13+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · PyJWT + bcrypt (JWT + RBAC) · APScheduler · psycopg 3
+**Deployed backend** Next.js route handlers · Vercel Cron · Postgres via `@neondatabase/serverless` (Neon hosts) or `pg` (Railway, self-hosted)
+**API service** Python 3.13+ · FastAPI · SQLAlchemy 2.0 · Pydantic v2 · PyJWT + bcrypt (JWT + RBAC) · APScheduler · psycopg 3 · uvicorn
 **Data** PostgreSQL 16 (partitioned, `tsvector` full-text, `pg_trgm`) · Redis · OpenSearch
-**Ops** Vercel · Docker · Nginx · Prometheus/Grafana · ELK · pytest
+**Ops** Vercel · Railway · Docker · Nginx · Prometheus/Grafana · ELK · pytest
 
 ---
 
@@ -327,7 +342,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │  ├─ components/                    # Shell, charts, cards, UI primitives
 │  │  └─ Pagination.tsx              # windowed page control + page-size select
 │  └─ lib/
-│     ├─ db.ts                       # Neon data access (schema, upsert, purge, reads)
+│     ├─ db.ts                       # Postgres data access (Neon HTTP or pg/TCP; schema, upsert, purge, reads)
 │     ├─ live.ts                     # live-vs-seed dataset seam
 │     ├─ repository.ts               # pure query logic over an injected dataset
 │     ├─ ingest/
@@ -336,19 +351,23 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │     └─ domain.ts · types · seed · format
 │
 ├─ vercel.json                       # cron schedule + function maxDuration
-├─ backend/                          # Python FastAPI service (reference stack)
+├─ .env.example                      # frontend / compose env template
+├─ backend/                          # Python FastAPI service (deploys to Railway)
+│  ├─ railway.json                   # Railway builder, start command, healthcheck
+│  ├─ .env.example                   # backend env template
 │  ├─ app/
 │  │  ├─ models.py                   # SQLAlchemy entities (audit + soft delete)
 │  │  ├─ repositories/               # query builders + composable filters
 │  │  ├─ services/                   # application services
 │  │  ├─ routers/                    # REST endpoints (projects, auth)
 │  │  ├─ connectors/                 # SourceConnector framework
-│  │  ├─ scheduler.py                # collection cadences (15m/hourly/daily)
+│  │  ├─ scheduler.py                # collection cadences (15m/hourly/daily; off on Railway)
 │  │  ├─ security.py                 # JWT + BCrypt + RBAC dependencies
 │  │  └─ main.py · config.py · database.py · errors.py · schemas.py
 │  └─ tests/                         # pytest unit tests
 │
 ├─ db/                              # schema.sql · sample_data.sql · ER_DIAGRAM.md
+│                                   # + bootstrap_remote.py (load schema into Railway)
 ├─ docs/                            # ARCHITECTURE · API_DESIGN · DEPLOYMENT
 ├─ Dockerfile · backend/Dockerfile · docker-compose.yml
 └─ README.md

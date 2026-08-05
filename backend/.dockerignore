@@ -3,3 +3,7 @@ __pycache__
 *.pyc
 .pytest_cache
 tests
+# Never bake local secrets into the image — Railway supplies them as variables.
+.env
+.env.*
+!.env.example

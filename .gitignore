@@ -14,8 +14,11 @@ __pycache__/
 .pytest_cache/
 
 # --- Secrets & local env -------------------------------------------------
+# Every .env variant is ignored; the committed templates are the exception.
+# Keep the negations last — a later `.env*` line would silently re-ignore them.
 .env*
 !.env.example
+!backend/.env.example
 *.pem
 
 # --- Runtime artifacts ---------------------------------------------------
@@ -31,5 +34,3 @@ captures/
 # --- OS / editor ---------------------------------------------------------
 .DS_Store
 Thumbs.db
-
-.env*

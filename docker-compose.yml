@@ -1,15 +1,21 @@
 # =====================================================================
 #  Full enterprise stack for local / staging.
 #  Run the whole platform with:  docker compose up --build
+#
+#  Every value below is now an environment variable with its previous literal
+#  as the default, so `docker compose up` with no .env behaves exactly as it
+#  did before. Override any of them in a root `.env` file (see .env.example).
+#  This stack is unaffected by the Vercel/Railway deployment: the frontend
+#  still serves on 3000, the backend on 8080, Postgres on 5432.
 # =====================================================================
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: discovery
-      POSTGRES_USER: discovery
-      POSTGRES_PASSWORD: discovery
-    ports: ["5432:5432"]
+      POSTGRES_DB: ${POSTGRES_DB:-discovery}
+      POSTGRES_USER: ${POSTGRES_USER:-discovery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-discovery}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
@@ -17,14 +23,14 @@ services:
       # Snapshot of real ingested tenders (idempotent ON CONFLICT DO NOTHING)
       - ./db/live_snapshot.sql:/docker-entrypoint-initdb.d/03_live_snapshot.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U discovery"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-discovery}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    ports: ["${REDIS_PORT:-6379}:6379"]
     command: ["redis-server", "--save", "60", "1"]
 
   opensearch:
@@ -33,7 +39,7 @@ services:
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports: ["9200:9200"]
+    ports: ["${OPENSEARCH_PORT:-9200}:9200"]
 
   backend:
     build: ./backend
@@ -43,12 +49,22 @@ services:
       redis:
         condition: service_started
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/discovery
-      DB_USER: discovery
-      DB_PASSWORD: discovery
-      REDIS_HOST: redis
-      JWT_SECRET: change-me-in-production-please-32-bytes-minimum!
-    ports: ["8080:8080"]
+      # Same variable Railway injects, so local and production take the identical
+      # code path. Resolves to the same connection as the DB_URL trio below.
+      DATABASE_URL: ${BACKEND_DATABASE_URL:-postgresql://discovery:discovery@postgres:5432/discovery}
+      # Retained fallback — used whenever DATABASE_URL is left empty.
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/discovery}
+      DB_USER: ${POSTGRES_USER:-discovery}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-discovery}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-minimum!}
+      # Browser origin allowed to call the API. In production this is the
+      # Vercel domain, set on the Railway service instead.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      # No RAILWAY_ENVIRONMENT here, so the in-process collection scheduler
+      # starts exactly as it always has. Set SCHEDULER_ENABLED=false to stop it.
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+    ports: ["${BACKEND_PORT:-8080}:8080"]
 
   frontend:
     build: .
@@ -56,10 +72,15 @@ services:
       - backend
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_BASE: http://localhost:8080
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:8080}
       # Server-side route handlers reach the backend over the compose network
-      API_BASE: http://backend:8080
-    ports: ["3000:3000"]
+      API_BASE: ${API_BASE:-http://backend:8080}
+      # Empty by default: the Next.js app then serves its bundled seed dataset,
+      # which is the behaviour this stack has always had. Point it at the
+      # compose Postgres to exercise the live read path locally —
+      # FRONTEND_DATABASE_URL=postgresql://discovery:discovery@postgres:5432/discovery
+      DATABASE_URL: ${FRONTEND_DATABASE_URL:-}
+    ports: ["${FRONTEND_PORT:-3000}:3000"]
 
 volumes:
   pgdata:

@@ -19,11 +19,20 @@ build
 next-env.d.ts
 .vercel
 
-# --- Python (reference backend — not built or served by Vercel) ----------
-backend/.venv/
+# --- Python backend (deploys to Railway, never built or served by Vercel) -
+# Excluded wholesale now that it is a separately deployed service: Vercel has
+# no use for it and uploading it only slows every deploy. Railway builds this
+# directory from the same repo with Root Directory = backend.
+backend/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# --- SQL assets (applied to Railway Postgres by db/bootstrap_remote.py) --
+# The Next.js app creates its own table via ensureSchema(); these dumps are
+# for the FastAPI schema and are megabytes of snapshot data.
+db/backups/
+db/live_snapshot.sql
 
 # --- Secrets & local env -------------------------------------------------
 .env*

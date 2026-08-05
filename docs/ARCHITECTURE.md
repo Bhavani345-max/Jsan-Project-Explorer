@@ -54,12 +54,14 @@
 
 | Mode | Stack | Use |
 |---|---|---|
-| **Reference app (this repo, runs now)** | Next.js + TypeScript route handlers + in-memory repository | Instant demo of every module & UI; deploys to Vercel |
-| **Full enterprise stack** | Next.js UI + FastAPI (Python) + PostgreSQL + Redis + OpenSearch | Production; `docker compose up` |
+| **Zero-infrastructure** | Next.js + TypeScript route handlers + in-memory repository | Instant demo of every module & UI; `npm run dev` |
+| **Local full stack** | Next.js UI + FastAPI (Python) + PostgreSQL + Redis + OpenSearch | Development; `docker compose up` |
+| **Production** | Next.js on **Vercel** · FastAPI on **Railway** · **Railway PostgreSQL** | Deployed; see [DEPLOYMENT.md](DEPLOYMENT.md) |
 
-The Next.js route handlers under `src/app/api/*` implement the same contract
-as the FastAPI routers, so the frontend can point at either backend
-via `NEXT_PUBLIC_API_BASE`.
+The Next.js route handlers under `src/app/api/*` implement the same contract as
+the FastAPI routers. In production they serve the portal by querying Postgres
+directly, while the FastAPI service exposes the same contract independently at
+its Railway domain (`NEXT_PUBLIC_API_BASE`) for external consumers.
 
 ## 4. Module → implementation map
 

@@ -1,30 +1,134 @@
 // ------------------------------------------------------------------
-// Neon Postgres data-access layer (server-only).
+// Postgres data-access layer (server-only).
 //
 // Persists ingested opportunities so the deployed portal accumulates real,
 // day-by-day data. Lazily initialized so `next build` never crashes when
 // DATABASE_URL is absent, and every read degrades gracefully (callers fall
 // back to the in-memory seed when the DB is empty or unreachable).
+//
+// Host-agnostic by design: the connection string alone decides how we talk to
+// Postgres. Neon endpoints keep using Neon's HTTP driver (no TCP handshake per
+// serverless invocation, which is what makes it fast on Vercel); any other
+// host — Railway Postgres in production, the docker-compose Postgres locally —
+// uses node-postgres over TCP. Both are exposed through the SAME tiny
+// `SqlClient.query(text, params) -> rows` contract, so every query, cast and
+// mapping below is identical on either driver and no caller changes.
 // ------------------------------------------------------------------
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
+import { Pool, type PoolConfig } from "pg";
 import type { Project } from "@/lib/types";
 import { money } from "@/lib/format";
 import { TARGET_SERVICE_LINES, TARGET_MIN_BUDGET_USD } from "@/lib/domain";
 import type { NormalizedOpportunity } from "@/lib/ingest/normalize";
 
-let _sql: NeonQueryFunction<false, false> | null = null;
+/**
+ * The only surface callers use. Deliberately narrow: `sql.query(text, params)`
+ * resolving to a plain array of rows is exactly what the Neon HTTP driver
+ * already returned, so existing call sites are untouched.
+ */
+export interface SqlClient {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query(text: string, params?: unknown[]): Promise<Record<string, any>[]>;
+}
 
-/** Lazy Neon client. Returns null when no connection string is configured. */
-export function getSql(): NeonQueryFunction<false, false> | null {
+let _sql: SqlClient | null = null;
+
+/** The configured connection string, whichever variable carries it. */
+function connectionString(): string | undefined {
+  return process.env.DATABASE_URL || process.env.POSTGRES_URL || undefined;
+}
+
+/**
+ * Neon for Neon-hosted URLs, node-postgres for everything else.
+ * `DB_DRIVER=neon|pg` forces the choice when auto-detection is wrong (e.g. a
+ * Neon connection routed through a custom hostname).
+ */
+function driverFor(url: string): "neon" | "pg" {
+  const forced = process.env.DB_DRIVER?.trim().toLowerCase();
+  if (forced === "neon" || forced === "pg") return forced;
+  return /\.neon\.tech|\.neon\.build/i.test(url) ? "neon" : "pg";
+}
+
+/**
+ * TLS policy for the TCP driver.
+ *
+ * Managed providers terminate TLS at a proxy whose certificate does not chain
+ * to a public root (Railway's `*.proxy.rlwy.net` is one), so verification is
+ * off by default or the connection simply fails. Set
+ * DB_SSL_REJECT_UNAUTHORIZED=true once you supply a trusted root via
+ * PGSSLROOTCERT to get full verification.
+ */
+function sslFor(url: string): PoolConfig["ssl"] {
+  if (/[?&]sslmode=disable/i.test(url)) return undefined;
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return undefined;
+  }
+  // Loopback and Railway's private network are unencrypted by design.
+  const plaintext =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "postgres" || // docker-compose service name
+    host.endsWith(".railway.internal");
+  if (plaintext) return undefined;
+  return { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" };
+}
+
+/**
+ * The URL handed to node-postgres, with `sslmode` removed.
+ *
+ * TLS is decided by sslFor() above and passed as the explicit `ssl` option.
+ * Leaving sslmode in the string as well makes pg emit a deprecation warning on
+ * every boot — it is changing sslmode=require to mean full verification in its
+ * next major — and would silently change behaviour when that lands. Dropping
+ * the parameter keeps exactly one source of truth.
+ */
+function pgConnectionString(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete("sslmode");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+/** Lazy client. Returns null when no connection string is configured. */
+export function getSql(): SqlClient | null {
   if (_sql) return _sql;
-  const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  const url = connectionString();
   if (!url) return null;
-  _sql = neon(url);
+
+  if (driverFor(url) === "neon") {
+    const client = neon(url);
+    _sql = { query: (text, params) => client.query(text, params as unknown[]) };
+    return _sql;
+  }
+
+  // Small pool on purpose: on Vercel every warm function instance holds its
+  // own, so a large `max` multiplied by instance count exhausts a managed
+  // database's connection limit. Raise DB_POOL_MAX only on long-lived hosts.
+  const pool = new Pool({
+    connectionString: pgConnectionString(url),
+    max: Number(process.env.DB_POOL_MAX ?? 2),
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    allowExitOnIdle: true,
+    ssl: sslFor(url),
+  });
+  // A network-level error on an idle pooled client is emitted on the pool; pg
+  // treats an unhandled 'error' as fatal to the process. Swallow it — the next
+  // query transparently opens a fresh connection, and every read here already
+  // degrades to the seed.
+  pool.on("error", () => {});
+  _sql = { query: async (text, params) => (await pool.query(text, params)).rows };
   return _sql;
 }
 
 export function dbConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL ?? process.env.POSTGRES_URL);
+  return Boolean(connectionString());
 }
 
 const SCHEMA_STATEMENTS = [
@@ -85,7 +189,8 @@ const SCHEMA_STATEMENTS = [
 export async function ensureSchema(): Promise<void> {
   const sql = getSql();
   if (!sql) throw new Error("DATABASE_URL not configured");
-  // Neon's HTTP driver runs one statement per query — execute them in sequence.
+  // Neon's HTTP driver runs one statement per query, so DDL cannot be sent as a
+  // single script — execute the statements in sequence (also fine on pg).
   for (const stmt of SCHEMA_STATEMENTS) await sql.query(stmt);
 }
 
@@ -242,10 +347,10 @@ interface Row {
 
 const DAY = 86_400_000;
 
-// Neon returns DATE columns as JS Date objects built at local midnight. Format
-// them from local calendar components so the ISO date is correct regardless of
-// server timezone (IST locally, UTC on Vercel) — toISOString() would shift the
-// day. Also tolerates plain strings.
+// Both drivers return DATE columns as JS Date objects built at local midnight.
+// Format them from local calendar components so the ISO date is correct
+// regardless of server timezone (IST locally, UTC on Vercel/Railway) —
+// toISOString() would shift the day. Also tolerates plain strings.
 function toIsoDate(v: unknown): string {
   if (!v) return "";
   if (v instanceof Date) {
@@ -271,7 +376,7 @@ function statusFor(deadlineIso: string): Project["status"] {
 
 function toProject(r: Row): Project {
   const deadlineIso = toIsoDate(r.deadline);
-  // Neon returns BIGINT as a string (64-bit safety) — coerce to a real number.
+  // Both drivers return BIGINT as a string (64-bit safety) — coerce to a number.
   // Undisclosed budgets default to $1M so every opportunity carries a value
   // (disclosed budgets are already filtered to ≥ $1M at ingest).
   const budget = r.budget_usd == null ? TARGET_MIN_BUDGET_USD : Number(r.budget_usd);

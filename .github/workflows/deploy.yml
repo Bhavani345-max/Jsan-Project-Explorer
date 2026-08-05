@@ -1,37 +1,43 @@
 # =====================================================================
-#  Deploy to Vercel on every push to main.
+#  CI for every push to main, and production deploy when it is enabled.
 #
-#  This exists because Vercel's own Git integration would not attach to this
-#  repository — the GitHub App had access and the project page offered the
-#  connect flow, but no webhook was ever created, so pushes posted no commit
-#  status and triggered no build. Rather than keep debugging that, deployment
-#  runs here, where the whole path is visible and testable.
+#  Two jobs, deliberately split:
 #
-#  Setup — ONE repository secret is required:
+#    verify  — always runs. Installs, typechecks and builds. Needs NO secrets,
+#              so it works on a fresh clone and on any fork.
+#    deploy  — runs only when a VERCEL_TOKEN secret exists. Without one it is
+#              SKIPPED, not failed, so an unconfigured repository shows a green
+#              check rather than a red X on every commit.
 #
-#    VERCEL_TOKEN   Create at https://vercel.com/account/settings/tokens
-#                   (scope it to the "bhavani345-max's projects" team),
-#                   then add under
-#                   Settings -> Secrets and variables -> Actions -> New secret.
+#  That split exists because the deploy previously failed on every push while
+#  the secret was missing, which made the Actions tab useless for seeing
+#  whether the code itself was good.
 #
-#  The org and project IDs below are identifiers, not credentials — they cannot
-#  authorise anything on their own, and every command here is gated by
-#  VERCEL_TOKEN. They are inline so setup stays a single copy-paste. Move them
-#  to secrets if you would rather not have them in a public repo.
+#  ---- To enable automatic deploys -----------------------------------
+#  1. Create a token at https://vercel.com/account/settings/tokens
+#     Scope it to the team that owns the project ("bhavani345-max's projects"),
+#     NOT to a personal account — a personal token authenticates but cannot see
+#     a team project.
+#  2. Add it at Settings -> Secrets and variables -> Actions ->
+#     New repository secret, named exactly VERCEL_TOKEN, then press the green
+#     "Add secret" button.
+#
+#  Until then, deploy by hand from a checkout with:  vercel --prod
+#
+#  The org and project IDs below are identifiers, not credentials: they
+#  authorise nothing without the token.
 # =====================================================================
 name: Deploy to Vercel
 
 on:
   push:
     branches: [main]
-  # Lets you re-run a deploy from the Actions tab without an empty commit.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  # A newer push supersedes an in-flight deploy of older code. Never cancel a
-  # run mid-flight if it has already started deploying, so production is not
-  # left half-updated — that is what cancel-in-progress:false buys.
-  group: deploy-production
+  group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -39,19 +45,23 @@ env:
   VERCEL_PROJECT_ID: prj_DlxvVTvnqIQgVe4i9blQbpqsnG3C
 
 jobs:
-  deploy:
-    name: Build and deploy to production
+  # -------------------------------------------------------------------
+  # Always runs. This is the check that tells you whether a commit is good.
+  # -------------------------------------------------------------------
+  verify:
+    name: Typecheck and build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    outputs:
+      # Secrets cannot be read in a job-level `if:`, so presence is resolved
+      # here and published as an output the deploy job can gate on.
+      deploy_enabled: ${{ steps.token.outputs.present }}
 
     steps:
-      - name: Check out the pushed commit
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Match the runtime the Vercel project is configured for (Node 24.x), so
-      # a build that passes here is a build that passes there.
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      # Match the runtime the Vercel project is configured for (Node 24.x).
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
@@ -59,57 +69,81 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Cheap gate before anything is published. `vercel build` would surface a
-      # type error too, but only after pulling environment and starting a
-      # remote-flavoured build — failing here is faster and reads more clearly
-      # in the Actions log.
       - name: Typecheck
         run: npx tsc --noEmit
+
+      # The build is the real gate: it catches everything tsc does not, and it
+      # is what Vercel would run anyway. Better to fail here than in production.
+      - name: Build
+        run: npm run build
+
+      - name: Is automatic deployment configured?
+        id: token
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "VERCEL_TOKEN is set — the deploy job will run."
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No VERCEL_TOKEN secret; skipping deploy (this is not a failure)."
+            echo "Add one to enable automatic deploys — see the header of this workflow."
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Verify"
+            echo ""
+            echo "- Commit: \`${GITHUB_SHA::7}\`"
+            echo "- Typecheck and build: passed"
+            if [ "${{ steps.token.outputs.present }}" = "true" ]; then
+              echo "- Automatic deploy: enabled"
+            else
+              echo "- Automatic deploy: **not configured** (no \`VERCEL_TOKEN\` secret)"
+              echo "- Deploy manually with \`vercel --prod\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # -------------------------------------------------------------------
+  # Only when a token exists, and never from a pull request (a fork PR must
+  # not be able to deploy to production).
+  # -------------------------------------------------------------------
+  deploy:
+    name: Deploy to production
+    needs: verify
+    if: needs.verify.outputs.deploy_enabled == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
       - name: Install the Vercel CLI
         run: npm install --global vercel@latest
 
-      # ---- diagnostics -------------------------------------------------
-      # Job logs need repository-admin rights to read through the API, but step
-      # NAMES and pass/fail are public. So the token is checked in two separate
-      # named steps: which one goes red says what is wrong, without anyone
-      # having to open the log.
-      #
-      #   secret missing        -> "Token present" fails
-      #   token invalid/expired -> "Token authenticates" fails
-      #   token not scoped to the team that owns the project
-      #                         -> "Token can see the project" fails
-      #   all three green, deploy red -> a real build or deploy error
-      - name: 'Check: secret VERCEL_TOKEN is present'
-        run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::VERCEL_TOKEN secret is empty or not set on this repository"
-            exit 1
-          fi
-          echo "VERCEL_TOKEN is set (${#VERCEL_TOKEN} characters)"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-
+      # Named separately so a red step identifies the cause without needing the
+      # job log, which requires repository-admin rights to read.
       - name: 'Check: token authenticates with Vercel'
         run: vercel whoami --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      # The project belongs to a TEAM (VERCEL_ORG_ID above starts with `team_`).
-      # A token scoped to a personal account authenticates fine but cannot see
-      # the project, which is the most likely cause of a failure here.
       - name: 'Check: token can see the project'
         run: vercel project ls --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      # ---- deploy ------------------------------------------------------
-      # Source upload with a remote build, which is exactly what a plain
-      # `vercel --prod` does — the path already proven to work on this project.
-      # Vercel injects the project's own production environment during that
-      # build, so no `vercel pull` is needed and there is one less token
-      # operation that can fail.
-      - name: Deploy to production
+      # Source upload with a remote build — exactly what `vercel --prod` does,
+      # the path already proven on this project. Vercel injects the project's
+      # own production environment during that build.
+      - name: Deploy
         id: deploy
         run: |
           url=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN")
@@ -118,26 +152,23 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
-      # Fails the run if production is not actually serving, so a broken deploy
-      # shows as a red check rather than a green one with a dead site.
-      - name: Verify production is live
+      # A green deploy over a dead site is worse than a red one.
+      - name: Verify production is serving
         run: |
           for i in 1 2 3 4 5; do
             code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://jsan-nexusai.vercel.app/ || true)
             echo "attempt $i: HTTP $code"
-            if [ "$code" = "200" ]; then
-              exit 0
-            fi
+            [ "$code" = "200" ] && exit 0
             sleep 10
           done
-          echo "::error::jsan-nexusai.vercel.app did not return 200 after the deploy"
+          echo "::error::jsan-nexusai.vercel.app did not return 200 after deploying"
           exit 1
 
       - name: Summary
         if: always()
         run: |
           {
-            echo "### Deployment"
+            echo "### Deployed"
             echo ""
             echo "- Commit: \`${GITHUB_SHA::7}\`"
             echo "- Deployment: ${{ steps.deploy.outputs.url }}"

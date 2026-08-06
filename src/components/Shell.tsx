@@ -8,7 +8,6 @@ import {
   Compass,
   PlugZap,
   BarChart3,
-  Bell,
   Search,
   Sun,
   Moon,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import { GTranslate } from "./GTranslate";
+import { Notifications } from "./Notifications";
 
 // `adminOnly` mirrors ADMIN_ONLY_PREFIXES in src/middleware.ts. The middleware
 // is what actually enforces it — hiding the link only keeps managers from
@@ -253,10 +253,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            <button className="btn btn-on-brand !px-2.5 relative" aria-label="Notifications">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger" />
-            </button>
+            {/* Newest opportunities to reach the portal. The unread watermark is
+                per signed-in email, so the count is keyed on identity rather
+                than on the browser alone. */}
+            <Notifications userKey={me?.email ?? null} />
 
             {/* Signed-in user. This replaced a decorative role switcher that
                 let anyone pick any role and changed nothing — the role now

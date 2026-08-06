@@ -168,6 +168,10 @@ const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_opp_service_line ON opportunities (service_line)`,
   `CREATE INDEX IF NOT EXISTS idx_opp_publication  ON opportunities (publication_date DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_opp_source       ON opportunities (source)`,
+  // Drives the "new opportunities" feed, which orders by first-seen rather than
+  // publication date. Without it that read is a full sort of the table on every
+  // poll; the feed only ever wants the newest handful.
+  `CREATE INDEX IF NOT EXISTS idx_opp_ingested     ON opportunities (ingested_at DESC)`,
   // English rendering of the notice title, derived from the English CPV label
   // TED already publishes ("Country - English CPV label - native title"). 93% of
   // stored notices are non-English, so this is what the portal displays and
@@ -345,6 +349,7 @@ interface Row {
   contact_email: string | null;
   contact_phone: string | null;
   industry: string;
+  ingested_at: string | Date | null;
 }
 
 const DAY = 86_400_000;
@@ -366,6 +371,21 @@ function toIsoDate(v: unknown): string {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? "" : toIsoDate(d);
+}
+
+/**
+ * TIMESTAMPTZ → ISO-8601 with the zone intact.
+ *
+ * Deliberately NOT toIsoDate's local-calendar treatment: that exists because a
+ * DATE column carries no time and both drivers materialise it at *local*
+ * midnight, so reading UTC components would shift the day. A TIMESTAMPTZ is a
+ * real instant, so toISOString() is exactly right — and the feed needs the time
+ * of day to say "3h ago" rather than just "today".
+ */
+function toIsoTimestamp(v: unknown): string {
+  if (!v) return "";
+  const d = v instanceof Date ? v : new Date(String(v));
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
 function statusFor(deadlineIso: string): Project["status"] {
@@ -415,6 +435,7 @@ function toProject(r: Row): Project {
     currency: r.currency,
     deadline: deadlineIso,
     publicationDate: toIsoDate(r.publication_date),
+    ingestedAt: toIsoTimestamp(r.ingested_at) || undefined,
     source: r.source,
     sourceType: r.source_type as Project["sourceType"],
     category: r.category as Project["category"],
@@ -476,6 +497,47 @@ export async function loadLiveProjects(limit = 4000): Promise<Project[] | null> 
     // of every ranking. Applied after mapping because it reads the English
     // title, which is where the procurement category appears.
     const visible = rows.map(toProject).filter((p) => !isOutOfScope(p.title));
+    return visible.length ? visible : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The most recently ingested in-domain opportunities — what the portal shows as
+ * "new". Ordered by `ingested_at`, NOT `publication_date`: a notice a buyer
+ * published last week but that reached us in this morning's run is new to the
+ * reader, and ordering by publication date would bury it. The upsert never
+ * touches ingested_at on conflict, so re-ingesting a notice cannot make it
+ * resurface as new.
+ *
+ * Deliberately its own query rather than a re-sort of loadLiveProjects(): that
+ * caps at 4,000 rows ordered by publication date, so a freshly ingested notice
+ * with an older publication date could fall outside the cap and never appear
+ * here at all.
+ *
+ * Returns null when the DB is unconfigured, empty or unreachable, so the caller
+ * can fall back to the seed exactly as every other read does.
+ */
+export async function loadRecentOpportunities(limit = 20): Promise<Project[] | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    // Over-fetch: the goods/out-of-scope gate below runs on the mapped English
+    // title and historically removes about a quarter of stored rows, so taking
+    // exactly `limit` from SQL would hand back a short feed.
+    const rows = (await sql.query(
+      `SELECT * FROM opportunities
+        WHERE service_line = ANY($1)
+        ORDER BY ingested_at DESC
+        LIMIT $2`,
+      [TARGET_SERVICE_LINES, Math.min(limit * 4, 400)],
+    )) as Row[];
+    if (!rows.length) return null;
+    const visible = rows
+      .map(toProject)
+      .filter((p) => !isOutOfScope(p.title))
+      .slice(0, limit);
     return visible.length ? visible : null;
   } catch {
     return null;

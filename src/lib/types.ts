@@ -83,6 +83,11 @@ export interface Project {
   currency: string;
   deadline: string; // ISO date
   publicationDate: string; // ISO date
+  /** ISO timestamp this notice was FIRST persisted — i.e. when it became new to
+   *  the portal, which is not the same as when the buyer published it. Set from
+   *  `opportunities.ingested_at`, which the upsert deliberately leaves alone on
+   *  conflict. Absent on the bundled seed, which was never ingested. */
+  ingestedAt?: string;
   source: string;
   sourceType: SourceType;
   category: ProjectCategory;

@@ -36,7 +36,22 @@ function coreServiceLine(serviceLine: ServiceLine, projects: Parameters<typeof q
 export default async function DashboardPage() {
   const { projects } = await liveDataset();
   const stats = dashboardStats(projects);
-  const recent = queryProjects({ sort: "publicationDate", pageSize: 6 }, projects).items;
+
+  // Same one-object treatment as Best-Fit below, for the same reason: this panel
+  // is ordered by publication date, but its "View all" used to point at a bare
+  // /explorer, which defaults to fitScore — so clicking through reordered the
+  // list you had just been reading. `availableOnly` matches the Explorer's own
+  // default, and `includeLarge` lifts its $10M soft cap, which queryProjects
+  // does not apply here.
+  const recentSort = "publicationDate" as const;
+  const recentQuery: ProjectQuery = { sort: recentSort, availableOnly: true };
+  const recent = queryProjects({ ...recentQuery, pageSize: 6 }, projects).items;
+  const recentHref = `/explorer?${new URLSearchParams({
+    sort: recentSort,
+    availableOnly: String(recentQuery.availableOnly),
+    includeLarge: "true",
+  }).toString()}`;
+
   const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }, projects).items;
   // The panel and its "View all" link are built from ONE filter object, so the
   // Explorer can never hide a row the dashboard just listed. `availableOnly`
@@ -56,6 +71,32 @@ export default async function DashboardPage() {
   const telecom = coreServiceLine("Telecom & Network Engineering", projects);
   const adjacent = coreServiceLine("Geospatial & Telecom Adjacent", projects);
   const sourceCount = new Set(projects.map((p) => p.source)).size;
+
+  // Source coverage, counted from the board rather than written by hand.
+  //
+  // This panel used to be a hardcoded list advertising GeM, MERX, TenderLink,
+  // Tender Board, data.gov and AngelList — none of which has ever had a
+  // connector — while omitting World Bank, which supplies the second-largest
+  // share of what is actually held. A static list on a page a client reads
+  // first cannot correct itself; derived, it is right by construction and picks
+  // up a new connector the day its first notice lands.
+  const coverage = [
+    ...projects
+      .reduce((byType, p) => {
+        const sources = byType.get(p.sourceType) ?? new Map<string, number>();
+        sources.set(p.source, (sources.get(p.source) ?? 0) + 1);
+        return byType.set(p.sourceType, sources);
+      }, new Map<string, Map<string, number>>())
+      .entries(),
+  ]
+    .map(([type, sources]) => ({
+      type,
+      total: [...sources.values()].reduce((a, b) => a + b, 0),
+      // Busiest source first, so the label leads with what actually carries the
+      // channel rather than whatever happened to be inserted first.
+      names: [...sources.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name),
+    }))
+    .sort((a, b) => b.total - a.total);
 
   return (
     <div className="space-y-6">
@@ -224,7 +265,7 @@ export default async function DashboardPage() {
           subtitle="Latest published across all sources"
           className="lg:col-span-2"
           action={
-            <Link href="/explorer" className="text-[13px] font-semibold text-primary hover:underline">
+            <Link href={recentHref} className="text-[13px] font-semibold text-primary hover:underline">
               View all
             </Link>
           }
@@ -279,17 +320,20 @@ export default async function DashboardPage() {
         <SectionCard title="Projects by Source" subtitle="Where opportunities originate">
           <HBarChart data={stats.bySource} height={260} />
         </SectionCard>
-        <SectionCard title="Source Coverage" subtitle="Public channels only — no restricted scraping">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ["Government Procurement APIs", "SAM.gov, Contracts Finder, GeM"],
-              ["Public Tender APIs", "MERX, TenderLink, Tender Board"],
-              ["Open Data Portals", "TED Europa, data.gov"],
-              ["RSS / XML Feeds", "AngelList, e-Procurement feeds"],
-            ].map(([t, s]) => (
-              <div key={t} className="rounded-xl bg-bg-subtle p-3.5">
-                <p className="font-semibold text-[13px]">{t}</p>
-                <p className="text-[11px] text-text-faint mt-1">{s}</p>
+        <SectionCard
+          title="Source Coverage"
+          subtitle="Public channels only — every source currently on the board"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {coverage.map((c) => (
+              <div key={c.type} className="rounded-xl bg-bg-subtle p-3.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="font-semibold text-[13px] min-w-0 truncate">{c.type}</p>
+                  <span className="text-[11px] font-semibold text-text-muted tabular-nums shrink-0">
+                    {c.total}
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-faint mt-1">{c.names.join(" · ")}</p>
               </div>
             ))}
           </div>

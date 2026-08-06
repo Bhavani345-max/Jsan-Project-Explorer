@@ -27,6 +27,20 @@
   --ring: rgba(79, 70, 229, 0.35);
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(16, 24, 40, 0.06);
   --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  /* The JSAN blue, sampled from the logo itself rather than guessed:
+     #00558c is the dominant pixel in both public/jsan-logo.png (1,520 px) and
+     public/jsan-mark.png (1,494 px). White on it measures 7.8:1.
+     Tints are spelled out as rgba rather than derived with color-mix(): the
+     build emits a `background: var(--jsan)` fallback ahead of every color-mix,
+     which would paint UNSELECTED chips solid blue anywhere the function is
+     unsupported — exactly the state that has to look different. */
+  --jsan: #00558c;
+  --jsan-chip-text: #00558c;
+  --jsan-tint: rgba(0, 85, 140, 0.1);
+  --jsan-tint-hover: rgba(0, 85, 140, 0.18);
+  --jsan-edge: rgba(0, 85, 140, 0.3);
+  --jsan-edge-hover: rgba(0, 85, 140, 0.5);
+  --jsan-pressed-hover: #00456f;
 }
 
 .dark {
@@ -51,6 +65,22 @@
   --ring: rgba(99, 102, 241, 0.45);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  /* Lifted off #00558c on dark: the logo blue is too close to the page
+     background to read as a filled control, and its own text contrast on a
+     dark tint measures 3.1:1 — below AA. These clear it. The tint is carried
+     stronger than in light mode because a 10% wash over a near-black surface
+     is barely a colour at all. */
+  --jsan: #1a6fb0;
+  --jsan-chip-text: #8cc4ea;
+  /* 0.12, not the 0.18 that reads better in isolation: a heavier wash lifts the
+     idle chip so close to the filled one that the two states measured 2.8:1
+     against each other. Pressed-hover darkens here rather than lightening —
+     lightening to #2a83c6 dropped white label text to 4.07:1, under AA. */
+  --jsan-tint: rgba(26, 111, 176, 0.12);
+  --jsan-tint-hover: rgba(26, 111, 176, 0.22);
+  --jsan-edge: rgba(26, 111, 176, 0.45);
+  --jsan-edge-hover: rgba(26, 111, 176, 0.65);
+  --jsan-pressed-hover: #155d94;
 }
 
 @theme inline {
@@ -222,6 +252,42 @@ option {
   }
 
   /* Icon buttons on the brand band */
+  /*
+   * Filter toggles in the Project Explorer, carrying the JSAN blue.
+   *
+   * Tinted when off, solid when on. Both states are deliberately blue — the
+   * brief was to put the logo colour on these boxes — but they must stay
+   * telling apart, because these are toggles and the filter bar's whole job is
+   * to show what is currently applied. A row of identically filled chips would
+   * look tidier and mean nothing.
+   *
+   * Declared after .chip so it wins on source order; both are single-class
+   * selectors, so specificity alone would not decide it.
+   */
+  .chip-jsan {
+    background: var(--jsan-tint);
+    border-color: var(--jsan-edge);
+    color: var(--jsan-chip-text);
+  }
+  .chip-jsan:hover {
+    background: var(--jsan-tint-hover);
+    border-color: var(--jsan-edge-hover);
+  }
+  /* Driven by aria-pressed rather than a second class, so the styling cannot
+     drift out of step with what assistive tech is told. */
+  .chip-jsan[aria-pressed="true"] {
+    background: var(--jsan);
+    border-color: transparent;
+    color: #fff;
+  }
+  .chip-jsan[aria-pressed="true"]:hover {
+    background: var(--jsan-pressed-hover);
+  }
+  .chip-jsan:focus-visible {
+    outline: 2px solid var(--jsan);
+    outline-offset: 2px;
+  }
+
   .btn-on-brand {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.08);

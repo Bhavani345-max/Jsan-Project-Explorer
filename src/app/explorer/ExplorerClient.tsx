@@ -339,9 +339,11 @@ function PublishedFilter({
                 )
               }
               title={`Published in the last ${p.label}`}
-              className={`chip !px-2 !py-1 text-[11px] transition-colors ${
-                on ? "!bg-primary !text-white !border-transparent" : "hover:!border-primary"
-              }`}
+              // Same treatment as the focus-area and technology toggles: these
+              // are the same control doing the same job in the same filter
+              // panel, and one row left in the old indigo would read as a bug
+              // rather than a decision.
+              className="chip chip-jsan !px-2 !py-1 text-[11px] transition-colors"
             >
               {p.label}
             </button>
@@ -593,11 +595,7 @@ export function ExplorerClient() {
             aria-pressed={recommendedOnly}
             onClick={() => set({ minFit: recommendedOnly ? "" : String(HIGH_FIT_THRESHOLD) })}
             title={`Show only opportunities scoring ${HIGH_FIT_THRESHOLD} or above against JSAN's capability rules`}
-            className={`chip !px-3 !py-1.5 font-semibold transition-colors ${
-              recommendedOnly
-                ? "!bg-success !text-white !border-transparent"
-                : "hover:!border-success"
-            }`}
+            className="chip chip-jsan !px-3 !py-1.5 font-semibold transition-colors"
           >
             <Sparkles size={13} className="mr-1" />
             Recommended only ({HIGH_FIT_THRESHOLD}+)
@@ -622,9 +620,7 @@ export function ExplorerClient() {
                   onClick={() => set({ serviceLine: active ? "" : a.line })}
                   title={a.signals}
                   aria-pressed={active}
-                  className={`chip transition-colors ${
-                    active ? "!bg-primary !text-white !border-transparent" : "hover:!border-primary"
-                  }`}
+                  className="chip chip-jsan transition-colors"
                 >
                   {a.short}
                 </button>
@@ -638,9 +634,11 @@ export function ExplorerClient() {
             <button
               key={t}
               onClick={() => set({ technology: f.technology === t ? "" : t })}
-              className={`chip transition-colors ${
-                f.technology === t ? "!bg-primary !text-white !border-transparent" : "hover:!border-primary"
-              }`}
+              // These are toggles and never announced as such. Screen readers
+              // had no way to tell an applied filter from an unapplied one; it
+              // is also what .chip-jsan keys its filled state off.
+              aria-pressed={f.technology === t}
+              className="chip chip-jsan transition-colors"
             >
               {t}
             </button>

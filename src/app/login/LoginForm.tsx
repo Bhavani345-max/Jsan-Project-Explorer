@@ -19,7 +19,6 @@
 // ------------------------------------------------------------------
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   Loader2,
   AlertCircle,
@@ -68,11 +67,13 @@ const PANEL_LABELS = [
   { icon: Globe, lines: ["Global", "Opportunities"], top: "71%" },
 ];
 
-export function LoginForm() {
-  const params = useSearchParams();
-  // Where the middleware wanted to send them before the detour through here.
-  const next = params.get("next") || "/";
-
+/**
+ * @param next Where the middleware wanted to send them before the detour
+ *   through here. Resolved and validated server-side in page.tsx — never read
+ *   from the URL here, so this component cannot be handed an off-site
+ *   destination to navigate to.
+ */
+export function LoginForm({ next }: { next: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);

@@ -105,14 +105,26 @@ export async function verifySession(token: string | undefined | null): Promise<S
   }
 }
 
-/** Cookie attributes. Secure only off localhost so `npm run dev` still works. */
-export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
+/**
+ * Cookie attributes. Secure only off localhost so `npm run dev` still works.
+ *
+ * `maxAge: null` omits Max-Age entirely, which makes this a session cookie —
+ * the browser discards it on close. That is what powers "Remember me" on the
+ * sign-in form, and it deliberately does NOT touch the token's own expiry: the
+ * eight-hour lifetime above is the mitigation for a session that cannot be
+ * revoked, so lengthening it to keep somebody signed in would trade away the
+ * one property that makes a stateless cookie acceptable here. Unticking the box
+ * shortens the window; ticking it only restores the eight hours.
+ */
+export function sessionCookieOptions(maxAge: number | null = SESSION_TTL_SECONDS) {
   return {
     name: SESSION_COOKIE,
     httpOnly: true, // unreadable from JavaScript — blunts XSS session theft
     sameSite: "lax" as const, // survives top-level navigation, blocks cross-site POSTs
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge,
+    // `?? undefined` rather than a falsy check: logout passes 0 to expire the
+    // cookie immediately, and that 0 must survive.
+    maxAge: maxAge ?? undefined,
   };
 }

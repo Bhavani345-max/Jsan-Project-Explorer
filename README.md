@@ -303,7 +303,11 @@ contract, JWT auth and Swagger UI independently of the portal's own read path.
 Its in-process collection scheduler is disabled automatically on Railway so it
 can never duplicate the Vercel Cron ingest. Quality audit: [`score.md`](score.md).
 
-Dev/demo login (rotate before shared deployment): `admin@discovery.io` / `Admin#2026!`
+Dev/demo login for that Docker stack: `admin@discovery.io`. The password is not
+committed — only its bcrypt hash, in [`db/sample_data.sql`](db/sample_data.sql),
+which also shows how to set your own. These accounts are local to the FastAPI
+stack and do not exist in the deployed portal, which keeps its own accounts
+under scrypt.
 
 **Data seeding & backups** (Docker stack only) — fresh deployments auto-load three
 init scripts: `db/schema.sql` → `db/sample_data.sql` → `db/live_snapshot.sql`

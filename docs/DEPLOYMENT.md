@@ -263,7 +263,9 @@ npm install && npm run dev       # http://localhost:3000
 
 - [ ] `JWT_SECRET` rotated away from the committed default.
 - [ ] `CRON_SECRET` set on Vercel, so `/api/cron/ingest` is not world-callable.
-- [ ] Dev login `admin@discovery.io` / `Admin#2026!` rotated before any shared deployment.
+- [x] Dev login for the Docker stack carries no committed plaintext — `db/sample_data.sql`
+      holds only a bcrypt hash, so there is no published password to rotate. Set your own
+      before exposing that stack anywhere shared.
 - [ ] `.env` / `.env.local` never committed (`.gitignore` and `.vercelignore` exclude `.env*`).
 - [ ] Railway database credentials referenced as `${{Postgres.DATABASE_URL}}`, not pasted.
 

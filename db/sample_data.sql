@@ -4,19 +4,28 @@
 --  connectors, logs, saved searches and audit trail.
 -- =====================================================================
 
--- ---- Users (password_hash is a BCrypt placeholder) -------------------
--- DEV/DEMO credentials (bcrypt) — rotate before any shared deployment:
---   admin@discovery.io      / Admin#2026!
---   alex.morgan@discovery.io / BizDev#2026!
+-- ---- Users -----------------------------------------------------------
+-- Local Docker demo accounts for the FastAPI stack ONLY. They do not exist in
+-- the deployed portal, which keeps its own accounts in `portal_users` under
+-- scrypt (see src/lib/users.ts).
+--
+-- Only the bcrypt hashes live here. The plaintext used to be written in the
+-- comment above, which meant a working password sat in a public repository and
+-- "rotate before any shared deployment" was a manual step nobody was going to
+-- remember. Rotating it to a different published password would have changed
+-- nothing, so the plaintext is simply no longer committed.
+--
+-- To set your own, replace a hash below with the output of:
+--   python -c "import bcrypt;print(bcrypt.hashpw(b'YOUR-PASSWORD',bcrypt.gensalt(rounds=12)).decode())"
 INSERT INTO users (id, email, full_name, password_hash, role_id, created_by)
 SELECT '11111111-1111-1111-1111-111111111111', 'admin@discovery.io', 'System Administrator',
-       '$2b$12$TqkLSDUolZUe7Gjn0LZj0e1ugr0VSogI7Cr0VW5EB5W3kpVlsZ1C.',
+       '$2b$12$5n3E9dKan3ECUGAJugnhB.kv6G/c5377EdwZ9DTNxvAJ640UPcnba',
        r.id, NULL
 FROM roles r WHERE r.name = 'Administrator';
 
 INSERT INTO users (id, email, full_name, password_hash, role_id, created_by)
 SELECT '22222222-2222-2222-2222-222222222222', 'alex.morgan@discovery.io', 'Alex Morgan',
-       '$2b$12$Df8tRhox3VeyofrRNjJobu0Bm2i2M1g39YeeC2BQRJInv7a.6KLe.',
+       '$2b$12$/fnaTRDavKza4otIJx2cEejRkb3CxLciPtiAbVWgr80yDy3DYIBp.',
        r.id, '11111111-1111-1111-1111-111111111111'
 FROM roles r WHERE r.name = 'Business Development';
 

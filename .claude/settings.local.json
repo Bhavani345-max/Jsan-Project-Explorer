@@ -75,7 +75,6 @@
       "Bash(docker info *)",
       "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\"; Write-Output \"Docker Desktop launching...\")",
       "Bash(docker compose *)",
-      "Bash(.venv/Scripts/python -c \"import bcrypt; print\\(bcrypt.hashpw\\(b'Admin#2026!', bcrypt.gensalt\\(\\)\\).decode\\(\\)\\)\")",
       "Bash(.venv/Scripts/python -u \"C:\\\\Users\\\\JSANCO~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Jsan-Consulting-Desktop-JSAN-Projects-Finder\\\\9fff294b-ddc4-42ce-a3ae-72257b6752eb\\\\scratchpad\\\\e2e_test.py\")",
       "Bash(xargs echo \"errors in backend logs:\")",
       "PowerShell(Start-Process \"C:\\\\Users\\\\Jsan Consulting\\\\Desktop\\\\JSAN Projects Finder\\\\docs\\\\executive-brief.html\"; Write-Output \"Opened in default browser\")",

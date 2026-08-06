@@ -735,7 +735,7 @@ ea165b3c-3a4d-43dd-bc8b-f63a4b393a4b	Oracle	Database	2026-07-23 07:41:34.356492+
 
 COPY public.users (id, email, full_name, password_hash, role_id, is_active, last_login_at, created_at, updated_at, created_by, updated_by, deleted_at) FROM stdin;
 22222222-2222-2222-2222-222222222222	alex.morgan@discovery.io	Alex Morgan	$2a$10$examplehashbdxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx	6fbaf350-17a5-4d79-bc52-842b92ead3b1	t	\N	2026-07-23 07:41:34.399076+00	2026-07-23 07:41:34.399076+00	11111111-1111-1111-1111-111111111111	\N	\N
-11111111-1111-1111-1111-111111111111	admin@discovery.io	System Administrator	$2b$12$TqkLSDUolZUe7Gjn0LZj0e1ugr0VSogI7Cr0VW5EB5W3kpVlsZ1C.	02f456fd-8bd4-4b86-bd0a-66f07dcfbd88	t	2026-07-23 10:13:12.578546+00	2026-07-23 07:41:34.389515+00	2026-07-23 10:13:12.37983+00	\N	\N	\N
+11111111-1111-1111-1111-111111111111	admin@discovery.io	System Administrator	$2b$12$5n3E9dKan3ECUGAJugnhB.kv6G/c5377EdwZ9DTNxvAJ640UPcnba	02f456fd-8bd4-4b86-bd0a-66f07dcfbd88	t	2026-07-23 10:13:12.578546+00	2026-07-23 07:41:34.389515+00	2026-07-23 10:13:12.37983+00	\N	\N	\N
 \.
 
 

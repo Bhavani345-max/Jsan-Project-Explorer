@@ -292,3 +292,46 @@ option {
 .animate-in {
   animation: fadeInUp 0.35s ease both;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Single-screen pages (the sign-in page)                             */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Exactly one viewport tall, never scrolling.
+ *
+ * The `dvh` line is the important one. `100vh` on mobile is the viewport with
+ * the browser chrome COLLAPSED, so a 100vh page is taller than what you can
+ * actually see while the address bar is showing — the page scrolls a little,
+ * the bar hides, the height changes, and the layout visibly jumps up and down
+ * as you touch it. `100dvh` tracks the real visible height instead, so there
+ * is nothing to scroll and nothing to jump. `100vh` stays first as the
+ * fallback for browsers that do not understand dvh.
+ */
+.screen-fixed {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/*
+ * Safety valve. Under ~560px of height the form itself no longer fits, and
+ * clipping it would put the Sign In button somewhere unreachable — locking
+ * people out of the portal to preserve a layout. Scrolling is the lesser evil,
+ * so below that threshold the page is allowed to grow again.
+ */
+@media (max-height: 560px) {
+  .screen-fixed {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+}
+
+/* Supporting copy that earns its place on a tall screen and costs more than
+   it is worth on a short one, where the form has to win. */
+@media (max-height: 730px) {
+  .hide-when-short {
+    display: none !important;
+  }
+}

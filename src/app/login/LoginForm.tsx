@@ -114,7 +114,7 @@ export function LoginForm({ next }: { next: string }) {
     setCapsLock(e.getModifierState?.("CapsLock") === true && !e.shiftKey);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-bg">
+    <div className="screen-fixed relative w-full bg-bg">
       {/* ---------- Curved artwork panel (lg and up) ---------- */}
       <div
         className="hidden lg:block absolute inset-y-0 right-0 w-[62%] overflow-hidden"
@@ -151,9 +151,12 @@ export function LoginForm({ next }: { next: string }) {
       </div>
 
       {/* ---------- Content ---------- */}
-      <div className="relative min-h-screen grid lg:grid-cols-[minmax(0,1fr)_clamp(392px,33vw,468px)]">
+      {/* Rows on a phone (brand takes what it needs, the card centres in the
+          rest); columns from lg. h-full everywhere so nothing can push the
+          page past one screen. */}
+      <div className="relative h-full grid grid-rows-[auto_1fr] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_clamp(392px,33vw,468px)]">
         {/* Brand column */}
-        <div className="flex flex-col justify-between px-6 sm:px-10 lg:pl-[6.5%] lg:pr-8 pt-10 pb-8 lg:py-14">
+        <div className="flex flex-col justify-between min-h-0 overflow-hidden px-6 sm:px-10 lg:pl-[6.5%] lg:pr-8 pt-[clamp(1.5rem,4vh,3.5rem)] pb-[clamp(1rem,3vh,3.5rem)]">
           <div className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -163,18 +166,20 @@ export function LoginForm({ next }: { next: string }) {
             />
           </div>
 
-          <div className="max-w-[440px] my-10 lg:my-0">
-            <h1 className="text-[34px] sm:text-[40px] font-bold tracking-tight leading-none">
+          <div className="max-w-[440px] my-[clamp(1.5rem,4vh,2.5rem)] lg:my-0">
+            {/* Type scales with viewport height as well as width, so a short
+                laptop window shrinks the headline instead of overflowing. */}
+            <h1 className="text-[clamp(1.75rem,3.4vh+0.9rem,2.5rem)] font-bold tracking-tight leading-none">
               JSAN{" "}
               <span className="text-[#2563eb] dark:text-[#5b8ef5]">NexusAI</span>
             </h1>
-            <p className="mt-3 text-[15px] sm:text-[17px] font-semibold uppercase tracking-[0.28em] text-[#2563eb] dark:text-[#5b8ef5]">
+            <p className="mt-2.5 text-[clamp(0.8rem,1vh+0.5rem,1.0625rem)] font-semibold uppercase tracking-[0.28em] text-[#2563eb] dark:text-[#5b8ef5]">
               Project Finders
             </p>
 
-            <span className="block w-[68px] h-px bg-border-strong my-7" />
+            <span className="hide-when-short block w-[68px] h-px bg-border-strong my-[clamp(1rem,2.6vh,1.75rem)]" />
 
-            <p className="text-[16px] leading-[1.65] text-text">
+            <p className="hide-when-short text-[15px] leading-[1.6] text-text">
               Discover. Analyze. Connect.
               <br />
               Finding the right projects,
@@ -182,7 +187,9 @@ export function LoginForm({ next }: { next: string }) {
               driving meaningful impact.
             </p>
 
-            <ul className="mt-10 space-y-7">
+            {/* Below lg the form has to come first; the pitch is not worth
+                pushing it under the fold. */}
+            <ul className="hidden lg:block hide-when-short mt-[clamp(1.25rem,4vh,2.5rem)] space-y-[clamp(0.875rem,2.6vh,1.75rem)]">
               {FEATURES.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="flex items-start gap-4">
                   <span
@@ -204,32 +211,40 @@ export function LoginForm({ next }: { next: string }) {
             </ul>
           </div>
 
-          <p className="text-[12.5px] text-text-faint">
+          {/* On a phone this sits in the auto-height brand row, directly under
+              the wordmark, where a copyright line reads as an orphan. */}
+          <p className="hidden lg:block text-[12.5px] text-text-faint">
             © {new Date().getFullYear()} JSAN Consulting Group. All rights reserved.
           </p>
         </div>
 
         {/* Form column */}
-        <div className="flex items-center justify-center px-6 sm:px-10 lg:px-0 lg:pr-[7%] pb-12 lg:py-14">
+        {/* overflow-y-auto, not hidden: the card grows when an error, a Caps
+            Lock warning and the reset hint are all showing at once, and on a
+            short window that growth would otherwise be clipped by the page's
+            overflow:hidden — putting the Sign In button somewhere unreachable.
+            This way the page still never scrolls; at worst this one column
+            does. */}
+        <div className="flex items-center justify-center min-h-0 overflow-y-auto px-6 sm:px-10 lg:px-0 lg:pr-[7%] pb-[clamp(1.5rem,4vh,3.5rem)] lg:py-[clamp(1.5rem,4vh,3.5rem)]">
           <div
-            className="w-full max-w-[432px] rounded-2xl bg-bg-elev border border-border px-7 sm:px-9 py-9"
+            className="w-full max-w-[432px] rounded-2xl bg-bg-elev border border-border px-7 sm:px-9 py-[clamp(1.375rem,3.4vh,2.25rem)]"
             style={{ boxShadow: "0 28px 64px -18px rgba(8,28,60,0.42)" }}
           >
             <div className="flex justify-center">
-              <div className="grid place-items-center w-[68px] h-[68px] rounded-full bg-bg-elev ring-1 ring-border shadow-sm">
+              <div className="grid place-items-center w-[clamp(52px,7vh,68px)] h-[clamp(52px,7vh,68px)] rounded-full bg-bg-elev ring-1 ring-border shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/jsan-mark.png" alt="" className="w-8 h-8 object-contain" />
+                <img src="/jsan-mark.png" alt="" className="w-[55%] h-[55%] object-contain" />
               </div>
             </div>
 
-            <h2 className="mt-5 text-center text-[27px] font-bold tracking-tight">
+            <h2 className="mt-[clamp(0.75rem,2vh,1.25rem)] text-center text-[clamp(1.35rem,2.6vh+0.5rem,1.6875rem)] font-bold tracking-tight">
               Welcome Back
             </h2>
             <p className="mt-1.5 text-center text-[13.5px] text-text-muted">
               Sign in to continue to JSAN NexusAI
             </p>
 
-            <form onSubmit={submit} className="mt-7 space-y-[18px]">
+            <form onSubmit={submit} className="mt-[clamp(1.125rem,2.8vh,1.75rem)] space-y-[clamp(0.75rem,1.9vh,1.125rem)]">
               <div>
                 <label htmlFor="email" className="block text-[13px] font-semibold mb-2">
                   Email Address
@@ -249,7 +264,7 @@ export function LoginForm({ next }: { next: string }) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="input !h-[50px] !pl-11 !rounded-[10px]"
+                    className="input !h-[clamp(44px,5.6vh,50px)] !pl-11 !rounded-[10px]"
                   />
                 </div>
               </div>
@@ -274,7 +289,7 @@ export function LoginForm({ next }: { next: string }) {
                     onKeyUp={trackCaps}
                     onBlur={() => setCapsLock(false)}
                     placeholder="Enter your password"
-                    className="input !h-[50px] !pl-11 !pr-11 !rounded-[10px]"
+                    className="input !h-[clamp(44px,5.6vh,50px)] !pl-11 !pr-11 !rounded-[10px]"
                   />
                   <button
                     type="button"
@@ -348,7 +363,7 @@ export function LoginForm({ next }: { next: string }) {
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full h-[50px] rounded-[10px] text-white font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full h-[clamp(44px,5.6vh,50px)] rounded-[10px] text-white font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 style={{ background: busy ? BLUE_HOVER : BLUE }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = BLUE_HOVER)}
                 onMouseLeave={(e) => (e.currentTarget.style.background = busy ? BLUE_HOVER : BLUE)}
@@ -362,7 +377,7 @@ export function LoginForm({ next }: { next: string }) {
                 This portal has no OAuth provider wired up, and a sign-in button
                 that cannot sign anyone in is the worst thing to put on a login
                 page. Omitted until Google OAuth is actually configured. */}
-            <p className="mt-6 text-center text-[12px] text-text-faint">
+            <p className="mt-[clamp(0.875rem,2.2vh,1.5rem)] text-center text-[12px] text-text-faint">
               Need access? Ask a portal administrator to create your account.
             </p>
           </div>

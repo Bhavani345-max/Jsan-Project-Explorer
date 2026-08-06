@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  * enumeration oracle; lib/users.authenticate also equalises the timing.
  */
 export async function POST(request: Request) {
-  let body: { email?: string; password?: string };
+  let body: { email?: string; password?: string; remember?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -44,7 +44,16 @@ export async function POST(request: Request) {
     const res = NextResponse.json({
       user: { email: user.email, name: user.name, role: user.role },
     });
-    res.cookies.set({ ...sessionCookieOptions(), value: token });
+    // "Remember me" chooses how long the BROWSER keeps the cookie, never how
+    // long the token is valid for — that stays at SESSION_TTL_SECONDS either
+    // way. Unticked, the cookie is dropped when the browser closes, which is
+    // the shared-machine case worth protecting. Defaults to true so the
+    // behaviour is unchanged for anyone who never touches the box.
+    const remember = body.remember !== false;
+    res.cookies.set({
+      ...sessionCookieOptions(remember ? SESSION_TTL_SECONDS : null),
+      value: token,
+    });
     return res;
   } catch (err) {
     // A misconfigured SESSION_SECRET or an unreachable database must not read

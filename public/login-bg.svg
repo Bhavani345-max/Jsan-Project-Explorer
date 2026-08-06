@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1150" preserveAspectRatio="xMidYMid slice" width="1000" height="1150" role="img" aria-label="">
+  <!--
+    Sign-in brand panel artwork.
+
+    Drawn rather than photographed. The reference design for this page used a
+    stock dusk-cityscape composite; there is no licensed copy of that photo in
+    this repo and no image generation available, so the same composition is
+    built as vector: dusk sky, dotted world map, network constellation, layered
+    skyline, and motorway light trails.
+
+    Vector also happens to be the right format here. It is ~11 KB against the
+    ~500 KB a photograph of this panel would cost on the page that gates the
+    whole app, it stays sharp on any display, and it needs no extra request.
+
+    To swap in a real photograph later: drop the file in /public and change the
+    backgroundImage URL in app/login/LoginForm.tsx. Nothing else depends on this.
+  -->
+  <defs>
+    <linearGradient id="sky" x1="0.15" y1="0" x2="0.6" y2="1">
+      <stop offset="0%"   stop-color="#e2eefb"/>
+      <stop offset="14%"  stop-color="#b9d4ee"/>
+      <stop offset="30%"  stop-color="#7ba9d8"/>
+      <stop offset="48%"  stop-color="#3f7cba"/>
+      <stop offset="66%"  stop-color="#1d4f88"/>
+      <stop offset="84%"  stop-color="#0d2b52"/>
+      <stop offset="100%" stop-color="#061731"/>
+    </linearGradient>
+
+    <linearGradient id="towerFade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#17406e"/>
+      <stop offset="100%" stop-color="#0a1f3d"/>
+    </linearGradient>
+
+    <linearGradient id="trail" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="22%"  stop-color="#e8f4ff" stop-opacity="0.95"/>
+      <stop offset="62%"  stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#9fd0ff" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="trailGlow" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#3d8fe0" stop-opacity="0"/>
+      <stop offset="40%"  stop-color="#68b6f5" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#68b6f5" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Keeps the overlaid labels legible where the sky is palest. -->
+    <linearGradient id="leftScrim" x1="0" y1="0" x2="1" y2="0.25">
+      <stop offset="0%"   stop-color="#062042" stop-opacity="0.46"/>
+      <stop offset="42%"  stop-color="#062042" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#062042" stop-opacity="0"/>
+    </linearGradient>
+
+    <radialGradient id="horizonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#8fc4f5" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#8fc4f5" stop-opacity="0"/>
+    </radialGradient>
+
+    <pattern id="mapDots" width="12" height="12" patternUnits="userSpaceOnUse">
+      <circle cx="2.4" cy="2.4" r="1.7" fill="#dbeaff"/>
+    </pattern>
+
+    <!-- Rough continental masses. Crude on purpose: at this dot size and
+         opacity the silhouette reads as a world map, and accurate coastlines
+         would cost kilobytes nobody can see. -->
+    <clipPath id="landmass">
+      <ellipse cx="208" cy="168" rx="88" ry="52" transform="rotate(-14 208 168)"/>
+      <ellipse cx="168" cy="120" rx="52" ry="26" transform="rotate(-8 168 120)"/>
+      <ellipse cx="292" cy="296" rx="38" ry="62" transform="rotate(9 292 296)"/>
+      <ellipse cx="486" cy="146" rx="46" ry="30"/>
+      <ellipse cx="512" cy="252" rx="52" ry="68"/>
+      <ellipse cx="678" cy="160" rx="122" ry="62" transform="rotate(-5 678 160)"/>
+      <ellipse cx="612" cy="232" rx="46" ry="30"/>
+      <ellipse cx="828" cy="312" rx="52" ry="32" transform="rotate(-8 828 312)"/>
+    </clipPath>
+
+    <filter id="glowSoft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="glowWide" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="1150" fill="url(#sky)"/>
+
+  <!-- Dotted world map -->
+  <g clip-path="url(#landmass)" opacity="0.5">
+    <rect x="60" y="60" width="900" height="360" fill="url(#mapDots)"/>
+  </g>
+
+  <!-- Network constellation over the sky -->
+  <g stroke="#cfe6ff" stroke-opacity="0.34" stroke-width="1" fill="none">
+    <path d="M118 262 L302 176 L486 236 L642 132 L838 210"/>
+    <path d="M302 176 L346 348 L560 392 L642 132"/>
+    <path d="M486 236 L560 392 L792 330 L838 210"/>
+    <path d="M118 262 L346 348"/>
+    <path d="M792 330 L906 418"/>
+    <path d="M560 392 L470 470"/>
+  </g>
+  <g fill="#eaf4ff">
+    <circle cx="118" cy="262" r="3"/><circle cx="302" cy="176" r="3.4"/>
+    <circle cx="486" cy="236" r="3"/><circle cx="642" cy="132" r="3.4"/>
+    <circle cx="838" cy="210" r="3"/><circle cx="346" cy="348" r="2.6"/>
+    <circle cx="560" cy="392" r="3.4"/><circle cx="792" cy="330" r="2.6"/>
+    <circle cx="906" cy="418" r="2.2"/><circle cx="470" cy="470" r="2.2"/>
+  </g>
+  <g fill="#bfe0ff" opacity="0.55" filter="url(#glowSoft)">
+    <circle cx="302" cy="176" r="9"/><circle cx="642" cy="132" r="9"/>
+    <circle cx="560" cy="392" r="9"/>
+  </g>
+
+  <!-- Haze on the horizon, behind the skyline -->
+  <ellipse cx="520" cy="720" rx="560" ry="180" fill="url(#horizonGlow)"/>
+
+  <!-- Distant skyline -->
+  <g fill="url(#towerFade)" opacity="0.62">
+    <rect x="40"  y="612" width="52" height="120"/><rect x="96"  y="575" width="40" height="157"/>
+    <rect x="140" y="596" width="58" height="136"/><rect x="202" y="548" width="44" height="184"/>
+    <rect x="250" y="590" width="36" height="142"/><rect x="290" y="560" width="50" height="172"/>
+    <rect x="344" y="600" width="42" height="132"/><rect x="390" y="534" width="54" height="198"/>
+    <rect x="448" y="505" width="38" height="227"/><rect x="490" y="470" width="46" height="262"/>
+    <rect x="540" y="510" width="40" height="222"/><rect x="584" y="556" width="52" height="176"/>
+    <rect x="640" y="528" width="44" height="204"/><rect x="688" y="580" width="48" height="152"/>
+    <rect x="740" y="545" width="40" height="187"/><rect x="784" y="592" width="56" height="140"/>
+    <rect x="844" y="566" width="44" height="166"/><rect x="892" y="604" width="52" height="128"/>
+    <rect x="948" y="580" width="56" height="152"/>
+  </g>
+
+  <!-- Foreground skyline -->
+  <g fill="#0a1f3d">
+    <rect x="-4"  y="690" width="62" height="120"/><rect x="62"  y="648" width="46" height="162"/>
+    <rect x="112" y="700" width="40" height="110"/><rect x="156" y="664" width="54" height="146"/>
+    <rect x="214" y="706" width="38" height="104"/><rect x="256" y="620" width="50" height="190"/>
+    <rect x="310" y="676" width="44" height="134"/><rect x="358" y="636" width="40" height="174"/>
+    <rect x="402" y="690" width="48" height="120"/><rect x="452" y="560" width="34" height="250"/>
+    <rect x="470" y="430" width="64" height="380"/><rect x="496" y="396" width="12" height="40"/>
+    <rect x="538" y="596" width="42" height="214"/><rect x="584" y="652" width="50" height="158"/>
+    <rect x="638" y="610" width="38" height="200"/><rect x="680" y="668" width="54" height="142"/>
+    <rect x="738" y="624" width="44" height="186"/><rect x="786" y="690" width="48" height="120"/>
+    <rect x="838" y="650" width="40" height="160"/><rect x="882" y="698" width="56" height="112"/>
+    <rect x="942" y="662" width="62" height="148"/>
+  </g>
+
+  <!-- Window lights -->
+  <g fill="#bcdcff" opacity="0.5">
+    <rect x="479" y="462" width="6" height="9"/><rect x="493" y="462" width="6" height="9"/>
+    <rect x="507" y="486" width="6" height="9"/><rect x="479" y="512" width="6" height="9"/>
+    <rect x="507" y="540" width="6" height="9"/><rect x="493" y="566" width="6" height="9"/>
+    <rect x="479" y="604" width="6" height="9"/><rect x="515" y="628" width="6" height="9"/>
+    <rect x="265" y="646" width="6" height="9"/><rect x="285" y="672" width="6" height="9"/>
+    <rect x="265" y="712" width="6" height="9"/><rect x="367" y="662" width="6" height="9"/>
+    <rect x="381" y="700" width="6" height="9"/><rect x="547" y="622" width="6" height="9"/>
+    <rect x="563" y="660" width="6" height="9"/><rect x="547" y="706" width="6" height="9"/>
+    <rect x="647" y="636" width="6" height="9"/><rect x="661" y="678" width="6" height="9"/>
+    <rect x="747" y="650" width="6" height="9"/><rect x="763" y="694" width="6" height="9"/>
+    <rect x="167" y="690" width="6" height="9"/><rect x="189" y="726" width="6" height="9"/>
+    <rect x="847" y="676" width="6" height="9"/><rect x="861" y="716" width="6" height="9"/>
+    <rect x="71"  y="674" width="6" height="9"/><rect x="89"  y="716" width="6" height="9"/>
+  </g>
+
+  <!-- Motorway light trails -->
+  <g fill="none" stroke-linecap="round">
+    <g stroke="url(#trailGlow)" stroke-width="26" filter="url(#glowWide)">
+      <path d="M70 1150 C 300 1010, 520 936, 706 828 S 902 754, 1006 726"/>
+      <path d="M262 1150 C 430 1042, 616 962, 782 878 S 936 814, 1006 792"/>
+    </g>
+    <g stroke="url(#trail)" stroke-width="5">
+      <path d="M70 1150 C 300 1010, 520 936, 706 828 S 902 754, 1006 726"/>
+    </g>
+    <g stroke="url(#trail)" stroke-width="3">
+      <path d="M262 1150 C 430 1042, 616 962, 782 878 S 936 814, 1006 792"/>
+      <path d="M-6 1064 C 236 966, 452 890, 648 800 S 884 716, 1006 686"/>
+    </g>
+    <g stroke="url(#trail)" stroke-width="2" opacity="0.6">
+      <path d="M150 1150 C 360 1046, 560 976, 748 892 S 930 830, 1006 812"/>
+      <path d="M-6 984 C 210 906, 420 838, 604 762 S 860 676, 1006 648"/>
+    </g>
+  </g>
+
+  <!-- Road surface bloom -->
+  <ellipse cx="430" cy="1090" rx="480" ry="130" fill="#2f7fc8" opacity="0.20" filter="url(#glowWide)"/>
+
+  <!-- Bokeh -->
+  <g fill="#dcefff">
+    <circle cx="852" cy="612" r="2.6" opacity="0.75"/><circle cx="906" cy="700" r="2" opacity="0.6"/>
+    <circle cx="128" cy="836" r="2.4" opacity="0.65"/><circle cx="212" cy="906" r="1.8" opacity="0.5"/>
+    <circle cx="742" cy="960" r="2.2" opacity="0.6"/><circle cx="944" cy="884" r="2" opacity="0.55"/>
+    <circle cx="356" cy="990" r="1.8" opacity="0.5"/><circle cx="618" cy="1058" r="2.2" opacity="0.55"/>
+  </g>
+
+  <rect width="1000" height="1150" fill="url(#leftScrim)"/>
+</svg>

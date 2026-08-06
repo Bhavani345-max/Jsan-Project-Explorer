@@ -328,10 +328,13 @@ option {
   }
 }
 
-/* Supporting copy that earns its place on a tall screen and costs more than
-   it is worth on a short one, where the form has to win. */
-@media (max-height: 730px) {
-  .hide-when-short {
-    display: none !important;
-  }
-}
+/*
+ * There is deliberately no "hide this on a short screen" rule here any more.
+ *
+ * A 730px threshold used to drop the tagline and the three feature blocks, and
+ * it fired on ordinary laptop windows — the left column simply emptied out.
+ * With the copy trimmed to one line per feature the whole column measures
+ * ~384px against 519px of usable height at 560px, which is the point where the
+ * valve above hands scrolling back anyway. Nothing needs hiding, so nothing is
+ * hidden: the content is either all there or the page scrolls.
+ */

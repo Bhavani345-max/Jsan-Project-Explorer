@@ -40,11 +40,15 @@ import {
 const BLUE = "#1f63e0";
 const BLUE_HOVER = "#1a55c4";
 
+// One line each, deliberately. Two-line bodies made this column tall enough
+// that it had to be hidden on ordinary laptop windows to keep the page on one
+// screen — which meant the pitch vanished exactly where it was needed. Short
+// enough to always fit is worth more than a fuller sentence nobody sees.
 const FEATURES = [
   {
     icon: Search,
     title: "Discover",
-    body: "Find relevant projects and opportunities with ease.",
+    body: "Relevant projects and opportunities, fast.",
   },
   {
     icon: BarChart3,
@@ -52,12 +56,12 @@ const FEATURES = [
     // The reference read "AI-powered analytics". Fit scoring here is a rule
     // table (lib/scoring.ts) and the AI enrichment layer was removed, so the
     // claim is narrowed to what the portal actually does.
-    body: "Leverage smart insights and capability-fit analytics.",
+    body: "Smart insights and capability-fit scoring.",
   },
   {
     icon: Users,
     title: "Connect",
-    body: "Collaborate and connect with the right stakeholders.",
+    body: "Route them to the right stakeholders.",
   },
 ];
 
@@ -177,19 +181,19 @@ export function LoginForm({ next }: { next: string }) {
               Project Finders
             </p>
 
-            <span className="hide-when-short block w-[68px] h-px bg-border-strong my-[clamp(1rem,2.6vh,1.75rem)]" />
+            <span className="block w-[68px] h-px bg-border-strong my-[clamp(1rem,2.6vh,1.75rem)]" />
 
-            <p className="hide-when-short text-[15px] leading-[1.6] text-text">
+            {/* Two lines rather than three — the third was a wrap, not a
+                thought, and it cost 24px on every screen. */}
+            <p className="text-[15px] leading-[1.6] text-text">
               Discover. Analyze. Connect.
               <br />
-              Finding the right projects,
-              <br />
-              driving meaningful impact.
+              Finding the right projects, driving meaningful impact.
             </p>
 
             {/* Below lg the form has to come first; the pitch is not worth
                 pushing it under the fold. */}
-            <ul className="hidden lg:block hide-when-short mt-[clamp(1.25rem,4vh,2.5rem)] space-y-[clamp(0.875rem,2.6vh,1.75rem)]">
+            <ul className="hidden lg:block mt-[clamp(1.25rem,4vh,2.5rem)] space-y-[clamp(0.875rem,2.6vh,1.75rem)]">
               {FEATURES.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="flex items-start gap-4">
                   <span
@@ -202,7 +206,12 @@ export function LoginForm({ next }: { next: string }) {
                     <div className="text-[16px] font-semibold text-[#2563eb] dark:text-[#6f9df8]">
                       {title}
                     </div>
-                    <p className="text-[13.5px] leading-[1.55] text-text-muted mt-0.5 max-w-[280px]">
+                    {/* 330px, not 280px: the longest body is ~42 characters,
+                        which needs ~283px at this size. At 280px every one of
+                        them wrapped to a second line and the column grew back
+                        to the height that forced the hiding in the first
+                        place. The column has 380px to give. */}
+                    <p className="text-[13.5px] leading-[1.55] text-text-muted mt-0.5 max-w-[330px]">
                       {body}
                     </p>
                   </div>

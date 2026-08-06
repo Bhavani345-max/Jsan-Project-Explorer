@@ -19,8 +19,19 @@ import { SESSION_COOKIE, verifySession } from "@/lib/session";
  */
 const PUBLIC_PREFIXES = ["/login", "/api/auth/", "/api/cron/"];
 
-/** Admin-only areas. Managers are redirected rather than shown a dead end. */
-const ADMIN_ONLY_PREFIXES = ["/connectors", "/api/admin/"];
+/**
+ * Admin-only areas. Managers are redirected rather than shown a dead end.
+ *
+ * `/api/connectors` needs its own entry: these are matched with startsWith, and
+ * "/api/connectors".startsWith("/connectors") is false. Without it the page was
+ * gated while the API behind it was not, so a manager who was bounced from
+ * /connectors could still fetch the very data it renders — source endpoints,
+ * auth types, schedules and run logs. Hiding a nav link is not access control.
+ *
+ * The rule of thumb when adding to this list: gate the page AND whatever it
+ * fetches, or the gate only stops people who navigate.
+ */
+const ADMIN_ONLY_PREFIXES = ["/connectors", "/api/connectors", "/api/admin/"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));

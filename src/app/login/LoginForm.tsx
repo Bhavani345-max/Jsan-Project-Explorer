@@ -18,11 +18,19 @@
 // A phone keeping the flat page background was the thing that made the app
 // look like a different product on Android than on a laptop.
 //
+// Scrolling differs between the two, deliberately. The desktop is pinned to one
+// screen and the form column scrolls inside it if the card ever outgrows it.
+// A phone cannot afford that: the card is taller than its row on any ordinary
+// handset, so an inner scroller is the everyday path, and it dragged the form
+// across artwork that was nailed to the viewport and could not follow. Below lg
+// there is no inner scroller — the page grows and the DOCUMENT scrolls, artwork
+// and form together as one object. See `.screen-fixed` in globals.css.
+//
 // Two things in the reference are deliberately not reproduced; see the notes at
 // "Forgot Password" and at the end of the form.
 // ------------------------------------------------------------------
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Loader2,
   AlertCircle,
@@ -114,6 +122,22 @@ export function LoginForm({ next }: { next: string }) {
   const [resetHint, setResetHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  // Autofocus, but only where focusing cannot move the page.
+  //
+  // The `autoFocus` attribute fires on every device, and the browser then
+  // scrolls the focused field into view. On a phone that is the one place the
+  // page has somewhere to scroll TO, so the sign-in screen arrived already
+  // scrolled down — wordmark clipped off the top — before anyone had touched
+  // it, and Android put the keyboard over the form on top of that.
+  //
+  // At lg the page is pinned to one screen (`.screen-fixed`), so there is
+  // nothing to scroll and the convenience is free. The breakpoint is the
+  // condition, not a proxy for it: it is exactly where the page stops moving.
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) emailRef.current?.focus();
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -187,9 +211,15 @@ export function LoginForm({ next }: { next: string }) {
 
       {/* ---------- Content ---------- */}
       {/* Rows on a phone (brand takes what it needs, the card centres in the
-          rest); columns from lg. h-full everywhere so nothing can push the
-          page past one screen. */}
-      <div className="relative h-full grid grid-rows-[auto_1fr] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_clamp(392px,33vw,468px)]">
+          rest); columns from lg, where h-full keeps the page to one screen.
+
+          Below lg it is a MINIMUM, not a height. `h-full` resolves to `auto`
+          against a parent that is only min-height-constrained, which would
+          collapse the grid to its content and drop the card straight under the
+          brand block with no centring. `min-h-dvh` keeps the free space the
+          `1fr` row needs to centre the card when it fits, and still lets the
+          grid grow past the screen when it does not. */}
+      <div className="relative min-h-dvh lg:min-h-0 lg:h-full grid grid-rows-[auto_1fr] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_clamp(392px,33vw,468px)]">
         {/* Brand column */}
         <div className="flex flex-col justify-between min-h-0 overflow-hidden px-6 sm:px-10 lg:pl-[6.5%] lg:pr-8 pt-[clamp(1.5rem,4vh,3.5rem)] pb-[clamp(1rem,3vh,3.5rem)]">
           <div className="flex items-center">
@@ -279,24 +309,38 @@ export function LoginForm({ next }: { next: string }) {
         </div>
 
         {/* Form column */}
-        {/* overflow-y-auto, not hidden: the card grows when an error, a Caps
-            Lock warning and the reset hint are all showing at once, and on a
-            short window that growth would otherwise be clipped by the page's
+        {/* The inner scroller is lg-only, and that is the whole Android fix.
+            On the desktop the page is pinned to one screen, so this column has
+            to be able to scroll: the card grows when an error, a Caps Lock
+            warning and the reset hint are all showing at once, and on a short
+            window that growth would otherwise be clipped by the page's
             overflow:hidden — putting the Sign In button somewhere unreachable.
-            This way the page still never scrolls; at worst this one column
-            does. */}
+
+            Below lg the same three classes were actively harmful. There the
+            card is taller than its row on any ordinary handset, so this was not
+            a safety net but the normal state, and scrolling it moved the form
+            over artwork positioned against the viewport — the background
+            appearing stuck to the glass while the form slid. Without them the
+            grid row grows instead and the page carries the scroll, artwork
+            included.
+
+            All three have to go together, not just overflow-y: `overflow-x`
+            other than visible computes overflow-y to `auto`, so leaving the
+            horizontal clip behind would quietly rebuild the scroller it is
+            meant to remove. min-h-0 goes with them because its only job was to
+            let this row shrink below its content and hand the overflow here. */}
         {/* Centred with an auto margin on the card rather than `items-center`
             here, and the difference is not cosmetic.
 
             `align-items: center` centres UNSAFELY: when the card is taller than
-            this column the overflow is split across both ends, and the half
-            above the scroll origin can never be reached, because scrollTop
-            cannot go negative. On a 360×640 Android screen that hid 93px of the
-            card — the JSAN mark and the top of "Welcome Back" were simply gone,
-            with no way to scroll up to them. An auto margin resolves to zero
-            when there is no free space, so the card falls back to the top of the
-            column and stays fully scrollable. */}
-        <div className="flex min-h-0 overflow-y-auto overflow-x-hidden px-6 sm:px-10 lg:px-0 lg:pr-[7%] pb-[clamp(1.5rem,4vh,3.5rem)] lg:py-[clamp(1.5rem,4vh,3.5rem)]">
+            the space available the overflow is split across both ends, and the
+            half above the scroll origin can never be reached, because scroll
+            offsets cannot go negative. On a 360×640 Android screen that hid
+            93px of the card — the JSAN mark and the top of "Welcome Back" were
+            simply gone, with no way to scroll up to them. An auto margin
+            resolves to zero when there is no free space, so the card falls back
+            to the top and stays fully reachable. */}
+        <div className="flex lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden px-6 sm:px-10 lg:px-0 lg:pr-[7%] pb-[clamp(1.5rem,4vh,3.5rem)] lg:py-[clamp(1.5rem,4vh,3.5rem)]">
           <div
             className="w-full max-w-[432px] m-auto rounded-2xl bg-bg-elev border border-border px-7 sm:px-9 py-[clamp(1.375rem,3.4vh,2.25rem)]"
             style={{ boxShadow: "0 28px 64px -18px rgba(8,28,60,0.42)" }}
@@ -327,9 +371,9 @@ export function LoginForm({ next }: { next: string }) {
                   />
                   <input
                     id="email"
+                    ref={emailRef}
                     type="email"
                     required
-                    autoFocus
                     autoComplete="username"
                     spellCheck={false}
                     value={email}

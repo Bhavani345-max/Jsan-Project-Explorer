@@ -153,15 +153,22 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
       # A green deploy over a dead site is worse than a red one.
+      #
+      # Follows redirects. The portal is behind a login, so "/" answers 307 to
+      # /login and a bare status check would call a perfectly healthy site dead
+      # — this step was written before the login gate landed and would have
+      # failed the first time a VERCEL_TOKEN was ever configured. Following the
+      # chain to a 200 is also the stronger assertion: it proves middleware,
+      # routing and a rendered page, not just that something is listening.
       - name: Verify production is serving
         run: |
           for i in 1 2 3 4 5; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://jsan-nexusai.vercel.app/ || true)
+            code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 30 https://jsan-nexusai.vercel.app/ || true)
             echo "attempt $i: HTTP $code"
             [ "$code" = "200" ] && exit 0
             sleep 10
           done
-          echo "::error::jsan-nexusai.vercel.app did not return 200 after deploying"
+          echo "::error::jsan-nexusai.vercel.app did not serve a page after deploying"
           exit 1
 
       - name: Summary

@@ -330,7 +330,16 @@ export function LoginForm({ next }: { next: string }) {
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+                {/* `relative` so the sr-only input below is positioned against
+                    this label. Without it the nearest positioned ancestor is
+                    the page grid, three levels outside the scrolling column —
+                    and an absolutely positioned box whose containing block sits
+                    outside a scroll container is not clipped by it. On a
+                    360×640 phone the real checkbox lands ~23px past the bottom
+                    of the screen, so those 23px became scrollable overflow on
+                    the page itself: focusing Sign In would slide the whole
+                    layout up and cut the JSAN logo off the top. */}
+                <label className="relative flex items-center gap-2.5 cursor-pointer select-none group">
                   <input
                     type="checkbox"
                     checked={remember}

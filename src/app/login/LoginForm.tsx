@@ -9,10 +9,14 @@
 // 50% on both left corners — that leaves no straight segment between them, so
 // the edge bulges left at mid-height instead of rounding two separate corners.
 //
-// Below `lg` the artwork panel and its labels are dropped and the page becomes
-// a single column. A curved decorative panel on a phone would push the form
-// under the fold to show marketing copy to somebody who has already decided to
-// sign in.
+// Below `lg` the page becomes a single column and the artwork stops being a
+// panel and becomes the background of the whole screen. The curve goes with it:
+// a 50%-vertical-radius arc on a 360px-wide box bulges across most of the
+// screen and eats the form. The panel's own labels and tagline are positioned
+// against the desktop panel's box and are dropped with it.
+//
+// A phone keeping the flat page background was the thing that made the app
+// look like a different product on Android than on a laptop.
 //
 // Two things in the reference are deliberately not reproduced; see the notes at
 // "Forgot Password" and at the end of the form.
@@ -64,6 +68,30 @@ const FEATURES = [
     body: "Route them to the right stakeholders.",
   },
 ];
+
+// The artwork, as a background. `backgroundColor` is painted before the SVG
+// decodes so the white text over it is never white-on-white.
+const ARTWORK: React.CSSProperties = {
+  backgroundColor: "#0a1f3d",
+  backgroundImage: "url(/login-bg.svg)",
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+};
+
+// The phone gets the same artwork under a scrim. The desktop panel carries only
+// three short labels, all in its darker lower half; a phone puts the wordmark
+// and the whole pitch over the dusk sky at the top, which is light enough that
+// white text on it fails contrast. The scrim is heaviest exactly there.
+const ARTWORK_PHONE: React.CSSProperties = {
+  ...ARTWORK,
+  backgroundImage:
+    "linear-gradient(180deg, rgba(7,22,47,0.80) 0%, rgba(7,22,47,0.52) 34%," +
+    " rgba(7,22,47,0.30) 60%, rgba(7,22,47,0.52) 100%), url(/login-bg.svg)",
+  backgroundSize: "auto, cover",
+  backgroundPosition: "center, center",
+  backgroundRepeat: "no-repeat, no-repeat",
+};
 
 const PANEL_LABELS = [
   { icon: BrainCircuit, lines: ["AI", "Powered"], top: "25%" },
@@ -119,17 +147,20 @@ export function LoginForm({ next }: { next: string }) {
 
   return (
     <div className="screen-fixed relative w-full bg-bg">
+      {/* ---------- Artwork as the whole background (below lg) ---------- */}
+      {/* Its own element rather than a responsive variant of the panel below,
+          because the two differ in the one property that cannot be written
+          responsively here: the panel's curve lives in an inline style, and
+          inline styles have no breakpoints. Same URL, so it is one fetch. */}
+      <div className="lg:hidden absolute inset-0" style={ARTWORK_PHONE} />
+
       {/* ---------- Curved artwork panel (lg and up) ---------- */}
       <div
         className="hidden lg:block absolute inset-y-0 right-0 w-[62%] overflow-hidden"
         style={{
           // Vertical radius of 50% on both left corners = one continuous arc.
           borderRadius: "18% 0 0 18% / 50% 0 0 50%",
-          backgroundColor: "#0a1f3d", // painted before the SVG decodes
-          backgroundImage: "url(/login-bg.svg)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
+          ...ARTWORK,
         }}
       >
         {PANEL_LABELS.map(({ icon: Icon, lines, top }) => (
@@ -162,30 +193,50 @@ export function LoginForm({ next }: { next: string }) {
         {/* Brand column */}
         <div className="flex flex-col justify-between min-h-0 overflow-hidden px-6 sm:px-10 lg:pl-[6.5%] lg:pr-8 pt-[clamp(1.5rem,4vh,3.5rem)] pb-[clamp(1rem,3vh,3.5rem)]">
           <div className="flex items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/jsan-logo.png"
-              alt="JSAN Consulting"
-              className="h-[46px] w-auto object-contain dark:brightness-0 dark:invert"
-            />
+            {/* The wordmark is a PNG with an opaque white plate behind it, not a
+                transparent one — so it cannot be recoloured. `brightness-0
+                invert`, the usual way to force a logo white on a dark ground,
+                turns the plate white too and leaves a blank rectangle.
+
+                So the plate is made deliberate instead of fought: the logo sits
+                on its own white chip, which is how a logo lockup on photography
+                is normally handled anyway.
+
+                The chip is on wherever the ground is dark — the artwork below
+                lg, and the dark theme at lg. Desktop dark mode was already
+                rendering this logo as a blank white rectangle for exactly this
+                reason; it is the same bug, so it is fixed the same way. Only
+                the light desktop column, where the plate is invisible against
+                the page anyway, is left as it was. */}
+            <span className="inline-flex rounded-xl bg-white px-3 py-2 shadow-sm lg:bg-transparent lg:p-0 lg:shadow-none lg:dark:bg-white lg:dark:px-3 lg:dark:py-2 lg:dark:shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/jsan-logo.png"
+                alt="JSAN Consulting"
+                className="h-[46px] w-auto object-contain"
+              />
+            </span>
           </div>
 
           <div className="max-w-[440px] my-[clamp(1.5rem,4vh,2.5rem)] lg:my-0">
             {/* Type scales with viewport height as well as width, so a short
                 laptop window shrinks the headline instead of overflowing. */}
-            <h1 className="text-[clamp(1.75rem,3.4vh+0.9rem,2.5rem)] font-bold tracking-tight leading-none">
+            {/* Below lg this copy sits on the artwork, so it inverts: white
+                ink, and a blue light enough to hold contrast on navy — #2563eb
+                on that background is barely legible. */}
+            <h1 className="text-[clamp(1.75rem,3.4vh+0.9rem,2.5rem)] font-bold tracking-tight leading-none text-white lg:text-text">
               JSAN{" "}
-              <span className="text-[#2563eb] dark:text-[#5b8ef5]">NexusAI</span>
+              <span className="text-[#7fb2ff] lg:text-[#2563eb] lg:dark:text-[#5b8ef5]">NexusAI</span>
             </h1>
-            <p className="mt-2.5 text-[clamp(0.8rem,1vh+0.5rem,1.0625rem)] font-semibold uppercase tracking-[0.28em] text-[#2563eb] dark:text-[#5b8ef5]">
+            <p className="mt-2.5 text-[clamp(0.8rem,1vh+0.5rem,1.0625rem)] font-semibold uppercase tracking-[0.28em] text-[#8ec0ff] lg:text-[#2563eb] lg:dark:text-[#5b8ef5]">
               Project Finders
             </p>
 
-            <span className="block w-[68px] h-px bg-border-strong my-[clamp(1rem,2.6vh,1.75rem)]" />
+            <span className="block w-[68px] h-px bg-white/35 lg:bg-border-strong my-[clamp(1rem,2.6vh,1.75rem)]" />
 
             {/* Two lines rather than three — the third was a wrap, not a
                 thought, and it cost 24px on every screen. */}
-            <p className="text-[15px] leading-[1.6] text-text">
+            <p className="text-[15px] leading-[1.6] text-white/85 lg:text-text">
               Discover. Analyze. Connect.
               <br />
               Finding the right projects, driving meaningful impact.

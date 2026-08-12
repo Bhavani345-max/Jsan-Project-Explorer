@@ -379,20 +379,58 @@ option {
 /* ------------------------------------------------------------------ */
 
 /*
- * Exactly one viewport tall, never scrolling.
+ * At LEAST one viewport tall, and on a phone that is all it is.
  *
  * The `dvh` line is the important one. `100vh` on mobile is the viewport with
  * the browser chrome COLLAPSED, so a 100vh page is taller than what you can
  * actually see while the address bar is showing — the page scrolls a little,
  * the bar hides, the height changes, and the layout visibly jumps up and down
- * as you touch it. `100dvh` tracks the real visible height instead, so there
- * is nothing to scroll and nothing to jump. `100vh` stays first as the
- * fallback for browsers that do not understand dvh.
+ * as you touch it. `100dvh` tracks the real visible height instead, so a page
+ * that fits has nothing to scroll and nothing to jump. `100vh` stays first as
+ * the fallback for browsers that do not understand dvh.
+ *
+ * ---- why the phone is a minimum and the desktop is a fixed height ----
+ *
+ * This used to be `height: 100dvh; overflow: hidden` at every width, which
+ * pinned the page but did NOT stop the sign-in form moving on Android — it
+ * moved it against a background that could not follow.
+ *
+ * With the page unable to scroll, the form column's own `overflow-y-auto`
+ * became the only scroller on the screen, while the artwork sat in an
+ * absolutely positioned box the size of the viewport, outside that scroller.
+ * On a 360x640 handset the brand block takes ~280px and the card needs ~500px,
+ * so the card always overflowed: touching it slid the form across a background
+ * nailed to the glass. Focusing the email field did the same thing on its own.
+ *
+ * A minimum height fixes it at the root rather than papering over the symptom.
+ * The page grows to its content, the document scrolls as ONE object, and the
+ * artwork — still `absolute inset-0`, now against a box the height of the whole
+ * page — grows and travels with it. On a handset tall enough to hold the card
+ * nothing scrolls at all, exactly as before.
+ *
+ * `overflow-x: clip` rather than `hidden`: `hidden` on one axis computes the
+ * other to `auto`, which would make this element a scroll container again and
+ * re-create the very thing being removed. `clip` leaves the block axis
+ * `visible`, so vertical overflow reaches the page.
  */
 .screen-fixed {
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+/*
+ * From lg the page is pinned to one screen again. The desktop layout is a
+ * two-column composition with the artwork as a curved panel on the right — it
+ * is designed to a fixed frame, the card fits inside it, and the form column's
+ * inner scroll is a rarely used safety net rather than the everyday path.
+ */
+@media (min-width: 1024px) {
+  .screen-fixed {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
 }
 
 /*
@@ -400,8 +438,10 @@ option {
  * clipping it would put the Sign In button somewhere unreachable — locking
  * people out of the portal to preserve a layout. Scrolling is the lesser evil,
  * so below that threshold the page is allowed to grow again.
+ *
+ * Only needed at lg now; below it the base rule above already grows.
  */
-@media (max-height: 560px) {
+@media (min-width: 1024px) and (max-height: 560px) {
   .screen-fixed {
     height: auto;
     min-height: 100dvh;

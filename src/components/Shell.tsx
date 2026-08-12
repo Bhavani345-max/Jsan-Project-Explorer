@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   Compass,
@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ShieldCheck,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import { GTranslate } from "./GTranslate";
@@ -51,6 +53,125 @@ interface Suggestion {
   sub?: string;
 }
 
+type NavItem = (typeof NAV)[number];
+
+/**
+ * Everything inside the sidebar, so the desktop rail and the phone drawer are
+ * literally the same markup.
+ *
+ * Kept as one component rather than duplicated into a mobile copy because the
+ * two must never disagree: the nav list is already role-filtered by the caller,
+ * and the "Public sources only" / live-data markers are the portal's provenance
+ * claim. A second hand-maintained copy would eventually tell a phone user that
+ * data is live when the desktop says it is sample, or show a manager a link the
+ * middleware will bounce them off.
+ */
+function SidebarBody({
+  nav,
+  pathname,
+  liveData,
+  onNavigate,
+  onClose,
+}: {
+  nav: NavItem[];
+  pathname: string;
+  liveData: boolean | null;
+  /** Called after any nav link is followed — closes the drawer on a phone. */
+  onNavigate?: () => void;
+  /** Renders the drawer's close button. Omitted by the desktop rail. */
+  onClose?: () => void;
+}) {
+  return (
+    <>
+      <div className="brand-band h-16 flex items-center gap-2.5 px-5">
+        <div className="grid place-items-center w-9 h-9 rounded-xl bg-white shadow-sm overflow-hidden shrink-0">
+          {/* Real JSAN brand mark */}
+          <img src="/jsan-mark.png" alt="JSAN Consulting logo" className="w-6 h-6 object-contain" />
+        </div>
+        {/* The product name, then what it does. The name is short enough to
+            sit on one line now, so the second line carries the descriptor
+            instead of the rest of a wrapped identifier. */}
+        <div className="leading-tight min-w-0" title="JSAN NexusAI">
+          <div className="font-bold text-[15px] tracking-tight text-white truncate">JSAN NexusAI</div>
+          <div className="text-[11px] text-white/70 truncate">Opportunity Intelligence</div>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close menu"
+            className="ml-auto -mr-1.5 grid place-items-center w-11 h-11 rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors shrink-0"
+          >
+            <X size={20} />
+          </button>
+        )}
+      </div>
+
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Workspace
+        </p>
+        {nav.map((item) => {
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              // min-h-11 rather than the old py-2: on the drawer these are the
+              // only way to move around the portal on a phone, and a 36px row is
+              // under Android's 48dp touch target floor.
+              className={`flex items-center gap-3 px-3 py-2 min-h-11 rounded-lg text-sm font-medium transition-colors ${
+                active
+                  ? "bg-primary-soft text-primary"
+                  : "text-text-muted hover:bg-bg-subtle hover:text-text"
+              }`}
+            >
+              <Icon size={18} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-3 border-t border-border space-y-2">
+        <div className="flex items-center gap-2 rounded-lg bg-bg-subtle px-3 py-2.5">
+          <ShieldCheck size={16} className="text-success" />
+          <div className="text-[11px] leading-tight">
+            <div className="font-semibold text-text">Public sources only</div>
+            <div className="text-text-faint">APIs · RSS · Open Data</div>
+          </div>
+        </div>
+        {liveData ? (
+          <div
+            className="flex items-center gap-2 rounded-lg px-3 py-2"
+            style={{ background: "var(--success-soft, rgba(34,197,94,.12))" }}
+            title="Live data connected — real opportunities ingested daily from public government & multilateral APIs (UK Contracts Finder, EU TED, World Bank)."
+          >
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--success)" }} />
+            <div className="text-[11px] leading-tight">
+              <div className="font-semibold" style={{ color: "var(--success)" }}>Live data connected</div>
+              <div className="text-text-faint">UK · EU TED · World Bank · refreshed daily</div>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex items-center gap-2 rounded-lg px-3 py-2"
+            style={{ background: "var(--warning-soft)" }}
+            title="This build runs on an illustrative sample dataset. Connect a live public API to ingest real tenders."
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--warning)" }} />
+            <div className="text-[11px] leading-tight">
+              <div className="font-semibold" style={{ color: "var(--warning)" }}>Sample dataset</div>
+              <div className="text-text-faint">Demo data — not live tenders</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -61,7 +182,32 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [liveData, setLiveData] = useState<boolean | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+
+  // Following a link inside the drawer already closes it, but a Back gesture,
+  // a suggestion pick or the notification panel can move the route too — and a
+  // drawer left standing over the page it was supposed to open is worse than
+  // one that never opened.
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawerOpen(false);
+    document.addEventListener("keydown", onKey);
+    // Otherwise the page behind keeps scrolling under the drawer, which on a
+    // touch screen reads as the drawer itself failing to scroll.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [drawerOpen]);
 
   useEffect(() => {
     fetch("/api/status")
@@ -129,87 +275,55 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex">
-      {/* Sidebar */}
+      {/* Sidebar — the permanent rail, from md up */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-bg-elev sticky top-0 h-screen">
-        <div className="brand-band h-16 flex items-center gap-2.5 px-5">
-          <div className="grid place-items-center w-9 h-9 rounded-xl bg-white shadow-sm overflow-hidden shrink-0">
-            {/* Real JSAN brand mark */}
-            <img src="/jsan-mark.png" alt="JSAN Consulting logo" className="w-6 h-6 object-contain" />
-          </div>
-          {/* The product name, then what it does. The name is short enough to
-              sit on one line now, so the second line carries the descriptor
-              instead of the rest of a wrapped identifier. */}
-          <div className="leading-tight min-w-0" title="JSAN NexusAI">
-            <div className="font-bold text-[15px] tracking-tight text-white truncate">JSAN NexusAI</div>
-            <div className="text-[11px] text-white/70 truncate">Opportunity Intelligence</div>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-faint">
-            Workspace
-          </p>
-          {nav.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-primary-soft text-primary"
-                    : "text-text-muted hover:bg-bg-subtle hover:text-text"
-                }`}
-              >
-                <Icon size={18} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-3 border-t border-border space-y-2">
-          <div className="flex items-center gap-2 rounded-lg bg-bg-subtle px-3 py-2.5">
-            <ShieldCheck size={16} className="text-success" />
-            <div className="text-[11px] leading-tight">
-              <div className="font-semibold text-text">Public sources only</div>
-              <div className="text-text-faint">APIs · RSS · Open Data</div>
-            </div>
-          </div>
-          {liveData ? (
-            <div
-              className="flex items-center gap-2 rounded-lg px-3 py-2"
-              style={{ background: "var(--success-soft, rgba(34,197,94,.12))" }}
-              title="Live data connected — real opportunities ingested daily from public government & multilateral APIs (UK Contracts Finder, EU TED, World Bank)."
-            >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--success)" }} />
-              <div className="text-[11px] leading-tight">
-                <div className="font-semibold" style={{ color: "var(--success)" }}>Live data connected</div>
-                <div className="text-text-faint">UK · EU TED · World Bank · refreshed daily</div>
-              </div>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-2 rounded-lg px-3 py-2"
-              style={{ background: "var(--warning-soft)" }}
-              title="This build runs on an illustrative sample dataset. Connect a live public API to ingest real tenders."
-            >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--warning)" }} />
-              <div className="text-[11px] leading-tight">
-                <div className="font-semibold" style={{ color: "var(--warning)" }}>Sample dataset</div>
-                <div className="text-text-faint">Demo data — not live tenders</div>
-              </div>
-            </div>
-          )}
-        </div>
+        <SidebarBody nav={nav} pathname={pathname} liveData={liveData} />
       </aside>
+
+      {/* The same sidebar as a drawer, below md.
+          Without this the rail is simply display:none on a phone and NOTHING
+          replaces it — Analytics and API Connectors become unreachable, with no
+          link to them anywhere in the chrome. */}
+      {drawerOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <button
+            aria-label="Close menu"
+            tabIndex={-1}
+            onClick={closeDrawer}
+            className="absolute inset-0 bg-black/50 animate-in"
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Main menu"
+            className="relative w-[17rem] max-w-[85vw] h-full flex flex-col bg-bg-elev border-r border-border overflow-y-auto animate-drawer"
+          >
+            <SidebarBody
+              nav={nav}
+              pathname={pathname}
+              liveData={liveData}
+              onNavigate={closeDrawer}
+              onClose={closeDrawer}
+            />
+          </aside>
+        </div>
+      )}
 
       {/* Main column */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
-        <header className="brand-band h-16 sticky top-0 z-30 flex items-center gap-3 px-4 md:px-6 shadow-sm">
-          <div ref={boxRef} className="relative flex-1 max-w-xl">
+        <header className="brand-band h-16 sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-4 md:px-6 shadow-sm">
+          {/* The only entry to the nav below md, so it leads the topbar. */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={drawerOpen}
+            className="btn btn-on-brand !px-2.5 md:hidden shrink-0"
+          >
+            <Menu size={18} />
+          </button>
+
+          <div ref={boxRef} className="relative flex-1 min-w-0 max-w-xl">
             <Search
               size={17}
               className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"

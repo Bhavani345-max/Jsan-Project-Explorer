@@ -9,6 +9,7 @@
 // ------------------------------------------------------------------
 import crypto from "node:crypto";
 import { TARGET_MIN_BUDGET_USD } from "@/lib/domain";
+import { isUtilityNetworkIntelligence } from "@/lib/ingest/utility";
 import type {
   ProjectCategory,
   ProjectType,
@@ -138,6 +139,13 @@ const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
  * a category has to be EARNED by matching a rule.
  */
 export function categorize(text: string): ProjectCategory {
+  // Utility network intelligence is tested before the keyword table because it
+  // is the most specific rule there is: it fires only on a utility network AND
+  // work on the data describing it, so it can never claim a notice a broader
+  // rule below would have classified correctly. Testing it after "GIS" would
+  // file "consumer indexing and enterprise GIS migration for the distribution
+  // utility" as generic geospatial work. See lib/ingest/utility.ts.
+  if (isUtilityNetworkIntelligence(text)) return "Utility Network GIS";
   for (const [re, cat] of CATEGORY_RULES) if (re.test(text)) return cat;
   return "Unclassified";
 }
@@ -147,6 +155,7 @@ export function categorize(text: string): ProjectCategory {
 const CATEGORY_TO_SERVICE_LINE: Record<ProjectCategory, ServiceLine> = {
   GIS: "Geospatial Intelligence",
   "Telecom / Network": "Telecom & Network Engineering",
+  "Utility Network GIS": "Utility Network Intelligence",
   "Geospatial / Telecom Adjacent": "Geospatial & Telecom Adjacent",
   "Workforce Solutions": "Strategic Workforce Solutions",
   "Program Management": "Structured Program Management",
@@ -174,6 +183,18 @@ const TECH_VOCAB: [RegExp, string][] = [
   [/network planning|network design/i, "Network Planning"],
   [/oss\/bss|\boss\b|\bbss\b/i, "OSS/BSS"],
   [/\brf\b|rf planning|radio frequency/i, "RF Planning"],
+  // Utility Network Intelligence: the three networks and the five stages of the
+  // operating model, so the Technology filter can narrow a utility notice to the
+  // stage being bought. Each pattern is the qualified form — bare "electrical",
+  // "water" and "gas" are far too common to tag a notice with.
+  [/electric(?:ity|al) (?:distribution|network|grid|utility)|power (?:distribution|grid|utility)|\bdiscom\w*|substation|feeder (?:line|cable|network|circuit)|\d{1,3}\s?kv\b/i, "Electrical Utility"],
+  [/water (?:supply|distribution|network|utility|main)\w*|potable water|sewer\w*|waste ?water|storm ?water/i, "Water Utility"],
+  [/gas (?:distribution|network|grid|utility|main)\w*|city gas|natural gas network/i, "Gas Utility"],
+  [/field survey|door-?to-?door survey|network survey|asset survey/i, "Field Survey"],
+  [/asset digit(?:i[sz]ation|i[sz]ing)|network digiti[sz]\w*|digiti[sz]ation of (?:the )?(?:asset|network|record)\w*/i, "Asset Digitization"],
+  [/consumer indexing|customer indexing|consumer census|(?:consumer|customer) (?:data )?mapping/i, "Consumer Indexing"],
+  [/network topolog\w*|topolog(?:y|ical) (?:validation|verification|correction)|network connectivity|connectivity model/i, "Network Topology"],
+  [/enterprise gis|gis (?:migration|implementation|rollout|platform)|utility network model|geodatabase/i, "Enterprise GIS"],
   // Adjacent-field vocabulary, so the Technology filter is useful for the
   // adjacent service line too. Listed before the generic stack entries because
   // extractTechnologies keeps only the first 8 matches.
@@ -219,6 +240,7 @@ export { fitScoreFor, scoreFit } from "@/lib/scoring";
 // keeps its single import surface (see lib/ingest/goods.ts).
 export { isGoodsProcurement, goodsReason } from "@/lib/ingest/goods";
 export { isOutOfScope, isOffSectorService, outOfScopeReason } from "@/lib/ingest/scope";
+export { isUtilityNetworkIntelligence, utilitySectors } from "@/lib/ingest/utility";
 
 const PROJECT_TYPE_BY_SOURCE: Record<string, ProjectType> = {
   "Government Procurement API": "Government Tender",

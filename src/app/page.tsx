@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FolderKanban, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower, Layers, Globe, Building2 } from "lucide-react";
+import { FolderKanban, AlarmClock, Wallet, ArrowRight, Target, Globe2, RadioTower, Layers, Globe, Building2, Zap } from "lucide-react";
 import { dashboardStats, queryProjects } from "@/lib/repository";
 import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
@@ -69,6 +69,7 @@ export default async function DashboardPage() {
 
   const gis = coreServiceLine("Geospatial Intelligence", projects);
   const telecom = coreServiceLine("Telecom & Network Engineering", projects);
+  const utility = coreServiceLine("Utility Network Intelligence", projects);
   const adjacent = coreServiceLine("Geospatial & Telecom Adjacent", projects);
   const sourceCount = new Set(projects.map((p) => p.source)).size;
 
@@ -121,7 +122,7 @@ export default async function DashboardPage() {
         <p className="text-[11px] font-semibold uppercase tracking-wider text-text-faint mb-2">
           Service lines · quick access
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Link
             href={gis.href}
             className="card p-5 flex items-center gap-4 hover:shadow-[var(--shadow-lg)] hover:-translate-y-0.5 transition-all group"
@@ -157,6 +158,26 @@ export default async function DashboardPage() {
               <div className="font-semibold text-[15px] mt-0.5">Telecom Opportunities</div>
               <div className="text-[12px] text-text-faint mt-0.5">
                 {telecom.count} open · fibre/OSP, 5G &amp; RF planning, OSS/BSS
+              </div>
+            </div>
+            <ArrowRight size={18} className="text-text-faint shrink-0 group-hover:translate-x-0.5 transition-all" />
+          </Link>
+
+          <Link
+            href={utility.href}
+            className="card p-5 flex items-center gap-4 hover:shadow-[var(--shadow-lg)] hover:-translate-y-0.5 transition-all group"
+          >
+            <span
+              className="grid place-items-center w-12 h-12 rounded-xl shrink-0"
+              style={{ background: "color-mix(in srgb, var(--warning) 16%, transparent)", color: "var(--warning)" }}
+            >
+              <Zap size={24} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--warning)" }}>Core · Utility</div>
+              <div className="font-semibold text-[15px] mt-0.5">Utility Network Intelligence</div>
+              <div className="text-[12px] text-text-faint mt-0.5">
+                {utility.count} open · electrical, water &amp; gas — survey, digitization, indexing
               </div>
             </div>
             <ArrowRight size={18} className="text-text-faint shrink-0 group-hover:translate-x-0.5 transition-all" />

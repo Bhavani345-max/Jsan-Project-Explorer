@@ -18,6 +18,7 @@ export type ProjectStatus = "Open" | "Closing Soon" | "Closed" | "Awarded";
 
 export type ProjectCategory =
   | "GIS"
+  | "Utility Network GIS"
   | "Geospatial / Telecom Adjacent"
   | "AI/ML"
   | "Cloud Migration"
@@ -45,9 +46,18 @@ export type ProjectCategory =
 // digital twins, IoT/sensor networks, SCADA, national digital-infrastructure
 // programmes. It is kept as its own line, rather than folded into the two core
 // ones, so capability-fit scores stay meaningful.
+//
+// "Utility Network Intelligence" is the connected operating model JSAN delivers
+// to electrical, water and gas distribution utilities — field survey, asset
+// digitization, consumer indexing, topology validation and enterprise GIS
+// migration. It is its own line rather than a flavour of Geospatial
+// Intelligence because the buyer, the deliverable and the competition are all
+// different: the customer is a distribution utility, and the product is a
+// connected network model of its assets and consumers, not a map.
 export type ServiceLine =
   | "Geospatial Intelligence"
   | "Telecom & Network Engineering"
+  | "Utility Network Intelligence"
   | "Geospatial & Telecom Adjacent"
   | "Digital Engineering"
   | "Strategic Workforce Solutions"

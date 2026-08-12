@@ -90,6 +90,11 @@ export interface FitInput {
 const CAPABILITY_BASE: Record<string, number> = {
   "Geospatial Intelligence": 52,
   "Telecom & Network Engineering": 50,
+  // Level with telecom, and above the adjacent line: a notice only reaches this
+  // focus area by naming both a distribution network and work on its asset data
+  // (see lib/ingest/utility.ts), so the classification is already evidence of a
+  // close capability match rather than a single keyword.
+  "Utility Network Intelligence": 50,
   "Geospatial & Telecom Adjacent": 42,
   "Strategic Workforce Solutions": 40,
   "Structured Program Management": 40,
@@ -116,6 +121,15 @@ const CAPABILITY_FAMILIES: { id: string; label: string; pattern: RegExp }[] = [
     label: "telecom / network",
     pattern:
       /telecom\w*|\b5g\b|\b4g\b|\blte\b|fibre|fiber optic\w*|\bfttx\b|\bfttp\b|\bftth\b|broadband|oss\/bss|radio (?:access|network)|base station|backhaul|antenna\w*|structured cabling|network (?:engineering|design|planning|infrastructure)|dark fib|local loop|outside plant|fielding|as-?built|make-?ready|pole attachment|close-?out|data transmission|telephone/gi,
+  },
+  {
+    id: "utility",
+    label: "utility network (electric / water / gas)",
+    // Only the qualified vocabulary, for the same reason the classifier tiers
+    // its terms: bare "water" and "power" would award depth points to half the
+    // board. Naming both a network and a data activity is what earns them.
+    pattern:
+      /electric(?:ity|al) (?:distribution|network|grid|utility)|power (?:distribution|grid|utility)|\bdiscom\w*|substation\w*|feeder (?:line|cable|network|circuit)|\d{1,3}\s?kv\b|water (?:supply|distribution|network|utility|main)\w*|sewer\w*|waste ?water|gas (?:distribution|network|grid|main)\w*|city gas|utility (?:network|asset)\w*|consumer indexing|customer indexing|asset digit(?:i[sz]ation|i[sz]ing)|asset (?:register|inventory)\w*|network topolog\w*|enterprise gis|geodatabase/gi,
   },
   {
     id: "adjacent",
@@ -247,6 +261,7 @@ export function scoreFit(input: FitInput): FitBreakdown {
         ? CAPABILITY_BASE[
             strongest.id === "gis" ? "Geospatial Intelligence"
               : strongest.id === "telecom" ? "Telecom & Network Engineering"
+              : strongest.id === "utility" ? "Utility Network Intelligence"
               : strongest.id === "adjacent" ? "Geospatial & Telecom Adjacent"
               : strongest.id === "workforce" ? "Strategic Workforce Solutions"
               : strongest.id === "programme" ? "Structured Program Management"

@@ -13,6 +13,7 @@ import { isTargetServiceLine } from "@/lib/domain";
 import { fetchUkContractsFinder } from "./uk-contracts-finder";
 import { fetchEuTed } from "./eu-ted";
 import { fetchWorldBank } from "./world-bank";
+import { fetchWorldBankTenders } from "./world-bank-tenders";
 import { fetchSamGov } from "./sam-gov";
 
 export interface SourceStat {
@@ -39,6 +40,10 @@ const CONNECTORS: Connector[] = [
   { source: "UK Contracts Finder", run: () => fetchUkContractsFinder() },
   { source: "EU TED", run: () => fetchEuTed() },
   { source: "World Bank", run: () => fetchWorldBank() },
+  // Bank-financed tenders, as opposed to the operations above. The only source
+  // here that reaches utility asset and consumer data work — see the header of
+  // connectors/world-bank-tenders.ts for the measurement behind that.
+  { source: "World Bank Tenders", run: () => fetchWorldBankTenders() },
   { source: "US SAM.gov", run: () => fetchSamGov() }, // no-op without a key
 ];
 

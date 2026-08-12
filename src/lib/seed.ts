@@ -1137,6 +1137,7 @@ const CATEGORIES: ProjectCategory[] = [
 const SERVICE_LINE_BY_CATEGORY: Record<ProjectCategory, import("./types").ServiceLine> = {
   GIS: "Geospatial Intelligence",
   "Telecom / Network": "Telecom & Network Engineering",
+  "Utility Network GIS": "Utility Network Intelligence",
   "Geospatial / Telecom Adjacent": "Geospatial & Telecom Adjacent",
   "Workforce Solutions": "Strategic Workforce Solutions",
   "Program Management": "Structured Program Management",

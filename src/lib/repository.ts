@@ -279,7 +279,26 @@ export function facets(projects: Project[] = PROJECTS) {
     // from one full of dead ends.
     countryCounts: countBy(projects, (p) => p.country),
     serviceLineCounts: countBy(projects, (p) => p.serviceLine),
+    // Same reasoning, for the Explorer's quick chips. Those are a FIXED
+    // vocabulary rather than a list built from the data, so without counts the
+    // chips matching nothing look exactly like the ones matching half the
+    // board — every one of them an invitation to click into an empty page.
+    // A technology is a list per project, so this counts notices carrying the
+    // tag: one tagged both "GIS" and "Electrical Utility" counts under each.
+    technologyCounts: countByMany(projects, (p) => p.technologies),
   };
+}
+
+function countByMany(
+  items: Project[],
+  keys: (p: Project) => string[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const p of items) {
+    // Dedupe within a project so a repeated tag cannot count the notice twice.
+    for (const k of new Set(keys(p))) if (k) out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
 }
 
 function countBy(items: Project[], key: (p: Project) => string): Record<string, number> {

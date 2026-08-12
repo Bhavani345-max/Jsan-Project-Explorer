@@ -93,12 +93,24 @@ export function Breadcrumbs({ items }: { items: { label: string; href?: string }
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  /** A way out of the dead end — e.g. "Clear all filters". Optional, because
+   *  an empty state with nothing to undo should not offer a button that does
+   *  nothing. */
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="text-center py-16">
+    <div className="text-center py-16 px-4">
       <div className="text-4xl mb-3">🔍</div>
       <p className="font-semibold">{title}</p>
-      {hint && <p className="text-sm text-text-faint mt-1">{hint}</p>}
+      {hint && <p className="text-sm text-text-faint mt-1 max-w-md mx-auto">{hint}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

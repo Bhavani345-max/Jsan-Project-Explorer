@@ -359,6 +359,21 @@ option {
   animation: fadeInUp 0.35s ease both;
 }
 
+/* The mobile nav drawer. Slides from the edge it is anchored to rather than
+   reusing .animate-in, whose upward fade reads as a card appearing rather than
+   a panel being pulled out. */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-drawer {
+  animation: slideInFromLeft 0.22s ease-out both;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Single-screen pages (the sign-in page)                             */
 /* ------------------------------------------------------------------ */

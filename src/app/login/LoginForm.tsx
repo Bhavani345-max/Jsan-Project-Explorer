@@ -234,9 +234,20 @@ export function LoginForm({ next }: { next: string }) {
             overflow:hidden — putting the Sign In button somewhere unreachable.
             This way the page still never scrolls; at worst this one column
             does. */}
-        <div className="flex items-center justify-center min-h-0 overflow-y-auto px-6 sm:px-10 lg:px-0 lg:pr-[7%] pb-[clamp(1.5rem,4vh,3.5rem)] lg:py-[clamp(1.5rem,4vh,3.5rem)]">
+        {/* Centred with an auto margin on the card rather than `items-center`
+            here, and the difference is not cosmetic.
+
+            `align-items: center` centres UNSAFELY: when the card is taller than
+            this column the overflow is split across both ends, and the half
+            above the scroll origin can never be reached, because scrollTop
+            cannot go negative. On a 360×640 Android screen that hid 93px of the
+            card — the JSAN mark and the top of "Welcome Back" were simply gone,
+            with no way to scroll up to them. An auto margin resolves to zero
+            when there is no free space, so the card falls back to the top of the
+            column and stays fully scrollable. */}
+        <div className="flex min-h-0 overflow-y-auto overflow-x-hidden px-6 sm:px-10 lg:px-0 lg:pr-[7%] pb-[clamp(1.5rem,4vh,3.5rem)] lg:py-[clamp(1.5rem,4vh,3.5rem)]">
           <div
-            className="w-full max-w-[432px] rounded-2xl bg-bg-elev border border-border px-7 sm:px-9 py-[clamp(1.375rem,3.4vh,2.25rem)]"
+            className="w-full max-w-[432px] m-auto rounded-2xl bg-bg-elev border border-border px-7 sm:px-9 py-[clamp(1.375rem,3.4vh,2.25rem)]"
             style={{ boxShadow: "0 28px 64px -18px rgba(8,28,60,0.42)" }}
           >
             <div className="flex justify-center">

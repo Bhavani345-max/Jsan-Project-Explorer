@@ -717,7 +717,13 @@ export function ExplorerClient() {
 
         {/* Results — scroll-mt clears the sticky topbar when paging jumps here */}
         <div ref={resultsRef} className="min-w-0 scroll-mt-24">
-          <div className="flex items-center justify-between mb-3">
+          {/* Wraps, in both directions. This row carries ~517px of controls that
+              each set `whitespace-nowrap`, and it used to be a non-wrapping flex
+              with the right-hand group pinned `shrink-0` — so on a 360px phone
+              the row could neither wrap nor shrink and pushed the whole document
+              to 533px wide. That is a page-level horizontal scroll: every page
+              slides sideways under a sticky header, not just this row. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div className="flex flex-wrap gap-1.5">
               {recommendedOnly && (
                 <span className="chip !bg-success-soft !text-success !border-transparent font-semibold">
@@ -757,7 +763,7 @@ export function ExplorerClient() {
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 role="switch"

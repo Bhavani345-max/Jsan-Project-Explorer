@@ -27,7 +27,25 @@ import { TARGET_SERVICE_LINES } from "@/lib/domain";
 interface PendingRow {
   id: string;
   title: string;
+  source: string;
 }
+
+/**
+ * Sources whose titles must be kept exactly as composed, with no CPV fallback.
+ *
+ * deriveEnglishTitle() collapses a three-segment title to "Country – segment 2"
+ * once the tail looks non-English. On TED that is the right answer: segment 2 is
+ * the English CPV label, which describes the work. World Bank Tenders has no CPV
+ * label, so its connector puts the BUYER there — and the tail test trips on a
+ * single non-ASCII character, which an English assignment can easily carry
+ * ("Wi‑Fi" with a non-breaking hyphen, "İzci"). Collapsing those would replace
+ * the whole assignment with "Sri Lanka – MINISTRY OF IRRIGATION" and lose what
+ * the contract is actually for.
+ *
+ * These titles are already English, so there is nothing to derive: the row keeps
+ * its published wording and is marked done.
+ */
+const TITLE_IS_FINAL = new Set(["World Bank Tenders"]);
 
 /** Split on the en/em dashes TED uses as segment separators. */
 function splitTitle(title: string): string[] {
@@ -105,7 +123,7 @@ export async function translatePending(limit = 60): Promise<TranslateResult> {
     // In-domain rows only. The table also retains out-of-domain notices the
     // portal never surfaces; reshaping those would be work nobody can see.
     pending = (await sql.query(
-      `SELECT id, title FROM opportunities
+      `SELECT id, title, source FROM opportunities
         WHERE translated = FALSE AND service_line = ANY($1)
         ORDER BY ingested_at DESC
         LIMIT $2`,
@@ -123,7 +141,7 @@ export async function translatePending(limit = 60): Promise<TranslateResult> {
   // the ingest cron's 300s budget. A single UPDATE ... FROM (VALUES …) applies
   // the whole batch in one trip.
   const writes = pending.map((row) => {
-    const english = deriveEnglishTitle(row.title);
+    const english = TITLE_IS_FINAL.has(row.source) ? row.title : deriveEnglishTitle(row.title);
     return { id: row.id, english, changed: english !== row.title };
   });
 

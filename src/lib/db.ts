@@ -258,6 +258,17 @@ export async function upsertOpportunities(rows: NormalizedOpportunity[]): Promis
          technologies = EXCLUDED.technologies,
          tags = EXCLUDED.tags,
          official_link = EXCLUDED.official_link,
+         -- A changed title invalidates the English rendering derived from it.
+         -- Without this the row keeps a title_en built from wording the source
+         -- has since replaced, and because the read layer PREFERS title_en the
+         -- board would go on displaying the old title indefinitely — as would
+         -- /api/cron/reclassify, which classifies on title_en where it exists.
+         -- Nulling it and clearing the flag hands the row back to
+         -- translatePending, which refills it on this run or the next.
+         title_en = CASE WHEN opportunities.title IS DISTINCT FROM EXCLUDED.title
+                         THEN NULL ELSE opportunities.title_en END,
+         translated = CASE WHEN opportunities.title IS DISTINCT FROM EXCLUDED.title
+                           THEN FALSE ELSE opportunities.translated END,
          updated_at = now()`,
       params,
     );

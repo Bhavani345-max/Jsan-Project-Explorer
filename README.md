@@ -12,12 +12,13 @@ open-data portals). No scraping of sites that prohibit automated access.
 
 ## Scope: geospatial, telecom, and closely related work
 
-The portal carries JSAN's six capability focus areas:
+The portal carries JSAN's seven capability focus areas:
 
 | Focus area | What it captures | Capability base |
 |---|---|---|
 | **Geospatial Intelligence** | GIS, geospatial, mapping, LiDAR, photogrammetry, remote sensing, cadastral, land registry, spatial data | 52 |
 | **Telecom & Network Engineering** | FTTx, fiber, broadband, 5G, network engineering, telecom GIS, fielding, survey, permits, closeout | 50 |
+| **Utility Network Intelligence** | Electrical, water and gas distribution networks — field survey, asset digitization, consumer indexing, topology validation, enterprise GIS migration | 50 |
 | **Geospatial & Telecom Adjacent** | Digital twin, IoT, SCADA, drone, satellite imagery, smart city, national digital infrastructure, sensor networks | 42 |
 | **Strategic Workforce Solutions** | Staffing, resourcing, managed service, specialist delivery capacity | 40 |
 | **Structured Program Management** | PMO, governance, delivery assurance, quality controls, multi-country execution | 40 |
@@ -33,6 +34,25 @@ contract. It is a **separate** line rather than being folded into the two core
 ones so capability-fit scores stay meaningful — and Digital Engineering sits far
 below the rest because the brief qualifies it as supporting work, so it cannot
 reach the recommended threshold on capability alone.
+
+### Utility Network Intelligence
+
+The connected operating model JSAN delivers to electrical, water and gas
+distribution utilities: **field survey → asset digitization → consumer indexing
+→ topology validation → enterprise GIS migration**. Each stage is also a value
+in the Technology filter, alongside `Electrical Utility`, `Water Utility` and
+`Gas Utility`, so the Explorer can narrow to one network or one stage.
+
+This is not the utility sector at large. A procurement feed carries far more
+electricity, water and gas notices than anything else JSAN pursues, and almost
+none of them are this work — they are commodity supply ("Supply of electricity
+2027–2030"), civil works ("Construction work for water and sewage pipelines") or
+a different trade entirely (CCTV sewer inspection). So a notice qualifies only
+when it names **both** a distribution network **and** work on the data that
+describes it, with the sector and activity terms tiered by how reliable each one
+is. [`src/lib/ingest/utility.ts`](src/lib/ingest/utility.ts) holds the rule and
+the measurements behind it, including why "GIS" in an electricity notice often
+means Gas-Insulated Switchgear rather than a geographic information system.
 
 ### Goods and supply notices are excluded
 
@@ -187,7 +207,15 @@ Page / API read path
 | [UK Contracts Finder](https://www.contractsfinder.service.gov.uk) (OCDS) | no | UK public sector, OGL v3 |
 | [EU TED](https://api.ted.europa.eu) (Search API v3) | no | 27 EU member states + EEA |
 | [World Bank Projects](https://search.worldbank.org) | no | ~150 borrower countries |
+| [World Bank Tenders](https://search.worldbank.org) (procurement notices) | no | Contracts issued under Bank-financed operations |
 | US SAM.gov | `SAM_GOV_API_KEY` | US federal — skipped silently without a key |
+
+The two World Bank feeds answer different questions. **Projects** carries the
+operation (a loan — "Second Karachi Water and Sewerage Services Improvement
+Project"); **Tenders** carries the contracts the borrower then puts out under it,
+each with a deadline and a named contact. Tenders was added for Utility Network
+Intelligence, which the other four sources do not reach: of the 763 notices held
+when it was written, none was electrical/water/gas asset and consumer data work.
 
 One failing source never blocks the others (`Promise.allSettled`), and every
 record carries its official notice URL for provenance.
@@ -387,7 +415,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 │     ├─ live.ts                     # live-vs-seed dataset seam
 │     ├─ repository.ts               # pure query logic over an injected dataset
 │     ├─ ingest/
-│     │  ├─ connectors/              # UK · EU TED · World Bank · SAM.gov
+│     │  ├─ connectors/              # UK · EU TED · World Bank (projects + tenders) · SAM.gov
 │     │  ├─ normalize.ts             # FX · categorize · tech · fit score · gates
 │     │  ├─ goods.ts                 # goods/supply exclusion (CPV-label aware)
 │     └─ domain.ts · types · seed · format

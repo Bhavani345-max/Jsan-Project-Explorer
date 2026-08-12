@@ -41,7 +41,7 @@ const OFF_SECTOR =
  * delivered TO an off-sector customer, rather than off-sector work itself.
  */
 const CORE_CAPABILITY =
-  /\bgis\b|geospatial|geographic information|geodet\w*|cadastr\w*|topograph\w*|cartograph\w*|land registry|orthophoto|photogrammetr\w*|lidar|remote sensing|earth observation|satellite|spatial data|survey(?:ing|s)?\b|\bmapping\b|hydrograph\w*|telecom\w*|telephon\w*|\b5g\b|\b4g\b|fibre|fiber optic\w*|broadband|\bfttx\b|\bftth\b|network (?:engineering|design|planning|infrastructure)|structured cabling|base station|antenna\w*|backhaul|data transmission|switchboard|\biot\b|\bscada\b|digital twin|sensor network|telemetry|smart cit\w*/i;
+  /\bgis\b|geospatial|geographic information|geodet\w*|cadastr\w*|topograph\w*|cartograph\w*|land registry|orthophoto|photogrammetr\w*|lidar|remote sensing|earth observation|satellite|spatial data|survey(?:ing|s)?\b|\bmapping\b|hydrograph\w*|telecom\w*|telephon\w*|\b5g\b|\b4g\b|fibre|fiber optic\w*|broadband|\bfttx\b|\bftth\b|network (?:engineering|design|planning|infrastructure)|structured cabling|base station|antenna\w*|backhaul|data transmission|switchboard|\biot\b|\bscada\b|digital twin|sensor network|telemetry|smart cit\w*|consumer indexing|customer indexing|asset digit(?:i[sz]ation|i[sz]ing)|asset (?:register|inventory)\w*|network topolog\w*|enterprise gis|geodatabase|utility network\w*/i;
 
 /**
  * True when the notice's subject is an industry JSAN does not work in, and it

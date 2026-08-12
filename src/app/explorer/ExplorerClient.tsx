@@ -25,6 +25,7 @@ interface Facets {
   industries: string[];
   countryCounts: Record<string, number>;
   serviceLineCounts: Record<string, number>;
+  technologyCounts: Record<string, number>;
 }
 
 interface Paged {
@@ -39,9 +40,24 @@ interface Paged {
 // General software technologies were removed along with the software-development
 // scope; any technology still present in the data stays reachable through the
 // Technology dropdown in the filter panel.
-const TECH_QUICK = [
-  "GIS", "5G", "Fiber Optics", "Network Planning", "OSS/BSS", "RF Planning",
-  "Earth Observation", "IoT", "Digital Twin", "SCADA",
+// Grouped, not one long row. This was a flat list of ten chips; the utility
+// vocabulary takes it to eighteen, and eighteen undifferentiated pills is a wall
+// rather than a menu. The labels also make each group's job legible — the second
+// row is a delivery sequence, not an unordered pile of keywords.
+const TECH_QUICK_GROUPS: { label: string; items: string[] }[] = [
+  {
+    label: "Geospatial & telecom",
+    items: ["GIS", "5G", "Fiber Optics", "Network Planning", "OSS/BSS", "RF Planning",
+      "Earth Observation", "IoT", "Digital Twin", "SCADA"],
+  },
+  {
+    // The three networks, then the five stages of the operating model in the
+    // order they are delivered — survey the ground, digitize what is there,
+    // link it to the consumers, prove the connectivity, move it into the GIS.
+    label: "Utility network · electrical, water, gas",
+    items: ["Electrical Utility", "Water Utility", "Gas Utility",
+      "Field Survey", "Asset Digitization", "Consumer Indexing", "Network Topology", "Enterprise GIS"],
+  },
 ];
 
 // No location-preference sort: ranking by where JSAN has an office buried every
@@ -56,7 +72,7 @@ const SORTS = [
 
 const DEFAULT_SORT = "fitScore";
 
-// JSAN's six capability focus areas, in priority order, with the signals each
+// JSAN's seven capability focus areas, in priority order, with the signals each
 // one captures. These are the ServiceLine values themselves, so selecting one
 // filters on exactly what the classifier assigned — no second vocabulary to
 // drift out of step with lib/ingest/normalize.ts.
@@ -70,6 +86,14 @@ const FOCUS_AREAS: { line: string; short: string; signals: string }[] = [
     line: "Telecom & Network Engineering",
     short: "Telecom & Network",
     signals: "FTTx, fiber, broadband, 5G, network engineering, telecom GIS, fielding, survey, permits, closeout",
+  },
+  {
+    line: "Utility Network Intelligence",
+    // Abbreviated like its neighbours ("Telecom & Network", "Strategic
+    // Workforce"). The full name is in the tooltip and the Service Line filter.
+    short: "Utility Network",
+    signals:
+      "Electrical, water and gas distribution networks — field survey, asset digitization, consumer indexing, topology validation, enterprise GIS migration",
   },
   {
     line: "Geospatial & Telecom Adjacent",
@@ -381,6 +405,56 @@ function PublishedFilter({
   );
 }
 
+/**
+ * A quick-filter toggle that carries its own count.
+ *
+ * The count comes from /api/facets, which measures the WHOLE in-domain board
+ * rather than the current result set. That is deliberate: it answers "how much
+ * of the board is this?", it does not shuffle while you work the filters, and a
+ * chip showing a number always returns something when clicked on its own.
+ *
+ * A chip with nothing behind it is DIMMED, not hidden. These two rows are a
+ * statement of what JSAN pursues, not a list of what happens to be open this
+ * morning — dropping the empty ones would quietly redact the strategy, and a
+ * reader could no longer tell "we don't chase this" from "nothing open today".
+ * Dimming says both things at once, and the chip still works: clicking it lands
+ * on an empty state that explains itself.
+ */
+function FilterChip({
+  label,
+  count,
+  pressed,
+  onClick,
+  title,
+}: {
+  label: string;
+  /** Undefined until the facets arrive, so no chip ever flashes a false zero. */
+  count?: number;
+  pressed: boolean;
+  onClick: () => void;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      // These are toggles and must be announced as such — it is also what
+      // .chip-jsan keys its filled state off.
+      aria-pressed={pressed}
+      onClick={onClick}
+      title={title}
+      aria-label={count == null ? label : `${label} — ${count} ${count === 1 ? "opportunity" : "opportunities"}`}
+      className={`chip chip-jsan transition-colors ${count === 0 ? "opacity-50" : ""}`}
+    >
+      {label}
+      {count != null && (
+        <span className="tabular-nums font-normal opacity-70" aria-hidden="true">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function Select({
   label,
   value,
@@ -541,6 +615,23 @@ export function ExplorerClient() {
   // Keep the reading pace the user chose; only the filters reset.
   const clearAll = () => setF((prev) => ({ ...URL_DEFAULTS, pageSize: prev.pageSize }));
 
+  /**
+   * Is anything at all narrowing the board?
+   *
+   * One value, used by both the sidebar's Clear link and the empty state, so a
+   * reader can never be shown "nothing found" with no visible way back. It
+   * counts the SEARCH BOX too: the sidebar's test did not, so typing a term
+   * that matched nothing emptied the page and offered no Clear — the one moment
+   * the affordance is needed most. clearAll() has always reset `q`; only the
+   * test for whether to offer it was missing.
+   */
+  const hasAnyFilter =
+    activeFilters.length > 0 ||
+    Boolean(f.q) ||
+    Boolean(f.minFit) ||
+    Boolean(f.maxDeadlineDays) ||
+    Boolean(publishedLabel);
+
   return (
     <div className="space-y-5">
       <div>
@@ -615,35 +706,37 @@ export function ExplorerClient() {
             {FOCUS_AREAS.map((a) => {
               const active = f.serviceLine === a.line;
               return (
-                <button
+                <FilterChip
                   key={a.line}
+                  label={a.short}
+                  count={facets ? (facets.serviceLineCounts[a.line] ?? 0) : undefined}
+                  pressed={active}
                   onClick={() => set({ serviceLine: active ? "" : a.line })}
                   title={a.signals}
-                  aria-pressed={active}
-                  className="chip chip-jsan transition-colors"
-                >
-                  {a.short}
-                </button>
+                />
               );
             })}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {TECH_QUICK.map((t) => (
-            <button
-              key={t}
-              onClick={() => set({ technology: f.technology === t ? "" : t })}
-              // These are toggles and never announced as such. Screen readers
-              // had no way to tell an applied filter from an unapplied one; it
-              // is also what .chip-jsan keys its filled state off.
-              aria-pressed={f.technology === t}
-              className="chip chip-jsan transition-colors"
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        {TECH_QUICK_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-text-faint mb-1.5">
+              {group.label}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {group.items.map((t) => (
+                <FilterChip
+                  key={t}
+                  label={t}
+                  count={facets ? (facets.technologyCounts[t] ?? 0) : undefined}
+                  pressed={f.technology === t}
+                  onClick={() => set({ technology: f.technology === t ? "" : t })}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
@@ -654,7 +747,7 @@ export function ExplorerClient() {
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <SlidersHorizontal size={15} /> Advanced Filters
               </h3>
-              {(activeFilters.length > 0 || f.minFit || f.maxDeadlineDays || publishedLabel) && (
+              {hasAnyFilter && (
                 <button onClick={clearAll} className="text-[12px] text-primary font-semibold hover:underline">
                   Clear
                 </button>
@@ -831,7 +924,31 @@ export function ExplorerClient() {
             </div>
           ) : data && data.items.length === 0 ? (
             <div className="card">
-              <EmptyState title="No opportunities found" hint="Try widening your filters or clearing the search." />
+              {/* Name what is empty. "No opportunities found" left the reader
+                  guessing whether the portal was broken, the filters were too
+                  narrow, or the work genuinely isn't out there — three very
+                  different things. A focus area with nothing open is the normal
+                  case for a line the market publishes intermittently, and it
+                  should read as "we're watching", not as a failure. */}
+              <EmptyState
+                title={
+                  f.serviceLine
+                    ? `Nothing open in ${f.serviceLine} right now`
+                    : "No opportunities match these filters"
+                }
+                hint={
+                  f.serviceLine
+                    ? "Every source is searched for this work on each collection run, so the line fills as buyers publish. Clear the filters to see the rest of the board."
+                    : "Try widening the filters, or clear them to see the whole board."
+                }
+                action={
+                  hasAnyFilter ? (
+                    <button onClick={clearAll} className="btn btn-ghost">
+                      Clear all filters
+                    </button>
+                  ) : undefined
+                }
+              />
             </div>
           ) : (
             <>

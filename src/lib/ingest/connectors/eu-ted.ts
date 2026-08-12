@@ -109,14 +109,43 @@ const CPV_GEOSPATIAL = [
   "79961100", // Aerial photography services
 ];
 
+// Utility network intelligence is asked for by TEXT, not by CPV.
+//
+// The obvious CPV route does not work. The utility families — 65300000
+// (electricity distribution), 65100000 (water distribution), 65200000 (gas
+// distribution), 65500000 (meter reading) — were each measured against the live
+// API and carry almost nothing but commodity supply: of 193 open notices across
+// the four, the classifier passed one. 90491000 (sewer survey services) looked
+// promising at 6 of 19 until the titles were read — it is CCTV pipe inspection
+// ("Kamerauntersuchung der Grundstücksentwässerungsanlagen"), a different
+// trade. Paging those families would spend the cron budget to collect noise.
+//
+// TED's expert query supports full text (`FT=`), so the work can be asked for
+// directly instead: a distribution network AND something done to its asset
+// data. That is the same two-part test the classifier applies, pushed to the
+// server so only a handful of notices come back — 9 open on the run that sized
+// this, against the 193 the CPV route would have paged through.
+const UTILITY_SECTOR_FT =
+  '("utility network" OR "utility networks" OR "utility asset" OR "electricity network" OR ' +
+  '"electricity distribution" OR "power distribution" OR "water network" OR "water distribution" OR ' +
+  '"water supply" OR "sewer network" OR "sewerage network" OR "gas network" OR "gas distribution" OR ' +
+  '"distribution network")';
+const UTILITY_ACTIVITY_FT =
+  '(GIS OR "geographic information" OR geospatial OR "asset mapping" OR "asset register" OR ' +
+  '"asset inventory" OR "asset survey" OR "field survey" OR digitisation OR digitization OR topology OR ' +
+  '"consumer indexing" OR "customer indexing" OR geodatabase OR "network model" OR "as-built" OR detection)';
+
 // Search groups. GIS and telecom are queried SEPARATELY and each gets its own
 // page budget. Previously a single combined query took one page of 120 sorted by
 // publication date — and because the telecom families carry far more volume,
 // they crowded GIS out almost entirely (17 GIS rows against 77 telecom). Giving
 // each family its own budget is the single biggest lever on GIS coverage.
-const GROUPS: { label: string; cpv: string[] }[] = [
+//
+// `cpv` and `ft` are alternatives: a group supplies one or the other.
+const GROUPS: { label: string; cpv?: string[]; ft?: string }[] = [
   { label: "geospatial", cpv: CPV_GEOSPATIAL },
   { label: "telecom", cpv: CPV_TELECOM },
+  { label: "utility", ft: `${UTILITY_SECTOR_FT} AND ${UTILITY_ACTIVITY_FT}` },
 ];
 
 const PAGE_SIZE = 250; // TED's documented maximum; 500 is rejected with a 400.
@@ -201,8 +230,11 @@ export async function fetchEuTed(maxPerGroup = 600): Promise<RawOpportunity[]> {
   const seen = new Set<string>();
 
   for (const group of GROUPS) {
+    const selector = group.cpv
+      ? `classification-cpv IN (${group.cpv.join(" ")})`
+      : `FT=(${group.ft})`;
     const query =
-      `classification-cpv IN (${group.cpv.join(" ")}) ` +
+      `${selector} ` +
       `AND deadline-receipt-tender-date-lot>=${today} ` +
       `SORT BY publication-date DESC`;
 

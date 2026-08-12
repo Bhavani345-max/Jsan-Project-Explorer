@@ -23,11 +23,17 @@
 import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
 
 /**
- * The service lines the portal surfaces — JSAN's six capability focus areas.
+ * The service lines the portal surfaces — JSAN's seven capability focus areas.
  *
- * All six are carried. The portal previously surfaced only the three
+ * All seven are carried. The portal previously surfaced only the three
  * geospatial/telecom lines and hid the rest, which meant staffing, PMO and
  * digital-engineering opportunities were ingested and then never shown.
+ *
+ * "Utility Network Intelligence" is the newest line: the connected operating
+ * model JSAN delivers to electrical, water and gas distribution utilities.
+ * Adding it changed no stored record — measured over the 763 rows held when it
+ * was introduced, the classifier claimed none of them, because this work was
+ * not reaching the portal at all. See lib/ingest/utility.ts.
  *
  * Widening this list is only safe because `categorize()` no longer falls
  * through into a target line: an unmatched notice becomes "Unclassified" →
@@ -37,6 +43,7 @@ import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
 export const TARGET_SERVICE_LINES: ServiceLine[] = [
   "Geospatial Intelligence",
   "Telecom & Network Engineering",
+  "Utility Network Intelligence",
   "Geospatial & Telecom Adjacent",
   "Digital Engineering",
   "Strategic Workforce Solutions",
@@ -47,6 +54,7 @@ export const TARGET_SERVICE_LINES: ServiceLine[] = [
 export const TARGET_CATEGORIES: ProjectCategory[] = [
   "GIS",
   "Telecom / Network",
+  "Utility Network GIS",
   "Geospatial / Telecom Adjacent",
   "Cloud Migration",
   "Data Engineering",

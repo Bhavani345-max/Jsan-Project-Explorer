@@ -29,7 +29,7 @@ export default async function AnalyticsPage() {
         <StatCard label="Technologies Tracked" value={String(stats.byTechnology.length)} icon={TrendingUp} accent="var(--warning)" hint="Distinct technologies across open opportunities" />
       </div>
 
-      <SectionCard title="Projects per Month" subtitle="Ingestion & discovery trend">
+      <SectionCard title="Projects per Month" subtitle="Ingestion trend">
         <TrendArea data={stats.perMonth} height={280} />
       </SectionCard>
 

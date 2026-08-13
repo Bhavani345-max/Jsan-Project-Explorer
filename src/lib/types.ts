@@ -20,6 +20,11 @@ export type ProjectCategory =
   | "GIS"
   | "Utility Network GIS"
   | "Geospatial / Telecom Adjacent"
+  // The three autonomous-mobility pillars, one per column of slide 2 of the
+  // capability deck. See lib/ingest/autonomy.ts for what earns each of them.
+  | "Autonomous Vehicle Data"
+  | "Perception & Road Intelligence"
+  | "Validation & QA Operations"
   | "AI/ML"
   | "Cloud Migration"
   | "Web Development"
@@ -54,11 +59,22 @@ export type ProjectCategory =
 // Intelligence because the buyer, the deliverable and the competition are all
 // different: the customer is a distribution utility, and the product is a
 // connected network model of its assets and consumers, not a map.
+//
+// The three autonomous-mobility lines are the capability architecture on slide
+// 2 of JSAN_Autonomous_Mobility_Services.pptx, carried across as its own three
+// lines rather than folded into Geospatial Intelligence. The deck sells them as
+// three columns with their own sub-capabilities and their own buyer — an
+// autonomous-driving programme, not a mapping agency — and collapsing them
+// would make a capability-fit score for an annotation-operations contract read
+// as if it were a survey. See lib/ingest/autonomy.ts.
 export type ServiceLine =
   | "Geospatial Intelligence"
   | "Telecom & Network Engineering"
   | "Utility Network Intelligence"
   | "Geospatial & Telecom Adjacent"
+  | "Autonomous Data Engineering"
+  | "Geospatial & Perception Intelligence"
+  | "Validation & Managed Operations"
   | "Digital Engineering"
   | "Strategic Workforce Solutions"
   | "Structured Program Management"

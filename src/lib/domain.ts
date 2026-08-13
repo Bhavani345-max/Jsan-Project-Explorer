@@ -23,9 +23,9 @@
 import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
 
 /**
- * The service lines the portal surfaces — JSAN's seven capability focus areas.
+ * The service lines the portal surfaces — JSAN's capability focus areas.
  *
- * All seven are carried. The portal previously surfaced only the three
+ * Every line listed is carried. The portal previously surfaced only the three
  * geospatial/telecom lines and hid the rest, which meant staffing, PMO and
  * digital-engineering opportunities were ingested and then never shown.
  *
@@ -34,6 +34,14 @@ import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
  * Adding it changed no stored record — measured over the 763 rows held when it
  * was introduced, the classifier claimed none of them, because this work was
  * not reaching the portal at all. See lib/ingest/utility.ts.
+ *
+ * The three autonomous-mobility lines are the newest addition — the capability
+ * architecture stated on slide 2 of JSAN_Autonomous_Mobility_Services.pptx.
+ * They are the same shape of addition Utility Network Intelligence was: work
+ * JSAN sells today that the portal was not watching for at all, so no stored
+ * record changes line merely by their existence. What DOES move is a notice the
+ * autonomy classifier claims from an existing line — run the reclassify job in
+ * dry-run first and read the `changes` list before applying it.
  *
  * Widening this list is only safe because `categorize()` no longer falls
  * through into a target line: an unmatched notice becomes "Unclassified" →
@@ -45,6 +53,9 @@ export const TARGET_SERVICE_LINES: ServiceLine[] = [
   "Telecom & Network Engineering",
   "Utility Network Intelligence",
   "Geospatial & Telecom Adjacent",
+  "Autonomous Data Engineering",
+  "Geospatial & Perception Intelligence",
+  "Validation & Managed Operations",
   "Digital Engineering",
   "Strategic Workforce Solutions",
   "Structured Program Management",
@@ -56,6 +67,9 @@ export const TARGET_CATEGORIES: ProjectCategory[] = [
   "Telecom / Network",
   "Utility Network GIS",
   "Geospatial / Telecom Adjacent",
+  "Autonomous Vehicle Data",
+  "Perception & Road Intelligence",
+  "Validation & QA Operations",
   "Cloud Migration",
   "Data Engineering",
   "Web Development",

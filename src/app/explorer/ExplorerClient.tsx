@@ -58,6 +58,26 @@ const TECH_QUICK_GROUPS: { label: string; items: string[] }[] = [
     items: ["Electrical Utility", "Water Utility", "Gas Utility",
       "Field Survey", "Asset Digitization", "Consumer Indexing", "Network Topology", "Enterprise GIS"],
   },
+  // The three autonomous-mobility groups below are the capability architecture
+  // on slide 2 of JSAN_Autonomous_Mobility_Services.pptx, one group per column
+  // and six chips per group — the deck's own sub-topics, in the deck's own
+  // order. Each group sits directly under the focus-area chip of the same name,
+  // so the pair reads the way the slide does: the pillar, then what it contains.
+  {
+    label: "Autonomous data · sensors to managed datasets",
+    items: ["Multi-Sensor Ingestion", "Camera & LiDAR Processing", "Data Cleansing",
+      "Sensor Synchronization", "Dataset Management", "Privacy & Anonymization"],
+  },
+  {
+    label: "Perception & road intelligence · objects, lanes, HD maps",
+    items: ["Object Detection", "Lane & Road Boundary", "Traffic Signs & Signals",
+      "HD Maps & Roadgraph", "Localization Datasets", "Scenario & Edge Cases"],
+  },
+  {
+    label: "Validation & managed operations · QA and governance",
+    items: ["Human Validation", "Multi-Level QC", "Defect Adjudication",
+      "Dataset Acceptance", "Release Readiness", "Production Assurance"],
+  },
 ];
 
 // No location-preference sort: ranking by where JSAN has an office buried every
@@ -72,10 +92,15 @@ const SORTS = [
 
 const DEFAULT_SORT = "fitScore";
 
-// JSAN's seven capability focus areas, in priority order, with the signals each
-// one captures. These are the ServiceLine values themselves, so selecting one
+// JSAN's capability focus areas, in priority order, with the signals each one
+// captures. These are the ServiceLine values themselves, so selecting one
 // filters on exactly what the classifier assigned — no second vocabulary to
 // drift out of step with lib/ingest/normalize.ts.
+//
+// The three autonomous-mobility lines sit after the geospatial/telecom/utility
+// group and before Digital Engineering, which is where they belong in JSAN's
+// own priority order: they are capabilities sold in their own right, whereas
+// Digital Engineering qualifies only as supporting work.
 const FOCUS_AREAS: { line: string; short: string; signals: string }[] = [
   {
     line: "Geospatial Intelligence",
@@ -99,6 +124,29 @@ const FOCUS_AREAS: { line: string; short: string; signals: string }[] = [
     line: "Geospatial & Telecom Adjacent",
     short: "Geospatial / Telecom Adjacent",
     signals: "Digital twin, IoT, SCADA, drone, satellite imagery, smart city, national digital infrastructure, sensor networks",
+  },
+  // The three autonomous-mobility pillars, in the order slide 2 states them.
+  // The `signals` string on each is that column's six sub-topics verbatim, so
+  // the tooltip is the deck rather than a paraphrase of it.
+  {
+    line: "Autonomous Data Engineering",
+    short: "Autonomous Data",
+    signals:
+      "Multi-sensor data ingestion, camera and LiDAR processing, data cleansing and normalization, sensor synchronization, metadata and dataset management, privacy/anonymization support",
+  },
+  {
+    line: "Geospatial & Perception Intelligence",
+    // Abbreviated like its neighbours; the full name is in the tooltip and the
+    // Service Line filter.
+    short: "Perception Intelligence",
+    signals:
+      "Object detection datasets, lane and road-boundary intelligence, traffic signs and signals, HD map and roadgraph support, localization datasets, scenario and edge-case intelligence",
+  },
+  {
+    line: "Validation & Managed Operations",
+    short: "Validation & Managed Ops",
+    signals:
+      "Human validation, multi-level quality checks, defect adjudication, dataset acceptance governance, release-readiness support, production assurance",
   },
   {
     line: "Digital Engineering",
@@ -259,7 +307,7 @@ function ChoiceSelect({
  * option currently holds.
  *
  * Used where the list should show the FULL set rather than only what the data
- * happens to contain — every country in the world, all six focus areas — so
+ * happens to contain — every country in the world, every focus area the portal carries — so
  * coverage is visible even when a given entry is empty today. An option with
  * no rows stays selectable (it will simply return nothing, which is the honest
  * answer) but is marked so nobody picks it expecting results.

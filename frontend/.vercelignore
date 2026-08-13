@@ -1,0 +1,46 @@
+# What `vercel deploy` must not upload.
+#
+# .gitignore is NOT consulted for deploy uploads — backend.zip was listed there
+# and was still sent, failing the deploy on Vercel's 100 MB limit. Because a
+# .vercelignore is used *instead of* .gitignore, this file has to repeat
+# everything .gitignore excluded rather than only adding to it. In particular
+# .env* must stay listed: those files hold DATABASE_URL, CRON_SECRET and
+# SESSION_SECRET, and dropping the line would ship them into the deployment
+# source. That is the one rule here worth guarding.
+#
+# ---- this file got shorter when the app moved ----------------------
+# It used to exclude backend/, db/backups/, db/live_snapshot.sql and a 283 MB
+# backend.zip, because the deploy uploaded the WHOLE repository. The Next.js
+# app now lives in frontend/ and `vercel deploy` runs from here, so the upload
+# root is this directory — everything above it is out of reach and needs no
+# rule. The exclusions were not relaxed; the directory being uploaded shrank.
+#
+# Two consequences worth knowing:
+#   · the Vercel project's Root Directory must be `frontend`, or a dashboard
+#     deploy still uploads the repo root and this file is never consulted;
+#   · adding anything large to frontend/ DOES need a rule here again.
+
+# --- Node / Next.js ------------------------------------------------------
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# --- Secrets & local env -------------------------------------------------
+# Keep. .env.local sits in this directory and holds live credentials.
+# There is deliberately no `!.env.example` negation any more: the template
+# stayed at the repository root, where docker-compose documents it, so a
+# negation here would name a file that does not exist.
+.env*
+*.pem
+
+# --- Runtime artifacts ---------------------------------------------------
+captures/
+*.log
+
+# --- OS / editor ---------------------------------------------------------
+.DS_Store
+Thumbs.db

@@ -9,7 +9,7 @@ import { allCountryOptions } from "@/lib/countries";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Pagination, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/components/Pagination";
 import { Breadcrumbs, EmptyState, StatusBadge, FitBadge } from "@/components/ui";
-import { money, moneyRound, deadlineLabel } from "@/lib/format";
+import { projectMoney, moneyRound, deadlineLabel } from "@/lib/format";
 import Link from "next/link";
 
 interface Facets {
@@ -229,6 +229,11 @@ const URL_DEFAULTS = {
   // Off by default: the board carries both tiers and simply leads with the
   // primary one. On, it narrows to the primary band alone.
   primaryOnly: false,
+  // Off by default: most buyers publish no value, and hiding them would empty
+  // most of the board. On, it keeps only notices whose buyer actually named a
+  // figure — which is what the dashboard's "Major Contracts" panel links to,
+  // so the panel and the page it opens see the same rows.
+  disclosedBudgetOnly: false,
   sort: DEFAULT_SORT,
   page: 1,
   pageSize: DEFAULT_PAGE_SIZE,
@@ -955,6 +960,27 @@ export function ExplorerClient() {
                   Primary only (≥{moneyRound(PRIMARY_BUDGET_USD)})
                 </span>
               </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={f.disclosedBudgetOnly}
+                onClick={() => set({ disclosedBudgetOnly: !f.disclosedBudgetOnly })}
+                className="flex items-center gap-2 text-[13px]"
+                title="Most buyers publish no contract value. Turn on to show only notices that named a figure — the values here are then the buyer's own, not a stand-in."
+              >
+                <span
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    f.disclosedBudgetOnly ? "bg-primary" : "bg-border-strong"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                      f.disclosedBudgetOnly ? "translate-x-4" : ""
+                    }`}
+                  />
+                </span>
+                <span className="text-text-muted whitespace-nowrap">Disclosed value only</span>
+              </button>
               <label className="flex items-center gap-2 text-[13px]">
                 <span className="text-text-faint">Sort</span>
                 <select
@@ -1044,7 +1070,7 @@ export function ExplorerClient() {
                             </td>
                             <td className="px-4 py-3 text-text-muted">{p.organization}</td>
                             <td className="px-4 py-3 text-text-muted">{p.country}</td>
-                            <td className="px-4 py-3 font-semibold tabular-nums">{money(p.budget)}</td>
+                            <td className="px-4 py-3 font-semibold tabular-nums">{projectMoney(p)}</td>
                             <td className="px-4 py-3 text-text-muted">{deadlineLabel(p.deadline)}</td>
                             <td className="px-4 py-3">
                               <FitBadge score={p.fitScore} />

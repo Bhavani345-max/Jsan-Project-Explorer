@@ -42,6 +42,10 @@ function matches(p: Project, q: ProjectQuery): boolean {
   if (q.source && p.source !== q.source) return false;
   if (q.organization && p.organization !== q.organization) return false;
   if (q.technology && !p.technologies.includes(q.technology)) return false;
+  // Ordered before the value bounds on purpose: an undisclosed notice carries
+  // the stand-in, so `minBudget` on its own would let it satisfy a threshold no
+  // buyer ever published. Callers that mean confirmed money set both.
+  if (q.disclosedBudgetOnly && !p.budgetDisclosed) return false;
   if (q.minBudget != null && (p.budget == null || p.budget < q.minBudget)) return false;
   if (q.maxBudget != null && (p.budget == null || p.budget > q.maxBudget)) return false;
   if (q.minFit != null && p.fitScore < q.minFit) return false;

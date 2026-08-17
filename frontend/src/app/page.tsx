@@ -5,7 +5,7 @@ import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
 import { SectionCard, Breadcrumbs, StatusBadge, FitBadge } from "@/components/ui";
 import { VBarChart, DonutChart, HBarChart, TrendArea } from "@/components/charts";
-import { money, moneyRound, deadlineLabel, relTime, fmtDate } from "@/lib/format";
+import { money, moneyRound, projectMoney, deadlineLabel, fmtDate } from "@/lib/format";
 import type { ProjectQuery, ServiceLine } from "@/lib/types";
 import { HIGH_FIT_THRESHOLD, PRIMARY_BUDGET_USD } from "@/lib/domain";
 
@@ -61,6 +61,32 @@ export default async function DashboardPage() {
   const bestFitHref = `/explorer?${new URLSearchParams({
     sort: bestFitSort,
     availableOnly: String(bestFitQuery.availableOnly),
+  }).toString()}`;
+
+  // The largest CONFIRMED contracts on the board — its own panel rather than a
+  // reordering of Best-Fit, because the two rank on different things and the
+  // data will not let one list serve both: every notice scoring above the
+  // high-fit threshold is published with no value at all, while the notices
+  // that do name a figure score in the 40s and 50s. Ranking Best-Fit by money
+  // would fill a panel captioned "ranked by capability fit" with mid-fit rows.
+  //
+  // `disclosedBudgetOnly` is what makes this panel mean anything: minBudget on
+  // its own would match every undisclosed notice too, since the stand-in they
+  // carry sits exactly on the primary line.
+  const majorSort = "budget" as const;
+  const majorQuery: ProjectQuery = {
+    sort: majorSort,
+    availableOnly: true,
+    disclosedBudgetOnly: true,
+    minBudget: PRIMARY_BUDGET_USD,
+  };
+  const majorPage = queryProjects({ ...majorQuery, pageSize: 5 }, projects);
+  const major = majorPage.items;
+  const majorHref = `/explorer?${new URLSearchParams({
+    sort: majorSort,
+    availableOnly: String(majorQuery.availableOnly),
+    disclosedBudgetOnly: String(majorQuery.disclosedBudgetOnly),
+    minBudget: String(PRIMARY_BUDGET_USD),
   }).toString()}`;
 
   const gis = coreServiceLine("Geospatial Intelligence", projects);
@@ -244,7 +270,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-semibold text-sm tabular-nums">{money(p.budget)}</div>
+                  <div className="font-semibold text-sm tabular-nums">{projectMoney(p)}</div>
                   <div className="text-[11px] text-text-faint">{deadlineLabel(p.deadline)}</div>
                 </div>
               </Link>
@@ -252,6 +278,46 @@ export default async function DashboardPage() {
           </div>
         </SectionCard>
       </div>
+
+      {/* Major contracts — the disclosed-value counterpart to Best-Fit */}
+      <SectionCard
+        title={`Major Contracts (≥${moneyRound(PRIMARY_BUDGET_USD)})`}
+        subtitle={`Largest published contract values — ${majorPage.total} open, buyer-stated figures only`}
+        action={
+          <Link href={majorHref} className="text-[13px] font-semibold text-primary hover:underline">
+            View all
+          </Link>
+        }
+      >
+        {major.length === 0 ? (
+          <p className="text-[13px] text-text-faint py-2">
+            No open opportunity currently publishes a contract value at or above{" "}
+            {moneyRound(PRIMARY_BUDGET_USD)}.
+          </p>
+        ) : (
+          <div className="divide-y divide-border -mx-1">
+            {major.map((p) => (
+              <Link
+                key={p.id}
+                href={`/projects/${p.id}`}
+                className="flex items-center gap-3 px-1 py-2.5 hover:bg-bg-subtle rounded-lg transition-colors"
+              >
+                <FitBadge score={p.fitScore} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{p.title}</p>
+                  <p className="text-[12px] text-text-faint truncate">
+                    {p.serviceLine} · {p.organization} · {p.country}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-semibold text-sm tabular-nums">{projectMoney(p)}</div>
+                  <div className="text-[11px] text-text-faint">{deadlineLabel(p.deadline)}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -305,7 +371,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-semibold text-sm tabular-nums">{money(p.budget)}</div>
+                  <div className="font-semibold text-sm tabular-nums">{projectMoney(p)}</div>
                   <div className="text-[11px] text-text-faint">{fmtDate(p.publicationDate)}</div>
                 </div>
               </Link>

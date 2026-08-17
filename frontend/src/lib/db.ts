@@ -427,7 +427,8 @@ function toProject(r: Row): Project {
   // figure. See UNDISCLOSED_BUDGET_USD in lib/domain.ts for what that implies
   // for the tier split. Disclosed values are already held to the collection
   // floor at ingest and in the read query below.
-  const budget = r.budget_usd == null ? UNDISCLOSED_BUDGET_USD : Number(r.budget_usd);
+  const budgetDisclosed = r.budget_usd != null;
+  const budget = budgetDisclosed ? Number(r.budget_usd) : UNDISCLOSED_BUDGET_USD;
   const contact =
     r.contact_name || r.contact_email || r.contact_phone
       ? { name: r.contact_name ?? undefined, email: r.contact_email ?? undefined, phone: r.contact_phone ?? undefined }
@@ -457,7 +458,14 @@ function toProject(r: Row): Project {
     country: r.country,
     state: r.state,
     budget,
-    budgetLabel: money(budget),
+    budgetDisclosed,
+    // Says "Undisclosed" when the buyer published nothing, which is what the
+    // seed's factory has always done. This used to format the stand-in, so the
+    // details page of a notice with no published value stated "$15.0M" as
+    // plainly as one that really is worth that — the reader had no way to tell
+    // the two apart. The stand-in stays in `budget` for sorting and banding;
+    // it just no longer gets quoted back as though a buyer had committed to it.
+    budgetLabel: budgetDisclosed ? money(budget) : "Undisclosed",
     currency: r.currency,
     deadline: deadlineIso,
     publicationDate: toIsoDate(r.publication_date),

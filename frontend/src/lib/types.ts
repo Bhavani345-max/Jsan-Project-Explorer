@@ -105,6 +105,18 @@ export interface Project {
   country: string;
   state: string;
   budget: number | null; // USD
+  /** Did the buyer actually publish a contract value?
+   *
+   *  `budget` cannot answer this on its own. A notice that discloses nothing is
+   *  stored with the UNDISCLOSED_BUDGET_USD stand-in so every record carries a
+   *  number the UI can format — and that stand-in is the primary line itself,
+   *  so an undisclosed notice is indistinguishable from a genuine $15M contract
+   *  by value alone. Two thirds of the board discloses nothing, so without this
+   *  flag the great majority of rows read as confirmed primary work.
+   *
+   *  Anything that reports money to a reader — a figure on a card, a ranking
+   *  that claims to lead with contract value — must consult this first. */
+  budgetDisclosed: boolean;
   budgetLabel: string;
   currency: string;
   deadline: string; // ISO date
@@ -212,6 +224,11 @@ export interface ProjectQuery {
   publishedTo?: string;
   // When true, hide opportunities that are no longer pursuable (Awarded/Closed).
   availableOnly?: boolean;
+  /** When true, keep only notices whose buyer actually published a contract
+   *  value. Pair it with `minBudget` to ask for confirmed money: `minBudget`
+   *  alone matches the undisclosed stand-in too, which sits exactly on the
+   *  primary line. See `Project.budgetDisclosed`. */
+  disclosedBudgetOnly?: boolean;
   page?: number;
   pageSize?: number;
   // Ranking is capability- and time-based only. There is deliberately no

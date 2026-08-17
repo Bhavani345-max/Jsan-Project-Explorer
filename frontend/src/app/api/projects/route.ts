@@ -51,6 +51,7 @@ export async function GET(request: Request) {
     publishedFrom: isoDate("publishedFrom"),
     publishedTo: isoDate("publishedTo"),
     availableOnly: p.get("availableOnly") === "true",
+    disclosedBudgetOnly: p.get("disclosedBudgetOnly") === "true",
     page,
     pageSize,
     sort: (str("sort") as ProjectQuery["sort"]) ?? undefined,

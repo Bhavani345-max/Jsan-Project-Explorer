@@ -17,6 +17,22 @@ export function moneyRound(n: number | null): string {
   return money(n).replace(/\.0(?=[KMB]?$)/, "");
 }
 
+/**
+ * The contract value as it may honestly be shown to a reader.
+ *
+ * Every list that prints a figure next to a notice goes through this rather
+ * than money(p.budget) directly. `budget` carries UNDISCLOSED_BUDGET_USD when
+ * the buyer published nothing, and that stand-in equals the primary line — so
+ * money() alone renders two thirds of the board as a confident "$15.0M" and
+ * gives the reader no way to tell a real contract from a blank field.
+ *
+ * The stand-in still does its job in sorting and banding; it just never gets
+ * quoted back as money anyone committed to.
+ */
+export function projectMoney(p: { budget: number | null; budgetDisclosed: boolean }): string {
+  return p.budgetDisclosed ? money(p.budget) : "Undisclosed";
+}
+
 // All relative-date math is anchored to the real current time so live,
 // day-by-day ingested data stays accurate. Day counts are measured from
 // today's UTC midnight, which keeps a value stable for the whole day — the

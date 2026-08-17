@@ -1249,6 +1249,7 @@ export const PROJECTS: Project[] = SPECS.map((s, i) => {
     country: s.country,
     state: s.state,
     budget: budgetUsd,
+    budgetDisclosed: budgetUsd != null,
     budgetLabel:
       budgetUsd == null
         ? "Undisclosed"

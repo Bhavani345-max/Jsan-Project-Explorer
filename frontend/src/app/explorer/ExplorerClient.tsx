@@ -4,12 +4,12 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, LayoutGrid, Rows3, Sparkles, CalendarRange } from "lucide-react";
 import type { Project } from "@/lib/types";
-import { TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD, TARGET_SERVICE_LINES } from "@/lib/domain";
+import { PRIMARY_BUDGET_USD, HIGH_FIT_THRESHOLD, TARGET_SERVICE_LINES } from "@/lib/domain";
 import { allCountryOptions } from "@/lib/countries";
 import { ProjectCard } from "@/components/ProjectCard";
 import { Pagination, PAGE_SIZE_OPTIONS, DEFAULT_PAGE_SIZE } from "@/components/Pagination";
 import { Breadcrumbs, EmptyState, StatusBadge, FitBadge } from "@/components/ui";
-import { money, deadlineLabel } from "@/lib/format";
+import { money, moneyRound, deadlineLabel } from "@/lib/format";
 import Link from "next/link";
 
 interface Facets {
@@ -226,7 +226,9 @@ const URL_DEFAULTS = {
   publishedFrom: "",
   publishedTo: "",
   availableOnly: true, // hide occupied by default
-  includeLarge: false, // hide >$10M by default
+  // Off by default: the board carries both tiers and simply leads with the
+  // primary one. On, it narrows to the primary band alone.
+  primaryOnly: false,
   sort: DEFAULT_SORT,
   page: 1,
   pageSize: DEFAULT_PAGE_SIZE,
@@ -597,14 +599,18 @@ export function ExplorerClient() {
     setLoading(true);
     const params = new URLSearchParams();
     Object.entries(f).forEach(([k, v]) => {
-      if (k === "includeLarge") return; // not an API param — drives the soft cap below
+      if (k === "primaryOnly") return; // not an API param — drives the floor below
       if (v !== "" && v != null) params.set(k, String(v));
     });
-    // Default to the $1–10M target band; the toggle lifts the $10M ceiling
-    // to reveal large (World Bank) global leads. A manual max budget still wins.
-    if (!f.includeLarge) {
-      const userMax = f.maxBudget ? Number(f.maxBudget) : Infinity;
-      params.set("maxBudget", String(Math.min(userMax, TARGET_MAX_BUDGET_USD)));
+    // No ceiling is imposed here. The board carries both tiers and the ranking
+    // already leads with the primary one, so capping the value would only hide
+    // the very opportunities the priority is meant to surface.
+    //
+    // The toggle narrows to the primary band instead. It raises the floor rather
+    // than replacing it, so a hand-typed minimum above the line still wins.
+    if (f.primaryOnly) {
+      const userMin = f.minBudget ? Number(f.minBudget) : 0;
+      params.set("minBudget", String(Math.max(userMin, PRIMARY_BUDGET_USD)));
     }
     const t = setTimeout(() => {
       const id = ++requestId.current;
@@ -929,23 +935,25 @@ export function ExplorerClient() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={f.includeLarge}
-                onClick={() => set({ includeLarge: !f.includeLarge })}
+                aria-checked={f.primaryOnly}
+                onClick={() => set({ primaryOnly: !f.primaryOnly })}
                 className="flex items-center gap-2 text-[13px]"
-                title="By default only $1–10M opportunities (the target range) are shown. Turn on to also include large >$10M global leads (e.g. World Bank programs)."
+                title="The board already leads with primary opportunities. Turn on to show only that band and hide the secondary ones entirely."
               >
                 <span
                   className={`relative w-9 h-5 rounded-full transition-colors ${
-                    f.includeLarge ? "bg-primary" : "bg-border-strong"
+                    f.primaryOnly ? "bg-primary" : "bg-border-strong"
                   }`}
                 >
                   <span
                     className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                      f.includeLarge ? "translate-x-4" : ""
+                      f.primaryOnly ? "translate-x-4" : ""
                     }`}
                   />
                 </span>
-                <span className="text-text-muted whitespace-nowrap">Include large (&gt;$10M)</span>
+                <span className="text-text-muted whitespace-nowrap">
+                  Primary only (≥{moneyRound(PRIMARY_BUDGET_USD)})
+                </span>
               </button>
               <label className="flex items-center gap-2 text-[13px]">
                 <span className="text-text-faint">Sort</span>

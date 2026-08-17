@@ -80,7 +80,7 @@ export async function runConnectors(): Promise<IngestResult> {
           continue;
         }
         if (!isOpenOpportunity(row)) continue; // drop closed / stale
-        if (!meetsMinBudget(row)) continue; // drop disclosed budgets under MIN_BUDGET_USD ($1M)
+        if (!meetsMinBudget(row)) continue; // drop disclosed values under the collection floor
         if (seen.has(row.id)) continue;
         seen.add(row.id);
         rows.push(row);

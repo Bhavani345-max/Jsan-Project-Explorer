@@ -6,6 +6,17 @@ export function money(n: number | null): string {
   return `$${n}`;
 }
 
+/**
+ * money() without a trailing ".0" — for threshold labels, where a round
+ * boundary should read as one ("≥$15M", not "≥$15.0M"): the decimal implies a
+ * precision the threshold does not have. Every label naming a policy boundary
+ * goes through this, so the number on screen is always the constant itself and
+ * cannot drift away from it.
+ */
+export function moneyRound(n: number | null): string {
+  return money(n).replace(/\.0(?=[KMB]?$)/, "");
+}
+
 // All relative-date math is anchored to the real current time so live,
 // day-by-day ingested data stays accurate. Day counts are measured from
 // today's UTC midnight, which keeps a value stable for the whole day — the

@@ -32,8 +32,7 @@
 //   curl "<host>/api/cron/reclassify?dryRun=1&key=$CRON_SECRET" | jq .scoreHistogram
 // ------------------------------------------------------------------
 import {
-  TARGET_MIN_BUDGET_USD,
-  TARGET_MAX_BUDGET_USD,
+  PRIMARY_BUDGET_USD,
   PRIORITY_COUNTRIES,
   DEADLINE_SOON_DAYS,
 } from "@/lib/domain";
@@ -360,13 +359,15 @@ export function scoreFit(input: FitInput): FitBreakdown {
   });
 
   // ---- commercial signals ----------------------------------------
+  // Scored on the value the buyer actually published — never the read-time
+  // stand-in — so an undisclosed notice earns nothing here rather than banking
+  // points for a number nobody stated.
   const budget = input.budgetUsd;
-  const inBand =
-    budget != null && budget >= TARGET_MIN_BUDGET_USD && budget <= TARGET_MAX_BUDGET_USD;
+  const inBand = budget != null && budget >= PRIMARY_BUDGET_USD;
   const budgetPoints = inBand ? BUDGET_POINTS : budget != null ? BUDGET_DISCLOSED_POINTS : 0;
   rules.push({
     id: "budget",
-    label: "Budget in the $1–10M band",
+    label: "Contract value in the primary band",
     points: budgetPoints,
     max: BUDGET_POINTS,
     matched: budgetPoints > 0,
@@ -374,7 +375,7 @@ export function scoreFit(input: FitInput): FitBreakdown {
       ? `$${(budget! / 1_000_000).toFixed(1)}M disclosed`
       : budget == null
         ? "no budget disclosed"
-        : `$${(budget / 1_000_000).toFixed(1)}M is outside the band`,
+        : `$${(budget / 1_000_000).toFixed(1)}M is below the primary band`,
   });
 
   const country = (input.country ?? "").trim();

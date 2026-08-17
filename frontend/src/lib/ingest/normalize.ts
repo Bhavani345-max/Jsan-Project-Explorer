@@ -8,7 +8,7 @@
 // top of this — but the portal is fully functional on these heuristics alone.
 // ------------------------------------------------------------------
 import crypto from "node:crypto";
-import { TARGET_MIN_BUDGET_USD } from "@/lib/domain";
+import { MIN_BUDGET_USD as BUDGET_FLOOR_USD, meetsBudgetFloor } from "@/lib/domain";
 import { isUtilityNetworkIntelligence } from "@/lib/ingest/utility";
 import { autonomousMobilityCategory } from "@/lib/ingest/autonomy";
 import type {
@@ -326,14 +326,16 @@ function fallbackSummary(description: string, title: string): string {
   return clean.length > 240 ? `${clean.slice(0, 237)}…` : clean;
 }
 
-// Opportunities with a *disclosed* budget below this are too small for JSAN's
-// $1–10M target range and are filtered out. Undisclosed-budget notices are
-// kept (value unknown, often large — e.g. most EU TED tenders) and default to
-// $1M at read time so they sit at the bottom of the target band.
-export const MIN_BUDGET_USD = TARGET_MIN_BUDGET_USD;
+// The collection floor, re-exported so the connector pipeline reads one number.
+// A notice whose *disclosed* value falls below it is too small to pursue and is
+// never persisted. Undisclosed-budget notices are kept — the value is unknown,
+// not small, and that is how most EU TED tenders are published — and they take
+// the stand-in value at read time, which places them in the secondary tier.
+// See the contract value policy in lib/domain.ts.
+export const MIN_BUDGET_USD = BUDGET_FLOOR_USD;
 
 export function meetsMinBudget(o: NormalizedOpportunity): boolean {
-  return o.budgetUsd == null || o.budgetUsd >= MIN_BUDGET_USD;
+  return meetsBudgetFloor(o.budgetUsd);
 }
 
 /**

@@ -234,18 +234,30 @@ export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
     { label: "> $8M", test: (b: number) => b >= 8_000_000 },
   ];
 
-  // The primary band — the opportunities that lead every ranking. Counted from
-  // the same budgetTier() the sort uses, so the KPI and the top of the board can
-  // never disagree about which notices are primary.
-  const primary = projects.filter((p) => budgetTier(p.budget) === "primary");
+  // Money reported to a reader is summed from DISCLOSED values only.
+  //
+  // This deliberately no longer follows budgetTier(). The tier is a ranking
+  // device and it reads the stand-in an undisclosed notice carries — a stand-in
+  // set to the primary line itself — so "the primary band" is very nearly the
+  // whole board: 674 of 766 rows on the live data, 666 of them undisclosed.
+  // Summing that produced a pipeline figure of roughly $10B, about $10B of
+  // which was the stand-in counted back as though a buyer had committed to it.
+  //
+  // A currency figure on a dashboard is read as money someone is actually
+  // offering. Only a published value can support that claim, so a notice that
+  // named no figure contributes nothing here — it is not counted as zero
+  // either, it is simply not part of a total that claims to be money.
+  const disclosed = projects.filter((p) => p.budgetDisclosed);
+  const confirmed = disclosed.filter((p) => budgetTier(p.budget) === "primary");
+  const sumBudgets = (rows: Project[]) => rows.reduce((s, p) => s + (p.budget ?? 0), 0);
 
   return {
     totalProjects: projects.length,
     newToday: projects.filter((p) => daysLeft(p.publicationDate) === 0).length,
     closingSoon: projects.filter((p) => p.status === "Closing Soon").length,
-    totalBudget: projects.reduce((s, p) => s + (p.budget ?? 0), 0),
-    primaryPipeline: primary.reduce((s, p) => s + (p.budget ?? 0), 0),
-    primaryCount: primary.length,
+    totalBudget: sumBudgets(disclosed),
+    confirmedPipeline: sumBudgets(confirmed),
+    confirmedCount: confirmed.length,
     // Top 12 rather than 8 — the portal is worldwide and the chart is the main
     // place the spread of countries is visible. countryCount reports the full
     // number, and the Explorer's country filter lists every one of them.

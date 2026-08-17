@@ -177,11 +177,17 @@ export interface DashboardStats {
   totalProjects: number;
   newToday: number;
   closingSoon: number;
+  /** Every DISCLOSED value on the board, summed. Notices whose buyer published
+   *  no figure are absent, not zero — see `confirmedPipeline`. */
   totalBudget: number;
-  // Disclosed value carried by the primary band — see the contract value
-  // policy in lib/domain.ts.
-  primaryPipeline: number;
-  primaryCount: number;
+  /** Disclosed value at or above the primary line, summed — money a buyer has
+   *  actually published, and the only kind this portal reports as a currency
+   *  figure. Undisclosed notices are excluded however large they may turn out
+   *  to be: the stand-in they carry sits exactly on that line, so counting them
+   *  would inflate the total with figures nobody committed to. See the contract
+   *  value policy in lib/domain.ts and `Project.budgetDisclosed`. */
+  confirmedPipeline: number;
+  confirmedCount: number;
   byCountry: { label: string; value: number }[];
   byTechnology: { label: string; value: number }[];
   byBudget: { label: string; value: number }[];

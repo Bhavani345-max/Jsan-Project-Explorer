@@ -237,7 +237,17 @@ export default async function DashboardPage() {
         <StatCard label="High-Fit Opportunities" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" hint={`Rule-based fit ≥ ${HIGH_FIT_THRESHOLD}`} />
         <StatCard label="Organizations" value={String(stats.organizationCount)} icon={Building2} accent="var(--accent)" hint="Distinct publishing buyers" />
         <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" hint="Deadline within 7 days" />
-        <StatCard label={`Primary Pipeline (≥${moneyRound(PRIMARY_BUDGET_USD)})`} value={money(stats.primaryPipeline)} icon={Wallet} hint={`${stats.primaryCount} ${stats.primaryCount === 1 ? "opportunity leads" : "opportunities lead"} the board`} />
+        {/* "Confirmed", not "Primary": this counts money a buyer has published,
+            where "primary" names a ranking band that an undisclosed notice also
+            falls into. The hint says how many notices carry the figure, so a
+            reader can see the total is built from a handful of large contracts
+            rather than the whole board. */}
+        <StatCard
+          label={`Confirmed Pipeline (≥${moneyRound(PRIMARY_BUDGET_USD)})`}
+          value={money(stats.confirmedPipeline)}
+          icon={Wallet}
+          hint={`${stats.confirmedCount} ${stats.confirmedCount === 1 ? "opportunity publishes" : "opportunities publish"} a value this size`}
+        />
       </div>
 
       {/* Service-line focus */}

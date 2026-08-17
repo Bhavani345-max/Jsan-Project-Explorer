@@ -76,6 +76,7 @@ published 2026-07-22/23**, e.g.:
 | Raw capture files match intercept-time SHA-256 (tamper-evident) | ✅ |
 
 ### Dockerized ingestion — verified
+
 - `run('Public Tender API')` inside the container ingested **16 real tenders**
   into PostgreSQL (MoD £2.5M supply-chain notice, Southend City Council,
   Yeovil College, Harris Federation…), joined to auto-created organizations.

@@ -44,7 +44,7 @@
 ## 2. Design principles
 
 - **Layered MVC** — Controller → Service → Repository → Entity. Controllers are thin; business logic lives in services.
-- **Repository pattern** — storage is abstracted behind `*Repository` interfaces. The reference frontend ships an in-memory repository (`src/lib/repository.ts`) that is API-compatible with the JPA repositories, so the UI runs with zero infra.
+- **Repository pattern** — storage is abstracted behind `*Repository` interfaces. The reference frontend ships an in-memory repository (`frontend/src/lib/repository.ts`) that is API-compatible with the JPA repositories, so the UI runs with zero infra.
 - **SOLID** — the connector framework is Open/Closed: new sources implement `SourceConnector` without changing the scheduler.
 - **Stateless & scalable** — JWT auth, no server session; horizontal scaling behind Nginx.
 - **Security** — RBAC via method-level `@PreAuthorize`, BCrypt hashing, secrets by reference (Vault/KMS), audit logging on every privileged action.
@@ -59,7 +59,7 @@
 | **Production** | Next.js on **Vercel** · **Neon PostgreSQL** | Live today; see [DEPLOYMENT.md](DEPLOYMENT.md) |
 | **Production + public API** | the above, plus FastAPI on **Railway** | Configured, not provisioned — optional, see [DEPLOYMENT.md](DEPLOYMENT.md) §2 |
 
-The Next.js route handlers under `src/app/api/*` implement the same contract as
+The Next.js route handlers under `frontend/src/app/api/*` implement the same contract as
 the FastAPI routers. In production they serve the portal by querying Postgres
 directly and never call the FastAPI service — which is why deploying it is
 optional. When it is deployed, it exposes the same contract independently at its
@@ -69,12 +69,12 @@ own domain (`NEXT_PUBLIC_API_BASE`) for external consumers.
 
 | Module | Frontend | Backend |
 |---|---|---|
-| Dashboard | `src/app/page.tsx` | `GET /api/v1/dashboard` |
-| Project Explorer | `src/app/explorer` | `GET /api/v1/projects` + Specifications |
-| Project Details | `src/app/projects/[id]` | `GET /api/v1/projects/{id}` |
-| API Connectors | `src/app/connectors` | `connector/*`, `api_connectors` table |
+| Dashboard | `frontend/src/app/page.tsx` | `GET /api/v1/dashboard` |
+| Project Explorer | `frontend/src/app/explorer` | `GET /api/v1/projects` + Specifications |
+| Project Details | `frontend/src/app/projects/[id]` | `GET /api/v1/projects/{id}` |
+| API Connectors | `frontend/src/app/connectors` | `connector/*`, `api_connectors` table |
 | Scheduler | (status UI) | `scheduler/CollectionScheduler` |
 | Smart Search | topbar autocomplete | `GET /api/v1/suggest`, `fullTextSearch` |
-| Rule-based scoring | Fit score + breakdown on details | `fit_score`, `tags`, `src/lib/scoring.ts` |
-| Analytics | `src/app/analytics` | aggregate queries |
+| Rule-based scoring | Fit score + breakdown on details | `fit_score`, `tags`, `frontend/src/lib/scoring.ts` |
+| Analytics | `frontend/src/app/analytics` | aggregate queries |
 | Auth / RBAC | role switcher + guards | `config/SecurityConfig`, JWT |

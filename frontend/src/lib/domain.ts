@@ -23,9 +23,9 @@
 import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
 
 /**
- * The service lines the portal surfaces — JSAN's seven capability focus areas.
+ * The service lines the portal surfaces — JSAN's capability focus areas.
  *
- * All seven are carried. The portal previously surfaced only the three
+ * Every line listed is carried. The portal previously surfaced only the three
  * geospatial/telecom lines and hid the rest, which meant staffing, PMO and
  * digital-engineering opportunities were ingested and then never shown.
  *
@@ -34,6 +34,14 @@ import type { Project, ProjectCategory, ServiceLine } from "@/lib/types";
  * Adding it changed no stored record — measured over the 763 rows held when it
  * was introduced, the classifier claimed none of them, because this work was
  * not reaching the portal at all. See lib/ingest/utility.ts.
+ *
+ * The three autonomous-mobility lines are the newest addition — the capability
+ * architecture stated on slide 2 of JSAN_Autonomous_Mobility_Services.pptx.
+ * They are the same shape of addition Utility Network Intelligence was: work
+ * JSAN sells today that the portal was not watching for at all, so no stored
+ * record changes line merely by their existence. What DOES move is a notice the
+ * autonomy classifier claims from an existing line — run the reclassify job in
+ * dry-run first and read the `changes` list before applying it.
  *
  * Widening this list is only safe because `categorize()` no longer falls
  * through into a target line: an unmatched notice becomes "Unclassified" →
@@ -45,6 +53,9 @@ export const TARGET_SERVICE_LINES: ServiceLine[] = [
   "Telecom & Network Engineering",
   "Utility Network Intelligence",
   "Geospatial & Telecom Adjacent",
+  "Autonomous Data Engineering",
+  "Geospatial & Perception Intelligence",
+  "Validation & Managed Operations",
   "Digital Engineering",
   "Strategic Workforce Solutions",
   "Structured Program Management",
@@ -56,6 +67,9 @@ export const TARGET_CATEGORIES: ProjectCategory[] = [
   "Telecom / Network",
   "Utility Network GIS",
   "Geospatial / Telecom Adjacent",
+  "Autonomous Vehicle Data",
+  "Perception & Road Intelligence",
+  "Validation & QA Operations",
   "Cloud Migration",
   "Data Engineering",
   "Web Development",
@@ -74,13 +88,90 @@ export const CORE_SERVICE_LINES: ServiceLine[] = [
   "Telecom & Network Engineering",
 ];
 
-// JSAN's target contract value. One source of truth for a number that is
-// applied in four places — the ingest floor (normalize), the purge floor (db),
-// the Explorer's default band, and the dashboard's "target pipeline" KPI. When
-// these drift apart the same opportunity is counted differently on every
-// screen, so they all read from here.
-export const TARGET_MIN_BUDGET_USD = 1_000_000;
-export const TARGET_MAX_BUDGET_USD = 10_000_000;
+// ---- contract value policy -----------------------------------------
+// Two numbers decide how an opportunity's value is treated, and every screen
+// reads them from here — the ingest floor (normalize), the purge floor and the
+// read query (db), the Explorer's ranking and its primary lens, and the
+// dashboard's pipeline KPI. When these drift apart the same notice is counted
+// one way on the dashboard and another in the Explorer.
+//
+//   · MIN_BUDGET_USD     — the collection floor. A notice that DISCLOSES a
+//                          value below it is not collected and not surfaced.
+//                          Deliberately never rendered: it is an internal
+//                          collection rule, not something a reader needs, so
+//                          no label, tooltip or chart band names it.
+//   · PRIMARY_BUDGET_USD — the priority line. At or above it an opportunity is
+//                          PRIMARY and leads every ranking. Below it — or with
+//                          no value disclosed — it is SECONDARY: still
+//                          collected, still searchable, still shown, just
+//                          ranked behind the primary band.
+//
+// A notice that discloses NO value is never removed by the floor. Its value is
+// unknown, not small, and that is how most EU TED tenders are published — 456
+// of the 466 in-domain rows held when this policy was written. It reads as
+// SECONDARY, which is the honest answer: unknown is not proven large.
+export const MIN_BUDGET_USD = 10_000_000;
+export const PRIMARY_BUDGET_USD = 15_000_000;
+
+/**
+ * Stand-in value for a notice that discloses no budget, so every record carries
+ * a number the UI can format.
+ *
+ * Set to the primary line by product decision: the portal presents an
+ * undisclosed notice at the threshold rather than at a token figure, so no card
+ * reads as small work merely because its buyer published no amount.
+ *
+ * Two consequences, stated plainly because they are easy to be surprised by:
+ *
+ *  1. An undisclosed notice therefore reads as PRIMARY. Since the great
+ *     majority of notices disclose nothing, the primary band is effectively the
+ *     whole board, and the secondary band holds only those few notices that
+ *     disclose a value between the collection floor and the primary line. The
+ *     tier machinery is unchanged and still sorts correctly — there is simply
+ *     little left for it to separate.
+ *  2. Any figure summed from this value — the Primary Pipeline KPI, the budget
+ *     band chart — counts the stand-in, not money a buyer has committed to. It
+ *     is a presentational floor, not evidence of contract value.
+ *
+ * The fit score deliberately does NOT read this value; it scores the disclosed
+ * amount only (see lib/scoring.ts), so an undisclosed notice cannot earn points
+ * for a number nobody published.
+ */
+export const UNDISCLOSED_BUDGET_USD = PRIMARY_BUDGET_USD;
+
+/**
+ * Retention floor for purgeExpired — deliberately LOWER than the collection
+ * floor, and deliberately not raised alongside it.
+ *
+ * Raising MIN_BUDGET_USD decides what the portal COLLECTS and SHOWS. It must
+ * not decide what the portal DESTROYS: rows already held are hidden by the read
+ * query the moment the floor moves, so deleting them buys nothing, and it would
+ * make every future adjustment of the floor one-way — the history it discards
+ * only comes back if a source still happens to be publishing the notice.
+ *
+ * This is the same rule the domain filter at the top of this file follows, for
+ * the same reason: hidden, not erased. Purge exists to drop notices that are
+ * genuinely spent — deadline passed, listing gone stale — not to enforce a
+ * commercial threshold that may be retuned next quarter.
+ */
+export const RETENTION_MIN_BUDGET_USD = 1_000_000;
+
+export type BudgetTier = "primary" | "secondary";
+
+/** Which band a contract value falls in. Undisclosed reads as secondary. */
+export function budgetTier(budgetUsd: number | null | undefined): BudgetTier {
+  return budgetUsd != null && budgetUsd >= PRIMARY_BUDGET_USD ? "primary" : "secondary";
+}
+
+/** Sort key — 0 for primary, 1 for secondary, so ascending puts primary first. */
+export function budgetTierRank(budgetUsd: number | null | undefined): number {
+  return budgetTier(budgetUsd) === "primary" ? 0 : 1;
+}
+
+/** Does a value clear the collection floor? An undisclosed value always does. */
+export function meetsBudgetFloor(budgetUsd: number | null | undefined): boolean {
+  return budgetUsd == null || budgetUsd >= MIN_BUDGET_USD;
+}
 
 // ---- fit-score inputs ----------------------------------------------
 // The two business judgements the rule-based score depends on. They live here,

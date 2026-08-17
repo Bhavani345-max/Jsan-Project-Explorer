@@ -17,7 +17,7 @@ import type { Project, ProjectStatus } from "@/lib/types";
 import { loadRecentOpportunities } from "@/lib/db";
 import { liveDataset } from "@/lib/live";
 import { HIGH_FIT_THRESHOLD } from "@/lib/domain";
-import { money } from "@/lib/format";
+import { projectMoney } from "@/lib/format";
 
 export interface OpportunityNotification {
   /** Project id — the panel links straight to /projects/<id>. */
@@ -54,7 +54,7 @@ function toNotification(p: Project): OpportunityNotification {
     title: p.title,
     organization: p.organization,
     country: p.country,
-    budgetLabel: money(p.budget),
+    budgetLabel: projectMoney(p),
     fitScore: p.fitScore,
     highFit: p.fitScore >= HIGH_FIT_THRESHOLD,
     status: p.status,

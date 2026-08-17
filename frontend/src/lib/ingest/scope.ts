@@ -39,9 +39,15 @@ const OFF_SECTOR =
 /**
  * Core capability evidence. Its presence means the notice is JSAN work being
  * delivered TO an off-sector customer, rather than off-sector work itself.
+ *
+ * The autonomy terms at the tail are here for exactly the same reason as the
+ * rest: "autonomous hospital shuttle — perception dataset annotation" and
+ * "self-driving food delivery pilot" both name an off-sector industry and are
+ * both squarely JSAN's autonomous-mobility work. The hospital and the food are
+ * the customer, not the subject.
  */
 const CORE_CAPABILITY =
-  /\bgis\b|geospatial|geographic information|geodet\w*|cadastr\w*|topograph\w*|cartograph\w*|land registry|orthophoto|photogrammetr\w*|lidar|remote sensing|earth observation|satellite|spatial data|survey(?:ing|s)?\b|\bmapping\b|hydrograph\w*|telecom\w*|telephon\w*|\b5g\b|\b4g\b|fibre|fiber optic\w*|broadband|\bfttx\b|\bftth\b|network (?:engineering|design|planning|infrastructure)|structured cabling|base station|antenna\w*|backhaul|data transmission|switchboard|\biot\b|\bscada\b|digital twin|sensor network|telemetry|smart cit\w*|consumer indexing|customer indexing|asset digit(?:i[sz]ation|i[sz]ing)|asset (?:register|inventory)\w*|network topolog\w*|enterprise gis|geodatabase|utility network\w*/i;
+  /\bgis\b|geospatial|geographic information|geodet\w*|cadastr\w*|topograph\w*|cartograph\w*|land registry|orthophoto|photogrammetr\w*|lidar|remote sensing|earth observation|satellite|spatial data|survey(?:ing|s)?\b|\bmapping\b|hydrograph\w*|telecom\w*|telephon\w*|\b5g\b|\b4g\b|fibre|fiber optic\w*|broadband|\bfttx\b|\bftth\b|network (?:engineering|design|planning|infrastructure)|structured cabling|base station|antenna\w*|backhaul|data transmission|switchboard|\biot\b|\bscada\b|digital twin|sensor network|telemetry|smart cit\w*|consumer indexing|customer indexing|asset digit(?:i[sz]ation|i[sz]ing)|asset (?:register|inventory)\w*|network topolog\w*|enterprise gis|geodatabase|utility network\w*|autonomous[- ](?:vehicle|driving|mobility|shuttle)\w*|self-?driving|driverless|robo-?taxi\w*|\badas\b|automated driving\w*|hd map\w*|roadgraph|sensor fusion|point ?cloud\w*|ground[- ]truth\w*|semantic segmentation|(?:data|image|video|lidar|sensor) annotation/i;
 
 /**
  * True when the notice's subject is an industry JSAN does not work in, and it

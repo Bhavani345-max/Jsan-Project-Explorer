@@ -1,11 +1,19 @@
 # --- Node / Next.js -----------------------------------------------------
-/node_modules
-/.next
-/out
-/build
+# UNANCHORED on purpose. These were `/node_modules`, `/.next` and so on, and a
+# leading slash pins a pattern to the repository root — which was correct while
+# the Next.js app WAS the repository root. Once it moved to frontend/, those
+# patterns silently stopped matching: `git status` offered to commit
+# frontend/node_modules, roughly half a gigabyte of dependencies.
+#
+# A trailing slash with no leading one matches the directory at ANY depth, so
+# this now covers frontend/, a future second app, and the root alike.
+node_modules/
+.next/
+out/
+build/
 *.tsbuildinfo
 next-env.d.ts
-.vercel
+.vercel/
 
 # --- Python -------------------------------------------------------------
 backend/.venv/

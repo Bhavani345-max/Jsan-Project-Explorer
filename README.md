@@ -26,7 +26,7 @@ The portal carries JSAN's seven capability focus areas:
 
 Generic software development, health, education, finance, agriculture, energy
 and construction notices are filtered out.
-[`src/lib/domain.ts`](src/lib/domain.ts) is the single source of truth; widening
+[`frontend/src/lib/domain.ts`](frontend/src/lib/domain.ts) is the single source of truth; widening
 the portal is a one-line change there.
 
 The adjacent line is work in the same field that isn't a pure GIS or telecom
@@ -50,7 +50,7 @@ none of them are this work — they are commodity supply ("Supply of electricity
 a different trade entirely (CCTV sewer inspection). So a notice qualifies only
 when it names **both** a distribution network **and** work on the data that
 describes it, with the sector and activity terms tiered by how reliable each one
-is. [`src/lib/ingest/utility.ts`](src/lib/ingest/utility.ts) holds the rule and
+is. [`frontend/src/lib/ingest/utility.ts`](frontend/src/lib/ingest/utility.ts) holds the rule and
 the measurements behind it, including why "GIS" in an electricity notice often
 means Gas-Insulated Switchgear rather than a geographic information system.
 
@@ -62,7 +62,7 @@ feeds are full of notices that are purely a purchase of product ("Supply of
 network switches", "Purchase of Cisco network equipment"), and they were the
 largest single source of noise: **about a quarter of stored in-domain rows.**
 
-[`src/lib/ingest/goods.ts`](src/lib/ingest/goods.ts) is the gate. Its strongest
+[`frontend/src/lib/ingest/goods.ts`](frontend/src/lib/ingest/goods.ts) is the gate. Its strongest
 signal is the notice's own procurement category — TED renders every title as
 `Country – <CPV label> – <native title>`, and the buyer picks that label, so
 "Network equipment" and "Optical-fibre cables" are product categories while
@@ -126,7 +126,7 @@ opportunities — 52 pages** at nine per page. The earlier control rendered one
 button per page, so all 52 were laid out inline and wrapped over several rows;
 the numbers also shifted under the cursor on every click as the row re-flowed.
 
-[`src/components/Pagination.tsx`](src/components/Pagination.tsx) renders a fixed
+[`frontend/src/components/Pagination.tsx`](frontend/src/components/Pagination.tsx) renders a fixed
 seven slots instead — first page, last page, a window around the current one,
 and `…` for the runs between — so the control keeps its width and **Next** stays
 where you last clicked it. An ellipsis is never used to hide a *single* page,
@@ -154,16 +154,50 @@ the whole store into one response.
 
 ---
 
+## Repository layout
+
+Two deployable applications, one directory each, with everything shared between
+them at the root:
+
+```
+frontend/   Next.js app — the portal, its API routes and the ingest pipeline.
+            This is what deploys to Vercel. Owns its own package.json,
+            tsconfig.json, vercel.json and Dockerfile.
+backend/    FastAPI service — a reference implementation of the same API
+            contract. Configured for Railway; the portal never calls it.
+db/         Schema, migrations and SQL snapshots. Shared: docker-compose
+            mounts these into Postgres, and db/bootstrap_remote.py applies
+            them to a remote database.
+docs/       Architecture, API design and deployment notes.
+```
+
+The Next.js app used to sit at the repository root. Anything run against it —
+`npm`, `npx tsc`, `vercel` — must now run from `frontend/`, because that is
+where its `package.json` and `vercel.json` live.
+
+> **Deploying:** the Vercel project's **Root Directory** must be set to
+> `frontend` (Settings → General → Root Directory). Deploying from the
+> repository root would upload a monorepo with no framework at its top level.
+
 ## Quick start (runs immediately)
 
 ```bash
+cd frontend
 npm install
 npm run dev        # → http://localhost:3000
 ```
 
 Build & serve production:
 ```bash
+cd frontend
 npm run build && npm run start
+```
+
+The full stack — Postgres, FastAPI and the portal together — still comes up
+from the repository root, which is where docker-compose.yml lives:
+
+```bash
+docker compose up --build
 ```
 
 With no database configured the portal serves the bundled sample dataset and the
@@ -189,15 +223,15 @@ switching Neon → Railway Postgres is an env-var change, not a code change.
 ```
 Vercel Cron (daily 02:00)
    └─→ GET /api/cron/ingest
-         ├─ src/lib/ingest/connectors/*   fetch every public source concurrently
-         ├─ src/lib/ingest/normalize.ts   FX→USD · categorize · tech extraction · fit score
-         ├─ src/lib/ingest/goods.ts       drop goods/supply purchases (not JSAN work)
-         ├─ src/lib/db.ts                 idempotent upsert into Postgres + purge expired
-         └─ src/lib/ingest/translate.ts   derive English titles from the published CPV label
+         ├─ frontend/src/lib/ingest/connectors/*   fetch every public source concurrently
+         ├─ frontend/src/lib/ingest/normalize.ts   FX→USD · categorize · tech extraction · fit score
+         ├─ frontend/src/lib/ingest/goods.ts       drop goods/supply purchases (not JSAN work)
+         ├─ frontend/src/lib/db.ts                 idempotent upsert into Postgres + purge expired
+         └─ frontend/src/lib/ingest/translate.ts   derive English titles from the published CPV label
 
 Page / API read path
-   └─→ src/lib/live.ts → DB rows if any exist, else the bundled seed
-         └─ src/lib/repository.ts (pure query logic over an injected dataset)
+   └─→ frontend/src/lib/live.ts → DB rows if any exist, else the bundled seed
+         └─ frontend/src/lib/repository.ts (pure query logic over an injected dataset)
 ```
 
 **Sources** (all public, no scraping):
@@ -276,7 +310,7 @@ original title is never overwritten.
 ### Language switcher (GTranslate)
 
 The sticky topbar carries a [GTranslate](https://gtranslate.io) dropdown
-([`src/components/GTranslate.tsx`](src/components/GTranslate.tsx)) that renders
+([`frontend/src/components/GTranslate.tsx`](frontend/src/components/GTranslate.tsx)) that renders
 the finished English page in the visitor's own language. It is the **opposite
 direction** to the ingest translation above, and the two are complementary:
 
@@ -298,7 +332,7 @@ No key or account is needed; the widget is loaded from GTranslate's CDN on the
 client. Note that it sends page text to the translation service — everything in
 this portal is already public-source data, but it is worth knowing before adding
 anything private to a page. Remove the `<GTranslate />` line in
-[`src/components/Shell.tsx`](src/components/Shell.tsx) to drop it entirely.
+[`frontend/src/components/Shell.tsx`](frontend/src/components/Shell.tsx) to drop it entirely.
 
 ### Re-classifying stored records
 
@@ -356,10 +390,10 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 | 3 | API Design | [`docs/API_DESIGN.md`](docs/API_DESIGN.md) |
 | 4 | Folder Structure | this file (below) |
 | 5 | Python Backend (FastAPI) | [`backend/`](backend/) |
-| 6 | React Frontend | [`src/`](src/) (Next.js App Router) |
+| 6 | React Frontend | [`frontend/src/`](frontend/src/) (Next.js App Router) |
 | 7 | Authentication (JWT + RBAC) | [`backend/app/security.py`](backend/app/security.py), [`backend/app/routers/auth.py`](backend/app/routers/auth.py) |
-| 8 | API Connector Framework | [`backend/app/connectors`](backend/app/connectors), UI: `src/app/connectors` |
-| 9 | Dashboard UI | [`src/app/page.tsx`](src/app/page.tsx) |
+| 8 | API Connector Framework | [`backend/app/connectors`](backend/app/connectors), UI: `frontend/src/app/connectors` |
+| 9 | Dashboard UI | [`frontend/src/app/page.tsx`](frontend/src/app/page.tsx) |
 | 10 | Deployment Guide | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
 | 11 | Docker Configuration | [`Dockerfile`](Dockerfile), [`backend/Dockerfile`](backend/Dockerfile), [`docker-compose.yml`](docker-compose.yml) |
 | 12 | Swagger / OpenAPI | built into FastAPI ([`backend/app/main.py`](backend/app/main.py)) → `/docs` (`/swagger-ui.html` redirects) |
@@ -376,7 +410,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 - **Project Details** — full record: description, org, country, budget, deadlines, source, reference number, technologies, eligibility, contact, official link, **source summary + tags**, and technology/category-matched related opportunities.
 - **API Connectors** — connector cards (auth, schedule, rate limit, pagination, retry, status), add-connector form, scheduler cadences, and live connector logs.
 - **Smart Search** — global autocomplete over technologies, organizations, countries and projects.
-- **Rule-Based Scoring** — the assigned focus area sets a capability base, then depth and breadth of capability evidence, the buyer's own procurement category, budget, country and deadline produce a 0–100 fit score, shown on the details page as the exact arithmetic that produced it (`src/lib/scoring.ts`). **70+ is recommended** — a strong capability match; measured at ~37% of the live board.
+- **Rule-Based Scoring** — the assigned focus area sets a capability base, then depth and breadth of capability evidence, the buyer's own procurement category, budget, country and deadline produce a 0–100 fit score, shown on the details page as the exact arithmetic that produced it (`frontend/src/lib/scoring.ts`). **70+ is recommended** — a strong capability match; measured at ~37% of the live board.
 - **Recommended filter & publication window** — one click for 70+ only, and a date-wise Published filter (7/30/90/365-day presets plus an explicit range) that writes absolute dates into the URL so a shared link keeps showing the same set.
 - **Analytics** — projects per month, by country, by technology, top technologies in demand, top organizations.
 - **User Roles** — Administrator, Business Development, Sales, Manager, Read Only (role switcher + backend RBAC).
@@ -398,7 +432,7 @@ docker compose exec -T postgres pg_dump -U discovery discovery > db/backups/full
 
 ```
 .
-├─ src/                              # Next.js frontend + route-handler API
+├─ frontend/src/                              # Next.js frontend + route-handler API
 │  ├─ app/
 │  │  ├─ page.tsx                    # Dashboard
 │  │  ├─ explorer/                   # Project Explorer (client + filters)

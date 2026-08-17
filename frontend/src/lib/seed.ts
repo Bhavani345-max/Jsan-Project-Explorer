@@ -1139,6 +1139,9 @@ const SERVICE_LINE_BY_CATEGORY: Record<ProjectCategory, import("./types").Servic
   "Telecom / Network": "Telecom & Network Engineering",
   "Utility Network GIS": "Utility Network Intelligence",
   "Geospatial / Telecom Adjacent": "Geospatial & Telecom Adjacent",
+  "Autonomous Vehicle Data": "Autonomous Data Engineering",
+  "Perception & Road Intelligence": "Geospatial & Perception Intelligence",
+  "Validation & QA Operations": "Validation & Managed Operations",
   "Workforce Solutions": "Strategic Workforce Solutions",
   "Program Management": "Structured Program Management",
   "AI/ML": "Digital Engineering",
@@ -1246,6 +1249,7 @@ export const PROJECTS: Project[] = SPECS.map((s, i) => {
     country: s.country,
     state: s.state,
     budget: budgetUsd,
+    budgetDisclosed: budgetUsd != null,
     budgetLabel:
       budgetUsd == null
         ? "Undisclosed"

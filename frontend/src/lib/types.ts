@@ -20,6 +20,11 @@ export type ProjectCategory =
   | "GIS"
   | "Utility Network GIS"
   | "Geospatial / Telecom Adjacent"
+  // The three autonomous-mobility pillars, one per column of slide 2 of the
+  // capability deck. See lib/ingest/autonomy.ts for what earns each of them.
+  | "Autonomous Vehicle Data"
+  | "Perception & Road Intelligence"
+  | "Validation & QA Operations"
   | "AI/ML"
   | "Cloud Migration"
   | "Web Development"
@@ -54,11 +59,22 @@ export type ProjectCategory =
 // Intelligence because the buyer, the deliverable and the competition are all
 // different: the customer is a distribution utility, and the product is a
 // connected network model of its assets and consumers, not a map.
+//
+// The three autonomous-mobility lines are the capability architecture on slide
+// 2 of JSAN_Autonomous_Mobility_Services.pptx, carried across as its own three
+// lines rather than folded into Geospatial Intelligence. The deck sells them as
+// three columns with their own sub-capabilities and their own buyer — an
+// autonomous-driving programme, not a mapping agency — and collapsing them
+// would make a capability-fit score for an annotation-operations contract read
+// as if it were a survey. See lib/ingest/autonomy.ts.
 export type ServiceLine =
   | "Geospatial Intelligence"
   | "Telecom & Network Engineering"
   | "Utility Network Intelligence"
   | "Geospatial & Telecom Adjacent"
+  | "Autonomous Data Engineering"
+  | "Geospatial & Perception Intelligence"
+  | "Validation & Managed Operations"
   | "Digital Engineering"
   | "Strategic Workforce Solutions"
   | "Structured Program Management"
@@ -89,6 +105,18 @@ export interface Project {
   country: string;
   state: string;
   budget: number | null; // USD
+  /** Did the buyer actually publish a contract value?
+   *
+   *  `budget` cannot answer this on its own. A notice that discloses nothing is
+   *  stored with the UNDISCLOSED_BUDGET_USD stand-in so every record carries a
+   *  number the UI can format — and that stand-in is the primary line itself,
+   *  so an undisclosed notice is indistinguishable from a genuine $15M contract
+   *  by value alone. Two thirds of the board discloses nothing, so without this
+   *  flag the great majority of rows read as confirmed primary work.
+   *
+   *  Anything that reports money to a reader — a figure on a card, a ranking
+   *  that claims to lead with contract value — must consult this first. */
+  budgetDisclosed: boolean;
   budgetLabel: string;
   currency: string;
   deadline: string; // ISO date
@@ -150,9 +178,10 @@ export interface DashboardStats {
   newToday: number;
   closingSoon: number;
   totalBudget: number;
-  // Addressable pipeline in JSAN's $1–10M target band.
-  targetPipeline: number;
-  targetCount: number;
+  // Disclosed value carried by the primary band — see the contract value
+  // policy in lib/domain.ts.
+  primaryPipeline: number;
+  primaryCount: number;
   byCountry: { label: string; value: number }[];
   byTechnology: { label: string; value: number }[];
   byBudget: { label: string; value: number }[];
@@ -195,6 +224,11 @@ export interface ProjectQuery {
   publishedTo?: string;
   // When true, hide opportunities that are no longer pursuable (Awarded/Closed).
   availableOnly?: boolean;
+  /** When true, keep only notices whose buyer actually published a contract
+   *  value. Pair it with `minBudget` to ask for confirmed money: `minBudget`
+   *  alone matches the undisclosed stand-in too, which sits exactly on the
+   *  primary line. See `Project.budgetDisclosed`. */
+  disclosedBudgetOnly?: boolean;
   page?: number;
   pageSize?: number;
   // Ranking is capability- and time-based only. There is deliberately no

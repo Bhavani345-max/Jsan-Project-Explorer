@@ -8,8 +8,9 @@
 // top of this — but the portal is fully functional on these heuristics alone.
 // ------------------------------------------------------------------
 import crypto from "node:crypto";
-import { TARGET_MIN_BUDGET_USD } from "@/lib/domain";
+import { MIN_BUDGET_USD as BUDGET_FLOOR_USD, meetsBudgetFloor } from "@/lib/domain";
 import { isUtilityNetworkIntelligence } from "@/lib/ingest/utility";
+import { autonomousMobilityCategory } from "@/lib/ingest/autonomy";
 import type {
   ProjectCategory,
   ProjectType,
@@ -133,7 +134,7 @@ const CATEGORY_RULES: [RegExp, ProjectCategory][] = [
  *
  * The fallback used to be "Enterprise Software", which maps to Digital
  * Engineering. That was harmless while only the three geospatial/telecom lines
- * were surfaced — the mis-filed rows were hidden anyway. Now that all six focus
+ * were surfaced — the mis-filed rows were hidden anyway. Now that every focus
  * areas are surfaced, that same fallback would push every unmatched notice
  * (agriculture, health, education, construction) straight onto the board, so
  * a category has to be EARNED by matching a rule.
@@ -146,17 +147,34 @@ export function categorize(text: string): ProjectCategory {
   // file "consumer indexing and enterprise GIS migration for the distribution
   // utility" as generic geospatial work. See lib/ingest/utility.ts.
   if (isUtilityNetworkIntelligence(text)) return "Utility Network GIS";
+  // Autonomous mobility is tested next, and for the same reason: it fires only
+  // on an autonomy programme AND work on the data that serves it, so it is
+  // strictly more specific than anything in the table below. Testing it after
+  // "GIS" would file "HD map and roadgraph production for autonomous driving"
+  // as generic geospatial work — the word "mapping" is enough to claim it.
+  //
+  // It sits AFTER the utility test, not before, purely so no stored row can
+  // change line as a side effect of this rule being added: the two vocabularies
+  // do not overlap, and leaving utility first keeps its behaviour identical.
+  // See lib/ingest/autonomy.ts.
+  const autonomy = autonomousMobilityCategory(text);
+  if (autonomy) return autonomy;
   for (const [re, cat] of CATEGORY_RULES) if (re.test(text)) return cat;
   return "Unclassified";
 }
 
 // Delivery category → JSAN capability focus area. GIS and Telecom are the core
-// lines; the six mapped-to values are exactly the six areas the portal carries.
+// lines; the mapped-to values are exactly the focus areas the portal carries
+// (lib/domain.ts owns that list, and this map must agree with it).
 const CATEGORY_TO_SERVICE_LINE: Record<ProjectCategory, ServiceLine> = {
   GIS: "Geospatial Intelligence",
   "Telecom / Network": "Telecom & Network Engineering",
   "Utility Network GIS": "Utility Network Intelligence",
   "Geospatial / Telecom Adjacent": "Geospatial & Telecom Adjacent",
+  // The three columns of the autonomous-mobility capability architecture.
+  "Autonomous Vehicle Data": "Autonomous Data Engineering",
+  "Perception & Road Intelligence": "Geospatial & Perception Intelligence",
+  "Validation & QA Operations": "Validation & Managed Operations",
   "Workforce Solutions": "Strategic Workforce Solutions",
   "Program Management": "Structured Program Management",
   "AI/ML": "Digital Engineering",
@@ -205,6 +223,41 @@ const TECH_VOCAB: [RegExp, string][] = [
   [/digital twin/i, "Digital Twin"],
   [/\biot\b|internet of things|sensor network/i, "IoT"],
   [/\bscada\b|telemetry/i, "SCADA"],
+  // ---- Autonomous mobility: the eighteen sub-topics of slide 2 -------
+  // Six per pillar, in the deck's own order, so the Explorer's quick filters
+  // are a readable rendering of the capability architecture rather than a bag
+  // of keywords. They sit here — after the geospatial, utility and adjacent
+  // vocabulary, before the generic stack — because extractTechnologies keeps
+  // only the first 8 matches, and a fibre or survey notice must still be tagged
+  // with its own terms first.
+  //
+  // Each pattern is the QUALIFIED form. Bare "camera", "privacy", "validation"
+  // and "acceptance" are everywhere in a procurement feed and would tag half
+  // the board with autonomy vocabulary it has nothing to do with.
+  //
+  // 1 · Autonomous Data Engineering
+  [/multi-?sensor (?:data )?(?:ingestion|acquisition|capture|collection)|multi-?modal sensor data|sensor data ingestion/i, "Multi-Sensor Ingestion"],
+  [/camera and lidar|lidar and camera|camera\s?\/\s?lidar|lidar (?:data )?processing|camera (?:data|image) processing/i, "Camera & LiDAR Processing"],
+  [/data cleansing|data cleaning|data normali[sz]ation|normali[sz]ation of (?:sensor|vehicle|raw) data/i, "Data Cleansing"],
+  [/sensor (?:time )?synchroni[sz]ation|time synchroni[sz]ation of sensors|sensor calibration/i, "Sensor Synchronization"],
+  [/dataset management|metadata management|dataset (?:versioning|curation|catalogu?e)/i, "Dataset Management"],
+  [/anonymi[sz]ation|pseudonymi[sz]ation|(?:face|licence plate|license plate|number plate) (?:blurring|redaction)/i, "Privacy & Anonymization"],
+  // 2 · Geospatial & Perception Intelligence
+  [/object detection|object recognition|object classification (?:dataset|model)/i, "Object Detection"],
+  [/lane (?:detection|marking|geometry|polyline|boundar)\w*|road[- ](?:boundar|edge)\w* (?:detection|extraction|intelligence|dataset)|road-?boundary/i, "Lane & Road Boundary"],
+  [/traffic (?:sign|signal|light)s?\b/i, "Traffic Signs & Signals"],
+  [/\bhd map\w*|high-?definition map\w*|roadgraph|road graph|semantic road model/i, "HD Maps & Roadgraph"],
+  [/locali[sz]ation (?:dataset|layer|map|data)s?|locali[sz]ation (?:for|of) (?:autonomous|automated)/i, "Localization Datasets"],
+  [/scenario (?:catalogu?e|library|database|mining|generation|coverage)|edge[- ]case\w*|corner case\w*/i, "Scenario & Edge Cases"],
+  // 3 · Validation & Managed Operations
+  [/human validation|human[- ]in[- ]the[- ]loop|human review|manual validation/i, "Human Validation"],
+  [/multi-?level (?:qa|quality)\w*|multi-?stage (?:qa|quality)\w*|quality (?:check|gate)s?\b|\bqa\s?\/\s?qc\b/i, "Multi-Level QC"],
+  // Not bare "adjudication": in a procurement feed that is the award decision
+  // on the tender itself, which is on almost every notice in the board.
+  [/defect adjudication|adjudication of defects|defect (?:closure|resolution|triage)/i, "Defect Adjudication"],
+  [/dataset acceptance|data acceptance criteria|acceptance governance|dataset governance/i, "Dataset Acceptance"],
+  [/release[- ]readiness|readiness evidence|release (?:support|gate)s?\b/i, "Release Readiness"],
+  [/production assurance|production (?:quality )?governance/i, "Production Assurance"],
   [/\bjava\b/i, "Java"],
   [/\bpython\b/i, "Python"],
   [/\breact\b/i, "React"],
@@ -241,6 +294,7 @@ export { fitScoreFor, scoreFit } from "@/lib/scoring";
 export { isGoodsProcurement, goodsReason } from "@/lib/ingest/goods";
 export { isOutOfScope, isOffSectorService, outOfScopeReason } from "@/lib/ingest/scope";
 export { isUtilityNetworkIntelligence, utilitySectors } from "@/lib/ingest/utility";
+export { isAutonomousMobility, autonomousMobilityCategory, autonomyPillars } from "@/lib/ingest/autonomy";
 
 const PROJECT_TYPE_BY_SOURCE: Record<string, ProjectType> = {
   "Government Procurement API": "Government Tender",
@@ -272,14 +326,16 @@ function fallbackSummary(description: string, title: string): string {
   return clean.length > 240 ? `${clean.slice(0, 237)}…` : clean;
 }
 
-// Opportunities with a *disclosed* budget below this are too small for JSAN's
-// $1–10M target range and are filtered out. Undisclosed-budget notices are
-// kept (value unknown, often large — e.g. most EU TED tenders) and default to
-// $1M at read time so they sit at the bottom of the target band.
-export const MIN_BUDGET_USD = TARGET_MIN_BUDGET_USD;
+// The collection floor, re-exported so the connector pipeline reads one number.
+// A notice whose *disclosed* value falls below it is too small to pursue and is
+// never persisted. Undisclosed-budget notices are kept — the value is unknown,
+// not small, and that is how most EU TED tenders are published — and they take
+// the stand-in value at read time, which places them in the secondary tier.
+// See the contract value policy in lib/domain.ts.
+export const MIN_BUDGET_USD = BUDGET_FLOOR_USD;
 
 export function meetsMinBudget(o: NormalizedOpportunity): boolean {
-  return o.budgetUsd == null || o.budgetUsd >= MIN_BUDGET_USD;
+  return meetsBudgetFloor(o.budgetUsd);
 }
 
 /**

@@ -5,9 +5,9 @@ import { liveDataset } from "@/lib/live";
 import { StatCard } from "@/components/StatCard";
 import { SectionCard, Breadcrumbs, StatusBadge, FitBadge } from "@/components/ui";
 import { VBarChart, DonutChart, HBarChart, TrendArea } from "@/components/charts";
-import { money, deadlineLabel, relTime, fmtDate } from "@/lib/format";
+import { money, moneyRound, projectMoney, deadlineLabel, fmtDate } from "@/lib/format";
 import type { ProjectQuery, ServiceLine } from "@/lib/types";
-import { HIGH_FIT_THRESHOLD } from "@/lib/domain";
+import { HIGH_FIT_THRESHOLD, PRIMARY_BUDGET_USD } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -15,16 +15,15 @@ export const dynamic = "force-dynamic";
 // both derived from ONE filter object, so the card can never claim a number the
 // results page then contradicts.
 //
-// `availableOnly` matches the Explorer's own default (awarded/closed hidden), and
-// `includeLarge` lifts its $10M soft cap — queryProjects applies no ceiling here,
-// so without that flag the card would over-count by however many >$10M leads exist.
+// `availableOnly` matches the Explorer's own default (awarded/closed hidden).
+// Nothing narrows by contract value on either side: the Explorer no longer caps
+// it, so the count and the page it opens see the same board.
 function coreServiceLine(serviceLine: ServiceLine, projects: Parameters<typeof queryProjects>[1]) {
   const sort = "fitScore" as const;
   const query: ProjectQuery = { serviceLine, availableOnly: true, sort };
   const params = new URLSearchParams({
     serviceLine,
     availableOnly: String(query.availableOnly),
-    includeLarge: "true",
     sort,
   });
   return {
@@ -41,30 +40,53 @@ export default async function DashboardPage() {
   // is ordered by publication date, but its "View all" used to point at a bare
   // /explorer, which defaults to fitScore — so clicking through reordered the
   // list you had just been reading. `availableOnly` matches the Explorer's own
-  // default, and `includeLarge` lifts its $10M soft cap, which queryProjects
-  // does not apply here.
+  // default. Both sides rank primary opportunities first, so the panel and the
+  // page it opens lead with the same rows.
   const recentSort = "publicationDate" as const;
   const recentQuery: ProjectQuery = { sort: recentSort, availableOnly: true };
   const recent = queryProjects({ ...recentQuery, pageSize: 6 }, projects).items;
   const recentHref = `/explorer?${new URLSearchParams({
     sort: recentSort,
     availableOnly: String(recentQuery.availableOnly),
-    includeLarge: "true",
   }).toString()}`;
 
   const closing = queryProjects({ status: "Closing Soon", sort: "deadline", pageSize: 5 }, projects).items;
   // The panel and its "View all" link are built from ONE filter object, so the
   // Explorer can never hide a row the dashboard just listed. `availableOnly`
   // drops the awarded and closed notices the panel used to rank alongside
-  // pursuable work; `includeLarge` lifts the Explorer's $10M soft cap, which
-  // queryProjects does not apply here.
+  // pursuable work. Neither side narrows by contract value.
   const bestFitSort = "fitScore" as const;
   const bestFitQuery: ProjectQuery = { sort: bestFitSort, availableOnly: true };
   const bestFit = queryProjects({ ...bestFitQuery, pageSize: 5 }, projects).items;
   const bestFitHref = `/explorer?${new URLSearchParams({
     sort: bestFitSort,
     availableOnly: String(bestFitQuery.availableOnly),
-    includeLarge: "true",
+  }).toString()}`;
+
+  // The largest CONFIRMED contracts on the board — its own panel rather than a
+  // reordering of Best-Fit, because the two rank on different things and the
+  // data will not let one list serve both: every notice scoring above the
+  // high-fit threshold is published with no value at all, while the notices
+  // that do name a figure score in the 40s and 50s. Ranking Best-Fit by money
+  // would fill a panel captioned "ranked by capability fit" with mid-fit rows.
+  //
+  // `disclosedBudgetOnly` is what makes this panel mean anything: minBudget on
+  // its own would match every undisclosed notice too, since the stand-in they
+  // carry sits exactly on the primary line.
+  const majorSort = "budget" as const;
+  const majorQuery: ProjectQuery = {
+    sort: majorSort,
+    availableOnly: true,
+    disclosedBudgetOnly: true,
+    minBudget: PRIMARY_BUDGET_USD,
+  };
+  const majorPage = queryProjects({ ...majorQuery, pageSize: 5 }, projects);
+  const major = majorPage.items;
+  const majorHref = `/explorer?${new URLSearchParams({
+    sort: majorSort,
+    availableOnly: String(majorQuery.availableOnly),
+    disclosedBudgetOnly: String(majorQuery.disclosedBudgetOnly),
+    minBudget: String(PRIMARY_BUDGET_USD),
   }).toString()}`;
 
   const gis = coreServiceLine("Geospatial Intelligence", projects);
@@ -215,7 +237,7 @@ export default async function DashboardPage() {
         <StatCard label="High-Fit Opportunities" value={String(stats.highFitCount)} icon={Target} accent="var(--success)" hint={`Rule-based fit ≥ ${HIGH_FIT_THRESHOLD}`} />
         <StatCard label="Organizations" value={String(stats.organizationCount)} icon={Building2} accent="var(--accent)" hint="Distinct publishing buyers" />
         <StatCard label="Closing Soon" value={String(stats.closingSoon)} icon={AlarmClock} accent="var(--warning)" hint="Deadline within 7 days" />
-        <StatCard label="Target Pipeline ($1–10M)" value={money(stats.targetPipeline)} icon={Wallet} hint={`${stats.targetCount} opportunities in the target band`} />
+        <StatCard label={`Primary Pipeline (≥${moneyRound(PRIMARY_BUDGET_USD)})`} value={money(stats.primaryPipeline)} icon={Wallet} hint={`${stats.primaryCount} ${stats.primaryCount === 1 ? "opportunity leads" : "opportunities lead"} the board`} />
       </div>
 
       {/* Service-line focus */}
@@ -248,7 +270,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-semibold text-sm tabular-nums">{money(p.budget)}</div>
+                  <div className="font-semibold text-sm tabular-nums">{projectMoney(p)}</div>
                   <div className="text-[11px] text-text-faint">{deadlineLabel(p.deadline)}</div>
                 </div>
               </Link>
@@ -256,6 +278,46 @@ export default async function DashboardPage() {
           </div>
         </SectionCard>
       </div>
+
+      {/* Major contracts — the disclosed-value counterpart to Best-Fit */}
+      <SectionCard
+        title={`Major Contracts (≥${moneyRound(PRIMARY_BUDGET_USD)})`}
+        subtitle={`Largest published contract values — ${majorPage.total} open, buyer-stated figures only`}
+        action={
+          <Link href={majorHref} className="text-[13px] font-semibold text-primary hover:underline">
+            View all
+          </Link>
+        }
+      >
+        {major.length === 0 ? (
+          <p className="text-[13px] text-text-faint py-2">
+            No open opportunity currently publishes a contract value at or above{" "}
+            {moneyRound(PRIMARY_BUDGET_USD)}.
+          </p>
+        ) : (
+          <div className="divide-y divide-border -mx-1">
+            {major.map((p) => (
+              <Link
+                key={p.id}
+                href={`/projects/${p.id}`}
+                className="flex items-center gap-3 px-1 py-2.5 hover:bg-bg-subtle rounded-lg transition-colors"
+              >
+                <FitBadge score={p.fitScore} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{p.title}</p>
+                  <p className="text-[12px] text-text-faint truncate">
+                    {p.serviceLine} · {p.organization} · {p.country}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-semibold text-sm tabular-nums">{projectMoney(p)}</div>
+                  <div className="text-[11px] text-text-faint">{deadlineLabel(p.deadline)}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -309,7 +371,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-semibold text-sm tabular-nums">{money(p.budget)}</div>
+                  <div className="font-semibold text-sm tabular-nums">{projectMoney(p)}</div>
                   <div className="text-[11px] text-text-faint">{fmtDate(p.publicationDate)}</div>
                 </div>
               </Link>

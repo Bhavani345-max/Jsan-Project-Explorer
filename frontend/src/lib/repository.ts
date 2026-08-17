@@ -1,5 +1,5 @@
 import { PROJECTS, CONNECTORS, CONNECTOR_LOGS } from "./seed";
-import { TARGET_MIN_BUDGET_USD, TARGET_MAX_BUDGET_USD, HIGH_FIT_THRESHOLD } from "./domain";
+import { budgetTier, budgetTierRank, HIGH_FIT_THRESHOLD } from "./domain";
 import { daysLeft } from "./format";
 import type { Project, ProjectQuery, DashboardStats, APIConnector, ConnectorLog } from "./types";
 
@@ -42,6 +42,10 @@ function matches(p: Project, q: ProjectQuery): boolean {
   if (q.source && p.source !== q.source) return false;
   if (q.organization && p.organization !== q.organization) return false;
   if (q.technology && !p.technologies.includes(q.technology)) return false;
+  // Ordered before the value bounds on purpose: an undisclosed notice carries
+  // the stand-in, so `minBudget` on its own would let it satisfy a threshold no
+  // buyer ever published. Callers that mean confirmed money set both.
+  if (q.disclosedBudgetOnly && !p.budgetDisclosed) return false;
   if (q.minBudget != null && (p.budget == null || p.budget < q.minBudget)) return false;
   if (q.maxBudget != null && (p.budget == null || p.budget > q.maxBudget)) return false;
   if (q.minFit != null && p.fitScore < q.minFit) return false;
@@ -97,7 +101,9 @@ export function queryProjects(q: ProjectQuery, projects: Project[] = PROJECTS): 
   const sort = q.sort ?? "fitScore";
   const byDeadline = (a: Project, b: Project) =>
     new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
-  items = [...items].sort((a, b) => {
+
+  // Within a tier, the ordering the caller asked for.
+  const withinTier = (a: Project, b: Project) => {
     if (sort === "budget") return (b.budget ?? 0) - (a.budget ?? 0);
     if (sort === "deadline") return byDeadline(a, b);
     if (sort === "publicationDate")
@@ -105,7 +111,19 @@ export function queryProjects(q: ProjectQuery, projects: Project[] = PROJECTS): 
     // fitScore, and the fallback for any unrecognized value (e.g. an old
     // bookmarked ?sort=priority link).
     return b.fitScore - a.fitScore || byDeadline(a, b);
-  });
+  };
+
+  // Contract value decides the tier and the tier leads EVERY sort — that is what
+  // "primary" means here. The chosen sort orders within a tier rather than
+  // across the whole board, so a primary opportunity is never buried under
+  // secondary work merely because the reader switched to "newest published".
+  //
+  // Applied as one rule for all four sorts rather than special-casing some of
+  // them: a priority that only holds under certain orderings is not a priority,
+  // and the reader would see the board reshuffle its top for no visible reason.
+  items = [...items].sort(
+    (a, b) => budgetTierRank(a.budget) - budgetTierRank(b.budget) || withinTier(a, b),
+  );
 
   const total = items.length;
   const pageSize = Math.max(1, Math.trunc(numberOr(q.pageSize, DEFAULT_PAGE_SIZE)));
@@ -216,19 +234,18 @@ export function dashboardStats(projects: Project[] = PROJECTS): DashboardStats {
     { label: "> $8M", test: (b: number) => b >= 8_000_000 },
   ];
 
-  // JSAN's target band: opportunities whose value falls in $1–10M.
-  const inTarget = projects.filter(
-    (p) =>
-      p.budget != null && p.budget >= TARGET_MIN_BUDGET_USD && p.budget <= TARGET_MAX_BUDGET_USD,
-  );
+  // The primary band — the opportunities that lead every ranking. Counted from
+  // the same budgetTier() the sort uses, so the KPI and the top of the board can
+  // never disagree about which notices are primary.
+  const primary = projects.filter((p) => budgetTier(p.budget) === "primary");
 
   return {
     totalProjects: projects.length,
     newToday: projects.filter((p) => daysLeft(p.publicationDate) === 0).length,
     closingSoon: projects.filter((p) => p.status === "Closing Soon").length,
     totalBudget: projects.reduce((s, p) => s + (p.budget ?? 0), 0),
-    targetPipeline: inTarget.reduce((s, p) => s + (p.budget ?? 0), 0),
-    targetCount: inTarget.length,
+    primaryPipeline: primary.reduce((s, p) => s + (p.budget ?? 0), 0),
+    primaryCount: primary.length,
     // Top 12 rather than 8 — the portal is worldwide and the chart is the main
     // place the spread of countries is visible. countryCount reports the full
     // number, and the Explorer's country filter lists every one of them.

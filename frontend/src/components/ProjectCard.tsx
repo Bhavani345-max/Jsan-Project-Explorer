@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MapPin, Building2, CalendarClock, Wallet } from "lucide-react";
 import type { Project } from "@/lib/types";
 import { StatusBadge, FitBadge } from "./ui";
-import { money, deadlineLabel, daysLeft } from "@/lib/format";
+import { projectMoney, deadlineLabel, daysLeft } from "@/lib/format";
 
 // The active search context, so a card can lead with the exact thing the user
 // searched for (e.g. a "GIS" technology) instead of always showing the project
@@ -86,7 +86,7 @@ export function ProjectCard({ p, highlight }: { p: Project; highlight?: CardHigh
         </span>
         <span className="flex items-center gap-1.5">
           <Wallet size={13} className="text-text-faint shrink-0" />
-          <span className="font-semibold text-text">{money(p.budget)}</span>
+          <span className="font-semibold text-text">{projectMoney(p)}</span>
         </span>
         <span className="flex items-center gap-1.5">
           <CalendarClock size={13} className="text-text-faint shrink-0" />

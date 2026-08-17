@@ -18,7 +18,12 @@ import { neon } from "@neondatabase/serverless";
 import { Pool, type PoolConfig } from "pg";
 import type { Project } from "@/lib/types";
 import { money } from "@/lib/format";
-import { TARGET_SERVICE_LINES, TARGET_MIN_BUDGET_USD } from "@/lib/domain";
+import {
+  TARGET_SERVICE_LINES,
+  MIN_BUDGET_USD,
+  RETENTION_MIN_BUDGET_USD,
+  UNDISCLOSED_BUDGET_USD,
+} from "@/lib/domain";
 import type { NormalizedOpportunity } from "@/lib/ingest/normalize";
 import { isOutOfScope } from "@/lib/ingest/scope";
 import { fitScoreFor } from "@/lib/scoring";
@@ -278,14 +283,18 @@ export async function upsertOpportunities(rows: NormalizedOpportunity[]): Promis
 }
 
 /**
- * Delete opportunities that no longer belong in the portal: a deadline already
- * in the past, (no deadline) published longer ago than the freshness window, or
- * a disclosed budget below the minimum pursuable value. Keeps the portal showing
- * only active, open, worthwhile opportunities. Returns rows removed.
+ * Delete opportunities that are genuinely spent: a deadline already in the past,
+ * (no deadline) published longer ago than the freshness window, or a disclosed
+ * value so small it is not worth the row. Returns rows removed.
+ *
+ * The budget clause uses the RETENTION floor, NOT the collection floor — see
+ * lib/domain.ts. A notice below the collection floor is already invisible
+ * (loadLiveProjects filters it in SQL), so deleting it gains nothing and would
+ * make raising that floor an irreversible act.
  */
 export async function purgeExpired(
   maxAgeDaysNoDeadline = 180,
-  minBudgetUsd = TARGET_MIN_BUDGET_USD,
+  minBudgetUsd = RETENTION_MIN_BUDGET_USD,
 ): Promise<number> {
   const sql = getSql();
   if (!sql) return 0;
@@ -316,14 +325,17 @@ export async function countOpportunities(): Promise<number> {
   }
 }
 
-/** Rows the portal actually surfaces — geospatial and telecom only. */
+/** Rows the portal actually surfaces — in-domain, and clearing the value floor
+ *  on the same terms as the read query, so this cannot over-report the board. */
 export async function countInDomain(): Promise<number> {
   const sql = getSql();
   if (!sql) return 0;
   try {
     const rows = (await sql.query(
-      `SELECT COUNT(*)::int AS n FROM opportunities WHERE service_line = ANY($1)`,
-      [TARGET_SERVICE_LINES],
+      `SELECT COUNT(*)::int AS n FROM opportunities
+        WHERE service_line = ANY($1)
+          AND (budget_usd IS NULL OR budget_usd >= $2::bigint)`,
+      [TARGET_SERVICE_LINES, MIN_BUDGET_USD],
     )) as { n: number }[];
     return rows[0]?.n ?? 0;
   } catch {
@@ -410,9 +422,13 @@ function statusFor(deadlineIso: string): Project["status"] {
 function toProject(r: Row): Project {
   const deadlineIso = toIsoDate(r.deadline);
   // Both drivers return BIGINT as a string (64-bit safety) — coerce to a number.
-  // Undisclosed budgets default to $1M so every opportunity carries a value
-  // (disclosed budgets are already filtered to ≥ $1M at ingest).
-  const budget = r.budget_usd == null ? TARGET_MIN_BUDGET_USD : Number(r.budget_usd);
+  // A notice that disclosed nothing carries the stand-in value so every record
+  // has something to format — presented at the primary line, never as a token
+  // figure. See UNDISCLOSED_BUDGET_USD in lib/domain.ts for what that implies
+  // for the tier split. Disclosed values are already held to the collection
+  // floor at ingest and in the read query below.
+  const budgetDisclosed = r.budget_usd != null;
+  const budget = budgetDisclosed ? Number(r.budget_usd) : UNDISCLOSED_BUDGET_USD;
   const contact =
     r.contact_name || r.contact_email || r.contact_phone
       ? { name: r.contact_name ?? undefined, email: r.contact_email ?? undefined, phone: r.contact_phone ?? undefined }
@@ -442,7 +458,14 @@ function toProject(r: Row): Project {
     country: r.country,
     state: r.state,
     budget,
-    budgetLabel: money(budget),
+    budgetDisclosed,
+    // Says "Undisclosed" when the buyer published nothing, which is what the
+    // seed's factory has always done. This used to format the stand-in, so the
+    // details page of a notice with no published value stated "$15.0M" as
+    // plainly as one that really is worth that — the reader had no way to tell
+    // the two apart. The stand-in stays in `budget` for sorting and banding;
+    // it just no longer gets quoted back as though a buyer had committed to it.
+    budgetLabel: budgetDisclosed ? money(budget) : "Undisclosed",
     currency: r.currency,
     deadline: deadlineIso,
     publicationDate: toIsoDate(r.publication_date),
@@ -496,9 +519,10 @@ export async function loadLiveProjects(limit = 4000): Promise<Project[] | null> 
     const rows = (await sql.query(
       `SELECT * FROM opportunities
         WHERE service_line = ANY($1)
+          AND (budget_usd IS NULL OR budget_usd >= $2::bigint)
         ORDER BY publication_date DESC, ingested_at DESC
-        LIMIT $2`,
-      [TARGET_SERVICE_LINES, limit],
+        LIMIT $3`,
+      [TARGET_SERVICE_LINES, MIN_BUDGET_USD, limit],
     )) as Row[];
     if (!rows.length) return null;
     // Read-side scope gate. Rows stored before the goods rule existed — about a
@@ -540,9 +564,10 @@ export async function loadRecentOpportunities(limit = 20): Promise<Project[] | n
     const rows = (await sql.query(
       `SELECT * FROM opportunities
         WHERE service_line = ANY($1)
+          AND (budget_usd IS NULL OR budget_usd >= $2::bigint)
         ORDER BY ingested_at DESC
-        LIMIT $2`,
-      [TARGET_SERVICE_LINES, Math.min(limit * 4, 400)],
+        LIMIT $3`,
+      [TARGET_SERVICE_LINES, MIN_BUDGET_USD, Math.min(limit * 4, 400)],
     )) as Row[];
     if (!rows.length) return null;
     const visible = rows

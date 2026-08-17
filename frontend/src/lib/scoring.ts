@@ -32,8 +32,7 @@
 //   curl "<host>/api/cron/reclassify?dryRun=1&key=$CRON_SECRET" | jq .scoreHistogram
 // ------------------------------------------------------------------
 import {
-  TARGET_MIN_BUDGET_USD,
-  TARGET_MAX_BUDGET_USD,
+  PRIMARY_BUDGET_USD,
   PRIORITY_COUNTRIES,
   DEADLINE_SOON_DAYS,
 } from "@/lib/domain";
@@ -95,6 +94,21 @@ const CAPABILITY_BASE: Record<string, number> = {
   // (see lib/ingest/utility.ts), so the classification is already evidence of a
   // close capability match rather than a single keyword.
   "Utility Network Intelligence": 50,
+  // The three autonomous-mobility pillars. They sit with the core lines rather
+  // than with the adjacent one for the same reason Utility Network Intelligence
+  // does: a notice only reaches these focus areas by naming BOTH an autonomy
+  // programme and work on the data that serves it (see lib/ingest/autonomy.ts),
+  // so the classification is already evidence of a close match rather than one
+  // keyword landing.
+  //
+  // Perception leads the three because it is the pillar JSAN's existing
+  // geospatial bench delivers directly — HD maps, roadgraph, lane and road
+  // boundary intelligence is mapping work. Validation trails it because it is
+  // the pillar whose vocabulary (QA, acceptance, governance) is the most
+  // generic, so a match there carries the least information.
+  "Geospatial & Perception Intelligence": 50,
+  "Autonomous Data Engineering": 48,
+  "Validation & Managed Operations": 46,
   "Geospatial & Telecom Adjacent": 42,
   "Strategic Workforce Solutions": 40,
   "Structured Program Management": 40,
@@ -136,6 +150,33 @@ const CAPABILITY_FAMILIES: { id: string; label: string; pattern: RegExp }[] = [
     label: "adjacent (IoT / SCADA / digital twin)",
     pattern:
       /digital twin|\biot\b|internet of things|sensor network|telemetry|\bscada\b|\bdrone\b|\buav\b|unmanned aerial|smart cit\w*|spatial data infrastructure|geo-?portal|geoinformation|land information system|spectrum management|emergency communication|public safety network|\btetra\b|digital infrastructure|national broadband/gi,
+  },
+  // The three autonomous-mobility pillars are three SEPARATE families, not one.
+  // A notice that buys perception datasets AND the validation operation around
+  // them is a genuinely broader match than one that buys only labelling, and
+  // the breadth rule below is the only place that difference can be paid for.
+  //
+  // Every pattern here is the qualified form, and deliberately narrower than
+  // the classifier's supporting tier: depth and breadth are measured from the
+  // title alone, independent of which line the classifier chose, so a loose
+  // term would silently move points on notices that are not autonomy work.
+  {
+    id: "av-data",
+    label: "autonomous vehicle data engineering",
+    pattern:
+      /multi-?sensor (?:data )?(?:ingestion|fusion|acquisition)|sensor (?:fusion|synchroni[sz]ation|calibration)|camera and lidar|lidar and camera|point ?cloud (?:processing|labell?ing|annotation|segmentation)|data (?:cleansing|normali[sz]ation)|dataset (?:management|curation)|anonymi[sz]ation|autonomous[- ](?:vehicle|driving) data/gi,
+  },
+  {
+    id: "av-perception",
+    label: "perception / road intelligence",
+    pattern:
+      /object detection (?:dataset|annotation|model)\w*|semantic segmentation|instance segmentation|bounding box\w*|\bcuboid\w*|lane (?:detection|marking|polyline|boundar)\w*|road-?boundar\w*|traffic (?:sign|signal|light)s?\b|\bhd map\w*|high-?definition map\w*|roadgraph|road graph|locali[sz]ation dataset\w*|scenario (?:catalogu?e|library|mining)|edge[- ]case\w*|ground[- ]truth\w*/gi,
+  },
+  {
+    id: "av-validation",
+    label: "validation / managed operations",
+    pattern:
+      /human[- ]in[- ]the[- ]loop|human validation|defect adjudication|dataset acceptance|acceptance governance|release[- ]readiness|production assurance|multi-?level (?:qa|quality)\w*|annotation (?:qa|quality)|data (?:labell?ing|annotation) (?:qa|quality|operations)/gi,
   },
   {
     id: "workforce",
@@ -262,6 +303,9 @@ export function scoreFit(input: FitInput): FitBreakdown {
             strongest.id === "gis" ? "Geospatial Intelligence"
               : strongest.id === "telecom" ? "Telecom & Network Engineering"
               : strongest.id === "utility" ? "Utility Network Intelligence"
+              : strongest.id === "av-data" ? "Autonomous Data Engineering"
+              : strongest.id === "av-perception" ? "Geospatial & Perception Intelligence"
+              : strongest.id === "av-validation" ? "Validation & Managed Operations"
               : strongest.id === "adjacent" ? "Geospatial & Telecom Adjacent"
               : strongest.id === "workforce" ? "Strategic Workforce Solutions"
               : strongest.id === "programme" ? "Structured Program Management"
@@ -315,13 +359,15 @@ export function scoreFit(input: FitInput): FitBreakdown {
   });
 
   // ---- commercial signals ----------------------------------------
+  // Scored on the value the buyer actually published — never the read-time
+  // stand-in — so an undisclosed notice earns nothing here rather than banking
+  // points for a number nobody stated.
   const budget = input.budgetUsd;
-  const inBand =
-    budget != null && budget >= TARGET_MIN_BUDGET_USD && budget <= TARGET_MAX_BUDGET_USD;
+  const inBand = budget != null && budget >= PRIMARY_BUDGET_USD;
   const budgetPoints = inBand ? BUDGET_POINTS : budget != null ? BUDGET_DISCLOSED_POINTS : 0;
   rules.push({
     id: "budget",
-    label: "Budget in the $1–10M band",
+    label: "Contract value in the primary band",
     points: budgetPoints,
     max: BUDGET_POINTS,
     matched: budgetPoints > 0,
@@ -329,7 +375,7 @@ export function scoreFit(input: FitInput): FitBreakdown {
       ? `$${(budget! / 1_000_000).toFixed(1)}M disclosed`
       : budget == null
         ? "no budget disclosed"
-        : `$${(budget / 1_000_000).toFixed(1)}M is outside the band`,
+        : `$${(budget / 1_000_000).toFixed(1)}M is below the primary band`,
   });
 
   const country = (input.country ?? "").trim();

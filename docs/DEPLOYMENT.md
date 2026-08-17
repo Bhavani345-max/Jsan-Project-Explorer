@@ -137,14 +137,25 @@ failed deploys restart up to 10 times.
 
 ## 3. Deploy the frontend — Vercel (Next.js)
 
+The Next.js app lives in `frontend/`, so every command below runs from there —
+that is where `package.json`, `vercel.json` and the `.vercel` project link are.
+
 ```bash
+cd frontend
 npm i -g vercel      # if not installed
 vercel link          # once, to bind the directory to a Vercel project
 vercel --prod
 ```
 
+> **Root Directory must be `frontend`.** Set it at Project → Settings → General
+> → Root Directory. Without it a dashboard-triggered deploy uploads the
+> repository root, finds no framework at the top level, and fails the build.
+> The CLI commands above are unaffected because they upload the directory they
+> are run from.
+
 Or import the repo at [vercel.com/new](https://vercel.com/new) — Next.js is
-detected automatically; leave the build settings at their defaults.
+detected automatically, but set the Root Directory to `frontend` during import;
+leave the remaining build settings at their defaults.
 
 **Environment variables** (Project → Settings → Environment Variables, set for
 Production *and* Preview):
@@ -223,7 +234,7 @@ The frontend can also run without any infrastructure — it falls back to the
 bundled seed dataset:
 
 ```bash
-npm install && npm run dev       # http://localhost:3000
+cd frontend && npm install && npm run dev    # http://localhost:3000
 ```
 
 ---
@@ -286,7 +297,7 @@ Secrets Manager / Key Vault (JWT + connector credentials)
 ```
 
 ### CI/CD (GitHub Actions sketch)
-1. `npm ci && npm run build` and `pytest` (backend unit + integration).
+1. `cd frontend && npm ci && npm run build`, and `pytest` from `backend/`.
 2. Build & push Docker images (frontend, backend) to ECR/ACR.
 3. Apply `db/schema.sql` / SQL migrations as a pre-deploy job.
 4. Rolling/canary deploy; health-gate on `/health` and `/`.

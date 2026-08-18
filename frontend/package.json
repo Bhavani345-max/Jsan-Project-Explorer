@@ -4,6 +4,7 @@
   "private": true,
   "description": "JSAN NexusAI — discover geospatial, telecom and adjacent engineering opportunities from public procurement sources",
   "scripts": {
+    "prepare": "node scripts/setup-hooks.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

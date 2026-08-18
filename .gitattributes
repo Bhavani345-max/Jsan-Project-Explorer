@@ -1,0 +1,5 @@
+# Git hooks are executed by /bin/sh. autocrlf is true on this machine, so
+# without this the shebang would be checked out as "#!/bin/sh" and fail with
+# "bad interpreter". Scoped narrowly to .githooks/ on purpose: a repo-wide
+# "* text=auto" would renormalise every tracked file in one enormous diff.
+.githooks/** text eol=lf

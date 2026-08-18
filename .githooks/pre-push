@@ -1,0 +1,41 @@
+#!/bin/sh
+# Backstop: refuse to push commits that are not on the Bhavani345-max account.
+# Only NEW commits (not already on origin) are inspected, so existing history
+# under other identities never blocks a normal push.
+# Deliberate bypass: git push --no-verify
+
+EXPECTED_EMAIL="pilariguntabhavani12@gmail.com"
+BAD=""
+
+is_zero() { case "$1" in *[!0]*) return 1 ;; *) return 0 ;; esac; }
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+	[ -n "$local_sha" ] || continue
+	is_zero "$local_sha" && continue          # branch deletion
+	if is_zero "$remote_sha"; then
+		RANGE=$(git rev-list "$local_sha" --not --remotes=origin 2>/dev/null)
+	else
+		RANGE=$(git rev-list "$remote_sha..$local_sha" 2>/dev/null)
+	fi
+	for sha in $RANGE; do
+		AE=$(git log -1 --pretty=format:'%ae' "$sha")
+		CE=$(git log -1 --pretty=format:'%ce' "$sha")
+		if [ "$AE" != "$EXPECTED_EMAIL" ] || [ "$CE" != "$EXPECTED_EMAIL" ]; then
+			BAD="$BAD  $(git log -1 --pretty=format:'%h  author=%ae  committer=%ce  %s' "$sha")
+"
+		fi
+	done
+done
+
+if [ -n "$BAD" ]; then
+	echo "" >&2
+	echo "PUSH BLOCKED - new commits are not on the Bhavani345-max account." >&2
+	echo "  expected email: $EXPECTED_EMAIL" >&2
+	echo "" >&2
+	printf '%s' "$BAD" >&2
+	echo "" >&2
+	echo "  GitHub attributes commits by email, not by name." >&2
+	echo "  If this is intentional: git push --no-verify" >&2
+	echo "" >&2
+	exit 1
+fi

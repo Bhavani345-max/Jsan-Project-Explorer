@@ -1,0 +1,26 @@
+#!/bin/sh
+# Pin this repo's commit identity to the Bhavani345-max GitHub account.
+# GitHub attributes commits by EMAIL, so that check is the one that counts.
+# Deliberate bypass: git commit --no-verify
+
+EXPECTED_NAME="Bhavani345-max"
+EXPECTED_EMAIL="pilariguntabhavani12@gmail.com"
+WANT="$EXPECTED_NAME <$EXPECTED_EMAIL>"
+
+strip() { printf '%s' "$1" | sed 's/> .*/>/'; }
+
+A=$(strip "$(git var GIT_AUTHOR_IDENT 2>/dev/null)")
+C=$(strip "$(git var GIT_COMMITTER_IDENT 2>/dev/null)")
+
+if [ "$A" != "$WANT" ] || [ "$C" != "$WANT" ]; then
+	echo "" >&2
+	echo "COMMIT BLOCKED - wrong git identity for this repo." >&2
+	echo "  expected : $WANT" >&2
+	echo "  author   : ${A:-<unresolvable>}" >&2
+	echo "  committer: ${C:-<unresolvable>}" >&2
+	echo "" >&2
+	echo "  fix:  git config --local user.name  \"$EXPECTED_NAME\"" >&2
+	echo "        git config --local user.email \"$EXPECTED_EMAIL\"" >&2
+	echo "" >&2
+	exit 1
+fi

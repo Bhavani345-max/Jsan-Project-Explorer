@@ -168,6 +168,28 @@ export function budgetTierRank(budgetUsd: number | null | undefined): number {
   return budgetTier(budgetUsd) === "primary" ? 0 : 1;
 }
 
+/**
+ * Board contract-value policy: an opportunity is shown only when its buyer
+ * PUBLISHED a value and that value is at or above the primary line.
+ *
+ * Both halves are load-bearing, and the order matters. A bare
+ * `budget >= PRIMARY_BUDGET_USD` would keep every undisclosed notice on the
+ * board, because UNDISCLOSED_BUDGET_USD *is* the primary line — the stand-in
+ * would clear the very threshold it was never measured against. So
+ * `budgetDisclosed` is consulted first, exactly as Project.budgetDisclosed
+ * instructs.
+ *
+ * This hides; it never deletes. Rows below the line stay in the table and come
+ * straight back into view if the line moves — the same "hidden, not erased"
+ * rule the domain filter and RETENTION_MIN_BUDGET_USD already follow.
+ */
+export function meetsBoardBudgetPolicy(p: {
+  budget: number | null;
+  budgetDisclosed: boolean;
+}): boolean {
+  return p.budgetDisclosed && p.budget != null && p.budget >= PRIMARY_BUDGET_USD;
+}
+
 /** Does a value clear the collection floor? An undisclosed value always does. */
 export function meetsBudgetFloor(budgetUsd: number | null | undefined): boolean {
   return budgetUsd == null || budgetUsd >= MIN_BUDGET_USD;

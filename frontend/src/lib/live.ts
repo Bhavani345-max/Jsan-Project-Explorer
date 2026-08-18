@@ -9,7 +9,7 @@
 import type { Project } from "@/lib/types";
 import { PROJECTS } from "@/lib/seed";
 import { loadLiveProjects } from "@/lib/db";
-import { toTargetDomain } from "@/lib/domain";
+import { toTargetDomain, meetsBoardBudgetPolicy } from "@/lib/domain";
 import { isOutOfScope } from "@/lib/ingest/scope";
 
 // The seed carries the full sample catalogue; narrow it to the target domain
@@ -43,8 +43,22 @@ export async function liveDataset(): Promise<Dataset> {
   }
   const live = await loadLiveProjects();
   if (live && live.length) {
-    cache = { projects: live, at: Date.now() };
-    return { projects: live, live: true };
+    // Board contract-value policy, applied at the single read seam so every
+    // page inherits it at once: dashboard, Explorer, Analytics, details, the
+    // notification feed and every /api route read through here.
+    //
+    // Applied HERE rather than inside loadLiveProjects: that function returns
+    // null when its query yields nothing, and null means "database unreachable,
+    // use the seed". Filtering in its SQL would make an over-tight threshold
+    // silently masquerade as an outage and drop the portal onto sample data.
+    const board = live.filter(meetsBoardBudgetPolicy);
+    cache = { projects: board, at: Date.now() };
+    return { projects: board, live: true };
   }
+  // The seed is deliberately NOT filtered, for the reason already stated above
+  // for the collection floor: every seeded value sits below the primary line,
+  // so applying the policy here would render a blank board at exactly the
+  // moment this fallback exists to prevent one. The sidebar already marks this
+  // state as "Sample dataset", so it is labelled, not passed off as live.
   return { projects: SEED_IN_DOMAIN, live: false };
 }

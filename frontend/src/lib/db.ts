@@ -21,6 +21,7 @@ import { money } from "@/lib/format";
 import {
   TARGET_SERVICE_LINES,
   MIN_BUDGET_USD,
+  PRIMARY_BUDGET_USD,
   RETENTION_MIN_BUDGET_USD,
   UNDISCLOSED_BUDGET_USD,
 } from "@/lib/domain";
@@ -562,12 +563,18 @@ export async function loadRecentOpportunities(limit = 20): Promise<Project[] | n
     // title and historically removes about a quarter of stored rows, so taking
     // exactly `limit` from SQL would hand back a short feed.
     const rows = (await sql.query(
+      // The board contract-value policy is applied in SQL on this path, not
+      // after mapping: the rows are sliced to `limit` below, so a post-slice
+      // filter would hand back a near-empty feed. NOT NULL is what enforces
+      // "disclosed" — an undisclosed notice stores NULL and only acquires the
+      // stand-in when toProject maps it, which is after this query runs.
       `SELECT * FROM opportunities
         WHERE service_line = ANY($1)
-          AND (budget_usd IS NULL OR budget_usd >= $2::bigint)
+          AND budget_usd IS NOT NULL
+          AND budget_usd >= $2::bigint
         ORDER BY ingested_at DESC
         LIMIT $3`,
-      [TARGET_SERVICE_LINES, MIN_BUDGET_USD, Math.min(limit * 4, 400)],
+      [TARGET_SERVICE_LINES, PRIMARY_BUDGET_USD, Math.min(limit * 4, 400)],
     )) as Row[];
     if (!rows.length) return null;
     const visible = rows

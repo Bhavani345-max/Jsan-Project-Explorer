@@ -741,6 +741,11 @@ export async function loadRecentOpportunities(limit = 20): Promise<Project[] | n
     if (!rows.length) return null;
     const visible = rows
       .map(toProject)
+      // Same active-only rule the board applies in lib/live.ts: a feed of "new
+      // opportunities" must never announce one whose bid end date has passed.
+      // Emptying this list is safe — newOpportunities() then falls back to the
+      // board, which carries the identical filter.
+      .filter((p) => p.status !== "Closed")
       .filter((p) => !isOutOfScope(p.title))
       .slice(0, limit);
     return visible.length ? visible : null;

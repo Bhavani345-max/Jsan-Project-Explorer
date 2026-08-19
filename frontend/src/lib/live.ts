@@ -51,7 +51,25 @@ export async function liveDataset(): Promise<Dataset> {
     // null when its query yields nothing, and null means "database unreachable,
     // use the seed". Filtering in its SQL would make an over-tight threshold
     // silently masquerade as an outage and drop the portal onto sample data.
-    const board = live.filter(meetsBoardBudgetPolicy);
+    // Active bids only.
+    //
+    // Belt and braces with purgeExpired(), not a replacement for it. The purge
+    // runs once a night at ~02:00 UTC, so between midnight and that run every
+    // notice whose bid end date passed the previous day was still on the board
+    // — and a purge that ever failed would leave closed notices sitting there
+    // until somebody noticed by eye. Enforcing it on read makes "the board
+    // shows only live bids" true at every instant, whatever the job did last.
+    //
+    // statusFor() marks a notice Closed only once its bid end date is in the
+    // past, so a tender closing TODAY is still shown, as it should be. A notice
+    // that publishes no bid end date is not "completed" — it is unknown — and
+    // stays; those age out on publication date via purgeExpired's 180-day rule.
+    //
+    // Applied at this seam rather than in loadLiveProjects's SQL for exactly
+    // the reason given above for the value policy: that function returns null
+    // to mean "database unreachable", so a filter that emptied its result set
+    // would masquerade as an outage and drop the portal onto sample data.
+    const board = live.filter((p) => p.status !== "Closed" && meetsBoardBudgetPolicy(p));
     cache = { projects: board, at: Date.now() };
     return { projects: board, live: true };
   }

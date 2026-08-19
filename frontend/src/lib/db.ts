@@ -195,6 +195,37 @@ const SCHEMA_STATEMENTS = [
   // rewritten by a model so re-ingest would not clobber it. Every summary now
   // comes from the notice itself, so there is nothing to protect.
   `ALTER TABLE opportunities DROP COLUMN IF EXISTS ai_enriched`,
+  // ---- ingest_runs ---------------------------------------------------
+  // One row per ingest attempt, successful or not.
+  //
+  // Added because a failed run used to leave no evidence anywhere. The only
+  // trace of ingestion was the timestamps on the rows a run happened to write,
+  // and `updated_at` dates only the LAST run that touched a row — so a source
+  // that had started erroring looked exactly like a source with nothing new to
+  // publish. Telling those two apart is the whole reason this table exists.
+  //
+  // Append-only, and no page reads it: nothing here can affect what the portal
+  // shows.
+  `CREATE TABLE IF NOT EXISTS ingest_runs (
+  id            BIGSERIAL   PRIMARY KEY,
+  started_at    TIMESTAMPTZ NOT NULL,
+  finished_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ok            BOOLEAN     NOT NULL,
+  -- 'cron' when Vercel Cron invoked it, 'manual' for a hand-run pass. Named
+  -- triggered_by because TRIGGER is a reserved word in Postgres.
+  triggered_by  TEXT        NOT NULL DEFAULT 'cron',
+  error         TEXT,
+  fetched       INTEGER     NOT NULL DEFAULT 0,
+  written       INTEGER     NOT NULL DEFAULT 0,
+  purged        INTEGER     NOT NULL DEFAULT 0,
+  in_domain     INTEGER,
+  total_in_db   INTEGER,
+  -- Per-source stats exactly as runConnectors() reported them, so a source that
+  -- legitimately returned nothing can be told apart from one that threw.
+  sources       JSONB       NOT NULL DEFAULT '[]'::jsonb
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_ingest_runs_started ON ingest_runs (started_at DESC)`,
+
 ];
 
 /** Create the table + indexes if they don't exist. Safe to call repeatedly. */
@@ -339,6 +370,137 @@ export async function countInDomain(): Promise<number> {
       [TARGET_SERVICE_LINES, MIN_BUDGET_USD],
     )) as { n: number }[];
     return rows[0]?.n ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+// ---- ingest run log ------------------------------------------------
+//
+// Diagnostics about ingestion, kept deliberately separate from the data it
+// ingests. Nothing in this section is read by the portal.
+
+export interface IngestRunInput {
+  startedAt: string;
+  ok: boolean;
+  triggeredBy: string;
+  error?: string | null;
+  fetched?: number;
+  written?: number;
+  purged?: number;
+  inDomain?: number | null;
+  totalInDb?: number | null;
+  sources?: unknown;
+}
+
+export interface IngestRunRow {
+  id: number;
+  startedAt: string;
+  finishedAt: string;
+  ok: boolean;
+  triggeredBy: string;
+  error: string | null;
+  fetched: number;
+  written: number;
+  purged: number;
+  inDomain: number | null;
+  totalInDb: number | null;
+  sources: unknown;
+}
+
+/** Drivers hand timestamps back as Date (neon http, pg) or as text. */
+function isoOf(v: unknown): string {
+  if (v instanceof Date) return v.toISOString();
+  return v == null ? "" : String(v);
+}
+
+/**
+ * Append one row to the ingest audit trail. Returns the new row's id.
+ *
+ * NEVER THROWS, by design. This is bookkeeping *about* a run, not part of one:
+ * failing to write the log must not turn a good ingest into a 500, and — more
+ * importantly — must not mask the original error on the path where the run is
+ * what failed. A lost log line is a smaller loss than a lost cause of death.
+ */
+export async function recordIngestRun(run: IngestRunInput): Promise<number | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    // id::int rather than the raw BIGSERIAL: both drivers return int8 as a
+    // string to protect precision, which would put a quoted number in the JSON.
+    const rows = (await sql.query(
+      `INSERT INTO ingest_runs
+         (started_at, ok, triggered_by, error, fetched, written, purged, in_domain, total_in_db, sources)
+       VALUES ($1::timestamptz, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+       RETURNING id::int AS id`,
+      [
+        run.startedAt,
+        run.ok,
+        run.triggeredBy,
+        run.error ?? null,
+        run.fetched ?? 0,
+        run.written ?? 0,
+        run.purged ?? 0,
+        run.inDomain ?? null,
+        run.totalInDb ?? null,
+        JSON.stringify(run.sources ?? []),
+      ],
+    )) as { id: number }[];
+    return rows[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Most recent runs, newest first. Degrades to [] rather than throwing. */
+export async function recentIngestRuns(limit = 20): Promise<IngestRunRow[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  const capped = Math.min(Math.max(Math.trunc(limit) || 20, 1), 200);
+  try {
+    const rows = (await sql.query(
+      `SELECT id::int AS id, started_at, finished_at, ok, triggered_by, error,
+              fetched, written, purged, in_domain, total_in_db, sources
+         FROM ingest_runs
+        ORDER BY started_at DESC
+        LIMIT $1`,
+      [capped],
+    )) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      id: Number(r.id),
+      startedAt: isoOf(r.started_at),
+      finishedAt: isoOf(r.finished_at),
+      ok: Boolean(r.ok),
+      triggeredBy: String(r.triggered_by ?? "cron"),
+      error: r.error == null ? null : String(r.error),
+      fetched: Number(r.fetched ?? 0),
+      written: Number(r.written ?? 0),
+      purged: Number(r.purged ?? 0),
+      inDomain: r.in_domain == null ? null : Number(r.in_domain),
+      totalInDb: r.total_in_db == null ? null : Number(r.total_in_db),
+      sources: r.sources ?? [],
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Keep the trail from growing without bound. 90 days is far past the point
+ * where a run is still diagnostically interesting, and at one row per day the
+ * table stays trivially small either way.
+ */
+export async function pruneIngestRuns(keepDays = 90): Promise<number> {
+  const sql = getSql();
+  if (!sql) return 0;
+  try {
+    const rows = (await sql.query(
+      `DELETE FROM ingest_runs
+        WHERE started_at < now() - make_interval(days => $1::int)
+      RETURNING id`,
+      [keepDays],
+    )) as unknown[];
+    return Array.isArray(rows) ? rows.length : 0;
   } catch {
     return 0;
   }

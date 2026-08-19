@@ -5,7 +5,40 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: true,  // Security headers.
+  //
+  // Deliberately limited to headers that CANNOT change how a page renders. The
+  // portal already ships HSTS from Vercel's edge; what was missing was
+  // clickjacking, MIME-sniffing and referrer control.
+  //
+  // Note what is NOT here: a full Content-Security-Policy with script-src.
+  // Next.js injects inline bootstrap and hydration scripts, so a real script-src
+  // needs per-request nonces plumbed through middleware — and getting that
+  // subtly wrong white-screens the app rather than failing loudly. Only
+  // `frame-ancestors` is set, which restricts framing and nothing else, so it
+  // carries no rendering risk. The nonce work is a separate, testable change.
+  async headers() {
+    return [
+      {
+        // `/:path*` matches the root as well as every nested path.
+        source: "/:path*",
+        headers: [
+          // Clickjacking, stated twice on purpose: frame-ancestors is the
+          // modern control and wins where both are understood, X-Frame-Options
+          // covers older agents that ignore CSP.
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // The portal uses none of these APIs (verified: no navigator.geolocation
+          // or getUserMedia anywhere in src/), so denying them costs nothing and
+          // stops a future dependency from quietly asking for them.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
+
   // Pin the workspace root so the parent-directory lockfile is ignored.
   outputFileTracingRoot: __dirname,
   // node-postgres resolves its optional native binding (pg-native) and its

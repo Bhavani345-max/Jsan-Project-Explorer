@@ -52,7 +52,118 @@ interface TedNotice {
   "buyer-country"?: TedValue;
   "publication-date"?: string;
   "deadline-receipt-tender-date-lot"?: TedValue;
+  // What KIND of notice this is: "competition" is a live invitation to bid,
+  // "result" announces who already won it. See isStillOpenForBids().
+  "form-type"?: TedValue;
+  "winner-name"?: TedValue;
+  // Contract value. "total-value" is a plain number; "estimated-value-lot" is
+  // an array of numeric strings, one per lot. See noticeValue().
+  "total-value"?: TedValue | number;
+  "total-value-cur"?: TedValue;
+  "estimated-value-lot"?: TedValue;
+  "estimated-value-cur-lot"?: TedValue;
   links?: { html?: Record<string, string> };
+}
+
+/**
+ * Is this notice still open for bids, or has the contract already been bought?
+ *
+ * TED publishes the whole lifecycle of a contract under the same CPV codes, and
+ * only the first stage is biddable. Measured over 250 notices in the geospatial
+ * families with no deadline filter applied: 132 "competition" (a live call for
+ * tenders), 86 "result" (a contract award notice — someone has already won it,
+ * and 76 of them name the winner), 26 "cont-modif" (a change to a contract
+ * already awarded), 5 "planning" (a prior information notice, not yet open) and
+ * 1 "dir-awa-pre" (notice of intent to award directly, without a competition).
+ *
+ * Only "competition" is something a bidder can still act on, so only
+ * "competition" is kept. The future-deadline filter in the query already
+ * excludes almost all of the rest as a side effect — every one of the 250
+ * notices it returned was a competition — but that is incidental, not a
+ * guarantee: it holds only because award notices rarely carry a future
+ * submission deadline. Asking the question directly is what makes "nothing
+ * already awarded reaches the portal" a property of this connector rather than
+ * a lucky consequence of a date comparison. A named winner is checked too, as a
+ * second, independent signal that the contract is gone.
+ */
+function isStillOpenForBids(n: TedNotice): boolean {
+  if (pickText(n["winner-name"]).trim()) return false;
+  return pickText(n["form-type"]).trim().toLowerCase() === "competition";
+}
+
+// Below this, a "value" is a placeholder rather than a contract price. TED
+// notices occasionally carry a token total (1, or a single currency unit) where
+// the buyer had to supply the field but did not want to publish a figure.
+const MIN_PLAUSIBLE_VALUE = 1_000;
+
+/** Sum a TED money field: a bare number, a numeric string, or an array of them. */
+function sumValues(v: TedValue | number | undefined): number | null {
+  if (v == null) return null;
+  const parts = Array.isArray(v) ? v : [v];
+  let total = 0;
+  let counted = 0;
+  for (const part of parts) {
+    if (part == null || typeof part === "object") continue;
+    const n = Number(part);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    total += n;
+    counted++;
+  }
+  return counted ? total : null;
+}
+
+/**
+ * The single currency a money field is quoted in, or null if it is ambiguous.
+ *
+ * TED returns currency as an ARRAY (`["EUR"]`) because a notice can price its
+ * lots in different currencies. When it names more than one, the lot figures
+ * cannot be added up into a single number and the value is treated as
+ * unpublished — adding EUR to RON and labelling the result EUR would invent a
+ * figure, and the board would then show that invention as a contract value.
+ */
+function currencyOf(v: TedValue): string | null {
+  if (v == null) return null;
+  const parts = Array.isArray(v) ? v : [v];
+  const codes = new Set<string>();
+  for (const part of parts) {
+    if (typeof part !== "string") continue;
+    const code = part.trim().toUpperCase();
+    if (/^[A-Z]{3}$/.test(code)) codes.add(code);
+  }
+  return codes.size === 1 ? [...codes][0] : null;
+}
+
+/**
+ * The published contract value, in the currency the buyer published it in.
+ *
+ * Prefers "total-value", which TED already computes across the lots: checked
+ * against a live 69-lot notice, its total-value of 25,364,944 was the sum of
+ * the lot array to the euro. "estimated-value-lot" is the fallback for the
+ * notices that carry lots but no total (27 of 458 valued notices measured), and
+ * it is also what rescues a notice whose total is a placeholder.
+ *
+ * Returns null when nothing trustworthy is published, which is the normal case:
+ * 50% of open notices in these families publish no value at all. Null means
+ * "undisclosed", and an undisclosed notice is kept in the table but stays off
+ * the board — it is never guessed at.
+ */
+function noticeValue(n: TedNotice): { amount: number; currency: string } | null {
+  const totalCurrency = currencyOf(n["total-value-cur"]);
+  const lotCurrency = currencyOf(n["estimated-value-cur-lot"]);
+
+  const total = sumValues(n["total-value"]);
+  const currency = totalCurrency ?? lotCurrency;
+  if (total != null && total >= MIN_PLAUSIBLE_VALUE && currency) {
+    return { amount: total, currency };
+  }
+
+  const lots = sumValues(n["estimated-value-lot"]);
+  const fallbackCurrency = lotCurrency ?? totalCurrency;
+  if (lots != null && lots >= MIN_PLAUSIBLE_VALUE && fallbackCurrency) {
+    return { amount: lots, currency: fallbackCurrency };
+  }
+
+  return null;
 }
 
 function noticeLink(n: TedNotice): string {
@@ -173,6 +284,16 @@ async function searchPage(
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
       query,
+      // TED returns ONLY the fields named here, so anything missing from this
+      // list is absent from the response rather than merely unread. The value
+      // fields were the reason the portal reported almost every EU tender as
+      // "undisclosed": TED supplies the large majority of stored notices, and
+      // with no value field requested, every one of them arrived without a
+      // price — by construction, not because buyers withheld it. Measured after
+      // adding them, 50% of open notices in these families publish a value.
+      //
+      // "notice-value" is rejected by the API with a 400; the four fields below
+      // are the accepted spellings.
       fields: [
         "publication-number",
         "notice-title",
@@ -180,6 +301,12 @@ async function searchPage(
         "buyer-country",
         "publication-date",
         "deadline-receipt-tender-date-lot",
+        "form-type",
+        "winner-name",
+        "total-value",
+        "total-value-cur",
+        "estimated-value-lot",
+        "estimated-value-cur-lot",
         "links",
       ],
       page,
@@ -259,12 +386,16 @@ export async function fetchEuTed(maxPerGroup = 600): Promise<RawOpportunity[]> {
   for (const n of notices) {
     const pub = n["publication-number"];
     if (!pub) continue;
+    // Drop anything already bought — award notices, contract modifications and
+    // direct-award intentions. See isStillOpenForBids().
+    if (!isStillOpenForBids(n)) continue;
     const title = pickText(n["notice-title"]).replace(/\s+/g, " ").trim();
     const buyer = pickText(n["buyer-name"]).trim();
     const code = pickText(n["buyer-country"]).trim().toUpperCase();
     const country = COUNTRY[code] ?? (code || "European Union");
     const deadline = pickText(n["deadline-receipt-tender-date-lot"]).slice(0, 10) || null;
     const pubDate = (n["publication-date"] ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10);
+    const value = noticeValue(n);
 
     out.push({
       sourceKey: SOURCE_KEY,
@@ -275,8 +406,15 @@ export async function fetchEuTed(maxPerGroup = 600): Promise<RawOpportunity[]> {
       description: title, // TED search returns metadata, not the full body
       organization: buyer || "EU contracting authority",
       country,
-      amount: null,
-      currency: "EUR",
+      // Null amount means "the buyer published no value", which is half of all
+      // open notices here. normalize.ts turns that into an undisclosed budget:
+      // the row is kept and searchable but never reaches the board, because the
+      // board shows a contract only when its value was actually published.
+      amount: value?.amount ?? null,
+      // The buyer's own currency, NOT a blanket "EUR". A third of the valued
+      // notices in these families are priced in CZK, RON, PLN, SEK or NOK, and
+      // labelling those euros overstated every one of them.
+      currency: value?.currency ?? "EUR",
       deadline: deadline && /^\d{4}-\d{2}-\d{2}$/.test(deadline) ? deadline : null,
       publicationDate: pubDate,
       officialLink: noticeLink(n),

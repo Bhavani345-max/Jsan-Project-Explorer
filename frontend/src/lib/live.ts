@@ -9,7 +9,7 @@
 import type { Project } from "@/lib/types";
 import { PROJECTS } from "@/lib/seed";
 import { loadLiveProjects } from "@/lib/db";
-import { toTargetDomain, meetsBoardBudgetPolicy } from "@/lib/domain";
+import { toTargetDomain, meetsBoardBudgetPolicy, isActivelyBiddable } from "@/lib/domain";
 import { isOutOfScope } from "@/lib/ingest/scope";
 
 // The seed carries the full sample catalogue; narrow it to the target domain
@@ -69,7 +69,14 @@ export async function liveDataset(): Promise<Dataset> {
     // the reason given above for the value policy: that function returns null
     // to mean "database unreachable", so a filter that emptied its result set
     // would masquerade as an outage and drop the portal onto sample data.
-    const board = live.filter((p) => p.status !== "Closed" && meetsBoardBudgetPolicy(p));
+    // isActivelyBiddable() replaces the old `status !== "Closed"` test and is
+    // strictly stronger: it also requires a bid date to be PRESENT, and the
+    // record to be a contract rather than a funding programme. The paragraph
+    // above still describes why the date half is enforced on read; the type
+    // half is there because a World Bank operation's 2029/2030 programme
+    // closing date satisfies every date test while being nothing anyone can
+    // bid on. See isActivelyBiddable() in lib/domain.ts.
+    const board = live.filter((p) => isActivelyBiddable(p) && meetsBoardBudgetPolicy(p));
     cache = { projects: board, at: Date.now() };
     return { projects: board, live: true };
   }

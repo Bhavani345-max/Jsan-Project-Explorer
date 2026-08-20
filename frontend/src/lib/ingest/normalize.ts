@@ -76,11 +76,33 @@ const FX_TO_USD: Record<string, number> = {
   SEK: 0.095, NOK: 0.093, DKK: 0.145, PLN: 0.25, CHF: 1.12, BRL: 0.18,
   JPY: 0.0064, CNY: 0.14, ZAR: 0.055, AED: 0.27, SGD: 0.74, MYR: 0.22,
   NZD: 0.61, MXN: 0.05,
+  // Non-euro EU/EEA currencies. TED publishes each contract value in the
+  // buyer's own currency, and these were missing: of 458 valued open notices
+  // measured across the geospatial and telecom families, 74 were priced in
+  // CZK, RON, HUF or MDL and every one fell through to the 1:1 fallback below.
+  // At 1:1 a 400,000,000 HUF contract (about USD 1M) reads as USD 400M and
+  // clears the board's primary line outright, so these rates are load-bearing
+  // for the contract-value policy, not decoration.
+  CZK: 0.043, RON: 0.22, HUF: 0.0026, BGN: 0.55, MDL: 0.056, ISK: 0.0072,
+  TRY: 0.029, RSD: 0.0094, UAH: 0.024, ALL: 0.011, MKD: 0.018, NGN: 0.00065,
 };
 
+/**
+ * Convert to USD, or null when the figure cannot honestly be called dollars.
+ *
+ * An unrecognised currency now returns null — "no published value" — instead of
+ * passing the number through at 1:1. That fallback did not merely misprice a
+ * row: because the board shows an opportunity only when its buyer published a
+ * value at or above the primary line, reading a minor currency as dollars
+ * manufactures a qualifying value out of a small contract and puts it on the
+ * board. Returning null routes the row down exactly the same path as a
+ * genuinely undisclosed value — kept in the table, held off the board — which
+ * is the safe direction to be wrong in.
+ */
 export function toUsd(amount: number | null, currency: string): number | null {
   if (amount == null || !Number.isFinite(amount)) return null;
-  const rate = FX_TO_USD[(currency || "USD").toUpperCase()] ?? 1;
+  const rate = FX_TO_USD[(currency || "USD").toUpperCase()];
+  if (rate == null) return null;
   return Math.round(amount * rate);
 }
 

@@ -195,6 +195,55 @@ export function meetsBudgetFloor(budgetUsd: number | null | undefined): boolean 
   return budgetUsd == null || budgetUsd >= MIN_BUDGET_USD;
 }
 
+/**
+ * Project types that represent a contract somebody can actually bid for.
+ *
+ * The one that is deliberately absent is "Open Opportunity", which is what the
+ * World Bank *operations* feed produces — see connectors/world-bank.ts. Those
+ * records are development loans ("Second Karachi Water and Sewerage Services
+ * Improvement Project"), not tenders: there is nothing to submit and no way to
+ * win one. The biddable contracts issued underneath them arrive separately,
+ * through connectors/world-bank-tenders.ts, and land as "Government Tender".
+ */
+const BIDDABLE_PROJECT_TYPES: ReadonlySet<string> = new Set([
+  "Government Tender",
+  "RFP",
+  "RFQ",
+  "IT Procurement",
+]);
+
+/**
+ * Board bid policy: is this an opportunity somebody could still bid for today?
+ *
+ * Two things have to be true, and the second is the one that is easy to miss.
+ *
+ * 1. There is a bid date, and it has not passed. A MISSING date does not count.
+ *    statusFor() reports a notice with no deadline as "Open" — correctly, since
+ *    an absent date means unknown rather than expired — so a `status !==
+ *    "Closed"` test alone lets dateless records onto the board and presents them
+ *    as live bids.
+ *
+ * 2. It is a biddable contract, not a programme. This is what separates an
+ *    active bid date from a date that merely looks like one. A World Bank
+ *    operation carries its programme CLOSING date — routinely 2029 or 2030 —
+ *    and that date passes every freshness test there is while describing
+ *    nothing a bidder can act on. Six of the seven opportunities the board
+ *    showed before this policy existed were operations of exactly that kind,
+ *    each displaying a 2029/2030 date where a bid deadline belongs.
+ *
+ * Like the contract-value policy, this hides rather than deletes: the rows stay
+ * in the table, remain searchable, and come straight back if the policy changes.
+ */
+export function isActivelyBiddable(p: {
+  status: string;
+  deadline: string;
+  projectType: string;
+}): boolean {
+  if (p.status === "Closed" || p.status === "Awarded") return false;
+  if (!p.deadline) return false;
+  return BIDDABLE_PROJECT_TYPES.has(p.projectType);
+}
+
 // ---- fit-score inputs ----------------------------------------------
 // The two business judgements the rule-based score depends on. They live here,
 // beside the other scope constants, because they are the only parts of the

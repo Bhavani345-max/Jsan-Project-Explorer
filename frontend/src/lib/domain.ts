@@ -56,12 +56,48 @@ export const TARGET_SERVICE_LINES: ServiceLine[] = [
   "Autonomous Data Engineering",
   "Geospatial & Perception Intelligence",
   "Validation & Managed Operations",
-  "Digital Engineering",
   "Strategic Workforce Solutions",
   "Structured Program Management",
+  // REMOVED 2026-08-20, at the user's instruction: "Digital Engineering".
+  //
+  // It carried the generic IT work — cyber security, cloud migration, web,
+  // mobile, enterprise software, DevOps and AI/ML — none of which is what this
+  // business sells. Because the board ranks by contract value, one large
+  // generic-IT framework outranked every genuine geospatial and telecom
+  // opportunity on it: a GBP 800M UK notice, "Cyber Security Services 3", sat
+  // at the TOP of the board at $1,016M while scoring 28 on capability fit
+  // against 50-66 for every other row. The score was already saying the right
+  // thing; this list was what put the row there to be ranked at all.
+  //
+  // Only that one line was dropped. Strategic Workforce Solutions and
+  // Structured Program Management stay, deliberately — the problem was generic
+  // IT delivery, not staffing or programme management.
+  //
+  // The lines above are NOT interchangeable with the two in
+  // CORE_SERVICE_LINES, and narrowing to those two would silently strand real
+  // work. Utility Network Intelligence is the whole reason
+  // connectors/world-bank-tenders.ts exists — read its header, it is the only
+  // source that reaches utility asset and consumer data work — and it is what
+  // TED's UTILITY_SECTOR_FT text query is for. The two autonomous-mobility
+  // lines, with Validation & Managed Operations, are the lines the capability
+  // deck sells. Widen or narrow this list against the capability deck, never
+  // to make a single unwanted row go away.
 ];
 
-/** Delivery categories that map into the target service lines. */
+/**
+ * Delivery categories that map into the target service lines.
+ *
+ * Kept in step with TARGET_SERVICE_LINES by hand — the generic-IT categories
+ * were removed alongside the one line they fed, Digital Engineering (Cloud
+ * Migration, Data Engineering, Web Development, Mobile Development, Enterprise
+ * Software, Cyber Security, DevOps, AI/ML). Workforce Solutions and Program
+ * Management stay, because their lines stay.
+ *
+ * Note this list is documentation, not a gate: nothing reads it. The domain
+ * gate runs on isTargetServiceLine() alone, via the category → service line
+ * map in lib/ingest/normalize.ts. Editing this list on its own changes
+ * NOTHING about what the portal collects — change TARGET_SERVICE_LINES.
+ */
 export const TARGET_CATEGORIES: ProjectCategory[] = [
   "GIS",
   "Telecom / Network",
@@ -70,14 +106,6 @@ export const TARGET_CATEGORIES: ProjectCategory[] = [
   "Autonomous Vehicle Data",
   "Perception & Road Intelligence",
   "Validation & QA Operations",
-  "Cloud Migration",
-  "Data Engineering",
-  "Web Development",
-  "Mobile Development",
-  "Enterprise Software",
-  "Cyber Security",
-  "DevOps",
-  "AI/ML",
   "Workforce Solutions",
   "Program Management",
 ];

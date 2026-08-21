@@ -129,14 +129,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # Same reason as the verify job: `vercel deploy` uploads the directory it
-    # is run from, and the deployable app — package.json, vercel.json and the
-    # .vercelignore that decides what ships — is frontend/ now. Run from the
-    # root and Vercel would receive a monorepo with no framework at its top
-    # level and fail the build.
-    defaults:
-      run:
-        working-directory: frontend
+    # NOTE the asymmetry with the verify job, which DOES run from frontend/:
+    # this one deliberately runs from the repository root, and swapping it back
+    # breaks the deploy outright.
+    #
+    # `vercel deploy` uploads the directory it is run from and then applies the
+    # project's **Root Directory** on top of that upload. This project's Root
+    # Directory is already set to `frontend` (Settings -> General, confirmed via
+    # `vercel project inspect jsan-nexusai`), so deploying from frontend/ makes
+    # the CLI look for frontend/frontend and fail with:
+    #
+    #     The provided path "…/frontend/frontend" does not exist
+    #
+    # Uploading the root is therefore correct, not sloppy — Vercel descends into
+    # frontend/ itself and finds package.json, vercel.json and .vercelignore
+    # exactly where it expects them. The verify job is different because its npm
+    # steps invoke the app's own tooling directly, with no Root Directory
+    # applied for them, so they must be run inside frontend/.
+    #
+    # No `.vercel` link is needed here: VERCEL_ORG_ID and VERCEL_PROJECT_ID are
+    # set at the workflow level and are what the CLI resolves the project from
+    # in CI.
 
     steps:
       - uses: actions/checkout@v4
